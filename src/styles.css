@@ -4,7 +4,7 @@
   color: #30342f;
   background: #e9e4d7;
   font-family: "Noto Sans KR", sans-serif;
-  font-size: 19px;
+  font-size: 20px;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   --ink: #30342f;
@@ -45,7 +45,7 @@ button:focus-visible {
   background:
     radial-gradient(circle at 15% 0%, rgba(255, 255, 255, 0.85), transparent 32%),
     linear-gradient(140deg, #eee9dc, #d8d1c1);
-  transition: color 900ms ease, background 1200ms ease, filter 900ms ease;
+  transition: color 450ms ease;
 }
 
 .app-shell.theme-night {
@@ -216,17 +216,39 @@ button:focus-visible {
   overflow: hidden;
   border: 1px solid var(--line);
   background: #d7c79a;
+  contain: paint;
+  isolation: isolate;
 }
 
-.estate-scene img {
+.estate-scene__image {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   min-height: 590px;
   object-fit: cover;
-  transition: filter 1400ms ease, transform 1600ms ease;
+  transition:
+    opacity 800ms ease,
+    transform 1400ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-.estate-scene--night img {
+.estate-scene__image--day {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.estate-scene__image--night {
+  opacity: 0;
+  transform: scale(1.035);
+}
+
+.estate-scene--night .estate-scene__image--day {
+  opacity: 0;
+  transform: scale(1.01);
+}
+
+.estate-scene--night .estate-scene__image--night {
+  opacity: 1;
   transform: scale(1.025);
 }
 
@@ -268,22 +290,6 @@ button:focus-visible {
 .estate-scene__caption p {
   margin: 4px 0 0;
   font-size: 0.75rem;
-}
-
-.cathedral-mark {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  padding: 6px 9px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background: rgba(18, 18, 17, 0.52);
-  color: #fff7df;
-  font-size: 0.66rem;
-}
-
-.theme-night .cathedral-mark {
-  border-color: rgba(151, 28, 32, 0.62);
-  color: #d57272;
 }
 
 .estate-report {
@@ -356,7 +362,12 @@ button:focus-visible {
   padding: 16px;
 }
 
-.option-list--single,
+.option-list--single {
+  grid-template-columns: 1fr;
+  gap: 9px;
+  padding: 18px;
+}
+
 .job-list--single {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -381,7 +392,6 @@ button:focus-visible {
   transition: 180ms ease;
 }
 
-.option-list--single .option-button,
 .job-list--single .job-card {
   min-height: 132px;
   justify-content: center;
@@ -389,15 +399,53 @@ button:focus-visible {
   animation: offer-enter 420ms ease both;
 }
 
-.option-list--single .option-button strong,
 .job-list--single .job-card strong {
   font-size: 1.35rem;
 }
 
-.option-list--single .option-button small,
 .job-list--single .job-card small {
   max-width: 90%;
   font-size: 0.76rem;
+}
+
+.option-list--single .option-button {
+  min-height: 84px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  border: 0;
+  border-left: 4px solid var(--line);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--panel) 94%, var(--accent)) 0 13%, var(--panel) 44%);
+  padding: 17px 24px 17px 62px;
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.48),
+    0 5px 18px rgba(39, 35, 26, 0.08);
+  animation: offer-enter 360ms ease both;
+}
+
+.option-list--single .option-button::before {
+  position: absolute;
+  left: 24px;
+  width: 18px;
+  height: 18px;
+  border: 1px solid currentColor;
+  content: "";
+  opacity: 0.56;
+  transform: rotate(45deg);
+}
+
+.option-list--single .option-button strong {
+  position: relative;
+  font-size: 1.12rem;
+  line-height: 1.55;
+}
+
+.option-list--single .option-button:not(:disabled):hover {
+  transform: translateX(5px);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.58),
+    0 8px 24px rgba(39, 35, 26, 0.14);
 }
 
 .option-button--locked,
@@ -417,11 +465,26 @@ button:focus-visible {
   content: "×";
 }
 
+.option-list--single .option-button--locked::after {
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+}
+
 .option-button--forfeit,
 .job-card--forfeit {
   border-color: rgba(150, 44, 48, 0.68);
   color: #481014;
   background: linear-gradient(135deg, #f0d5d2, #c36568);
+}
+
+.option-list--single .option-button--forfeit {
+  margin-top: 7px;
+  border-left-color: #8f252a;
+  color: #67191d;
+  background:
+    linear-gradient(90deg, rgba(143, 37, 42, 0.16), transparent 30%),
+    color-mix(in srgb, var(--panel) 92%, #8f252a);
 }
 
 .theme-night .option-button--forfeit,
@@ -450,61 +513,75 @@ button:focus-visible {
   line-height: 1.55;
 }
 
-.option-button--good {
-  border-color: rgba(45, 132, 74, 0.58);
+.option-list--single .option-button--good {
+  border-color: rgba(45, 132, 74, 0.72);
   color: #276b3d;
-  background: linear-gradient(135deg, #f7fff8 0%, #dcefe1 52%, #a9d6b4 100%);
+  background:
+    linear-gradient(90deg, rgba(72, 145, 91, 0.18), transparent 38%),
+    var(--panel);
 }
 
-.option-button--bad {
-  border-color: rgba(158, 51, 51, 0.62);
+.option-list--single .option-button--bad {
+  border-color: rgba(158, 51, 51, 0.76);
   color: #963838;
-  background: linear-gradient(135deg, #fff8f7 0%, #f1d8d5 52%, #dda6a2 100%);
+  background:
+    linear-gradient(90deg, rgba(158, 51, 51, 0.19), transparent 38%),
+    var(--panel);
 }
 
-.option-button--neutral {
+.option-list--single .option-button--neutral {
   border-color: rgba(175, 175, 168, 0.72);
   color: #353735;
-  background: linear-gradient(135deg, #ffffff 0%, #f7f7f4 58%, #e8e8e2 100%);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.76), transparent 38%),
+    var(--panel);
 }
 
-.option-button--holy {
+.option-list--single .option-button--holy {
   border-color: #cfaa43;
-  color: #fffdf3;
-  background: linear-gradient(135deg, #fff8d8 0%, #d9b44d 45%, #9a6e18 100%);
-  box-shadow: 0 0 22px rgba(202, 161, 54, 0.18);
+  color: #6d5010;
+  background:
+    linear-gradient(90deg, rgba(234, 195, 87, 0.46), transparent 42%),
+    #fffdf4;
+  box-shadow: 0 0 20px rgba(202, 161, 54, 0.15);
 }
 
-.option-button--holy small {
+.option-list--single .option-button--holy small {
   color: rgba(255, 255, 255, 0.84);
 }
 
-.option-button--lethal {
+.option-list--single .option-button--lethal {
   border-color: #280306;
-  color: #080506;
+  color: #170305;
   background:
-    linear-gradient(135deg, #e33a40 0%, #a41319 48%, #4d0308 100%);
+    linear-gradient(90deg, #b91820 0 14%, #e44349 46%, #9e1017 100%);
   box-shadow: inset 0 0 24px rgba(31, 0, 3, 0.42);
 }
 
-.option-button--lethal small {
+.option-list--single .option-button--lethal small {
   color: #1b090a;
 }
 
-.theme-night .option-button--good {
+.theme-night .option-list--single .option-button--good {
   color: #95d9a8;
-  background: linear-gradient(135deg, #12251a 0%, #214c31 54%, #367448 100%);
+  background:
+    linear-gradient(90deg, rgba(54, 116, 72, 0.48), transparent 42%),
+    #111619;
 }
 
-.theme-night .option-button--bad {
+.theme-night .option-list--single .option-button--bad {
   color: #e99c9c;
-  background: linear-gradient(135deg, #2a0b0d 0%, #5f1b20 54%, #96333a 100%);
+  background:
+    linear-gradient(90deg, rgba(150, 51, 58, 0.52), transparent 42%),
+    #151416;
 }
 
-.theme-night .option-button--neutral {
+.theme-night .option-list--single .option-button--neutral {
   border-color: rgba(255, 255, 255, 0.72);
-  color: #292c2c;
-  background: linear-gradient(135deg, #ffffff 0%, #f3f3f0 55%, #d8dad8 100%);
+  color: #e8e8e2;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.14), transparent 42%),
+    #121518;
 }
 
 .theme-night .job-card {
@@ -690,25 +767,25 @@ button:focus-visible {
   line-height: 1.6;
 }
 
-.title-block {
+.stigma-block {
   margin-top: 13px;
   padding-top: 13px;
   border-top: 1px solid var(--line);
 }
 
-.title-block > p {
+.stigma-block > p {
   margin: 8px 0 0;
   color: var(--muted);
   font-size: 0.62rem;
 }
 
-.title-block > div {
+.stigma-block > div {
   display: grid;
   gap: 6px;
   margin-top: 9px;
 }
 
-.title-block button {
+.stigma-block button {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -721,17 +798,17 @@ button:focus-visible {
   cursor: pointer;
 }
 
-.title-block button.is-equipped {
+.stigma-block button.is-equipped {
   border-color: var(--accent);
   box-shadow: inset 3px 0 var(--accent);
 }
 
-.title-block button:disabled {
+.stigma-block button:disabled {
   cursor: not-allowed;
   opacity: 0.64;
 }
 
-.title-block button small {
+.stigma-block button small {
   color: var(--muted);
   font-size: 0.52rem;
 }
@@ -795,8 +872,9 @@ button:focus-visible {
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(8, 10, 11, 0.72);
-  backdrop-filter: blur(8px);
+  background:
+    radial-gradient(circle at 50% 36%, rgba(45, 49, 50, 0.28), transparent 48%),
+    rgba(8, 10, 11, 0.84);
 }
 
 .result-card,
@@ -885,18 +963,35 @@ button:focus-visible {
 
 .nightfall-overlay {
   overflow: hidden;
-  background: #efe7ce;
-  animation: night-bg 2600ms ease both;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 218, 128, 0.32), transparent 28%),
+    linear-gradient(180deg, #efe7ce, #c99a79);
+}
+
+.nightfall-overlay::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 70%, rgba(112, 24, 29, 0.38), transparent 34%),
+    linear-gradient(180deg, #18131a, #080a0c);
+  content: "";
+  opacity: 0;
+  animation: night-veil 2600ms ease both;
+  will-change: opacity;
 }
 
 .nightfall-overlay__sun {
   position: absolute;
+  z-index: 1;
   width: 160px;
   height: 160px;
   border-radius: 50%;
-  background: #f3c85c;
-  box-shadow: 0 0 80px #f3c85c;
+  background: radial-gradient(circle at 42% 38%, #ffe29a, #d7774d 62%, #792129);
+  box-shadow: 0 0 72px rgba(243, 200, 92, 0.72);
   animation: sunset 2600ms ease both;
+  will-change: transform;
 }
 
 .nightfall-overlay__copy {
@@ -905,6 +1000,7 @@ button:focus-visible {
   color: #eee9de;
   text-align: center;
   animation: night-copy 2600ms ease both;
+  will-change: opacity, transform;
 }
 
 .nightfall-overlay__copy span {
@@ -973,12 +1069,12 @@ button:focus-visible {
 
 @keyframes sunset {
   0% { transform: translateY(-160px) scale(1.3); }
-  100% { transform: translateY(460px) scale(0.55); background: #8e2429; box-shadow: 0 0 35px #8e2429; }
+  100% { transform: translateY(460px) scale(0.55); }
 }
 
-@keyframes night-bg {
-  0%, 28% { background: #efe7ce; }
-  100% { background: #080a0c; }
+@keyframes night-veil {
+  0%, 28% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 @keyframes night-copy {

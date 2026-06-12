@@ -369,7 +369,7 @@ const FALLBACK_JOB = {
   skills: ["직업 보정 없음", "최대 스태미나 -3"],
 };
 
-const TITLES = [
+const STIGMATA = [
   {
     id: "pacifist",
     name: "불살의",
@@ -437,8 +437,8 @@ const INITIAL_GAME = {
     saves: 0,
     kills: 0,
   },
-  titles: [],
-  equippedTitleId: null,
+  stigmata: [],
+  equippedStigmaId: null,
   specialFlags: [],
   pendingResult: null,
   history: [],
@@ -475,7 +475,7 @@ function getActiveResources(game) {
 }
 
 function canChooseOption(option, game) {
-  if (isKillRequired(option) && game.titles.includes("pacifist")) return false;
+  if (isKillRequired(option) && game.stigmata.includes("pacifist")) return false;
   if (option.tone === "holy") {
     return (
       game.traits.faith + game.traits.sanctity >= 3 ||
@@ -518,15 +518,15 @@ function isSaveOption(option) {
   return option.save || option.tone === "good";
 }
 
-function getTitleEffectMultiplier(game, titleId) {
-  if (!game.titles.includes(titleId)) return 0;
-  return game.equippedTitleId === titleId ? 2 : 1;
+function getStigmaEffectMultiplier(game, stigmaId) {
+  if (!game.stigmata.includes(stigmaId)) return 0;
+  return game.equippedStigmaId === stigmaId ? 2 : 1;
 }
 
-function applyTitleEffects(game, option, effects = {}) {
+function applyStigmaEffects(game, option, effects = {}) {
   const next = { ...effects };
-  const pacifistMultiplier = getTitleEffectMultiplier(game, "pacifist");
-  const prayerMultiplier = getTitleEffectMultiplier(game, "golden-prayer");
+  const pacifistMultiplier = getStigmaEffectMultiplier(game, "pacifist");
+  const prayerMultiplier = getStigmaEffectMultiplier(game, "golden-prayer");
 
   if (pacifistMultiplier > 0 && isSaveOption(option)) {
     Object.entries(next).forEach(([key, value]) => {
@@ -543,8 +543,8 @@ function applyTitleEffects(game, option, effects = {}) {
   return next;
 }
 
-function getUnlockedTitles(game) {
-  return TITLES.filter((title) => title.isUnlocked(game)).map((title) => title.id);
+function getUnlockedStigmata(game) {
+  return STIGMATA.filter((stigma) => stigma.isUnlocked(game)).map((stigma) => stigma.id);
 }
 
 function getSpecialFlags(game) {
@@ -556,11 +556,11 @@ function getSpecialFlags(game) {
 }
 
 function applyUnlockProgress(game) {
-  const titles = getUnlockedTitles(game);
+  const stigmata = getUnlockedStigmata(game);
   return {
     ...game,
-    titles,
-    equippedTitleId: game.equippedTitleId,
+    stigmata,
+    equippedStigmaId: game.equippedStigmaId,
     specialFlags: getSpecialFlags(game),
   };
 }
@@ -715,7 +715,12 @@ function loadGame() {
     const validJob = [...JOBS, FALLBACK_JOB].some((job) => job.id === parsed.jobId);
 
     if (parsed.phase === "complete" && !validJob) return INITIAL_GAME;
-    return { ...INITIAL_GAME, ...parsed };
+    return {
+      ...INITIAL_GAME,
+      ...parsed,
+      stigmata: parsed.stigmata ?? parsed.titles ?? [],
+      equippedStigmaId: parsed.equippedStigmaId ?? parsed.equippedTitleId ?? null,
+    };
   } catch {
     return INITIAL_GAME;
   }
@@ -751,8 +756,21 @@ function EstateScene({ isNight, estateState }) {
   return (
     <section className={`estate-scene ${isNight ? "estate-scene--night" : ""}`}>
       <img
-        src={isNight ? "/assets/eldroa-estate-night.png" : "/assets/eldroa-estate-day.png"}
-        alt={isNight ? "밤의 엘드로아 영지 전경" : "낮의 엘드로아 영지 전경"}
+        className="estate-scene__image estate-scene__image--day"
+        src="/assets/eldroa-estate-day.jpg"
+        alt={isNight ? "" : "낮의 엘드로아 영지 전경"}
+        aria-hidden={isNight}
+        decoding="async"
+        fetchPriority="high"
+      />
+      <img
+        className="estate-scene__image estate-scene__image--night"
+        src="/assets/eldroa-estate-night.jpg"
+        alt={isNight ? "밤의 엘드로아 영지 전경" : ""}
+        aria-hidden={!isNight}
+        decoding="async"
+        loading="eager"
+        fetchPriority="low"
       />
       <div className="estate-scene__shade" />
       <div className="estate-scene__caption">
@@ -764,12 +782,11 @@ function EstateScene({ isNight, estateState }) {
             : "당신은 친절한 세계의 첫날을 보내고 있습니다."}
         </p>
       </div>
-      <div className="cathedral-mark">대성당 · 접근 불가</div>
     </section>
   );
 }
 
-function CharacterPanel({ game, jobCandidates, selectedJob, onEquipTitle }) {
+function CharacterPanel({ game, jobCandidates, selectedJob, onEquipStigma }) {
   const isRevealed = game.phase !== "day";
   const skills = selectedJob?.skills ?? ["아직 기록되지 않음"];
 
@@ -801,29 +818,29 @@ function CharacterPanel({ game, jobCandidates, selectedJob, onEquipTitle }) {
           ))}
         </div>
       </div>
-      <div className="title-block">
-        <span className="eyebrow">TITLES</span>
-        {game.titles.length === 0 ? (
-          <p>아직 누적된 칭호가 없습니다.</p>
+      <div className="stigma-block">
+        <span className="eyebrow">STIGMATA</span>
+        {game.stigmata.length === 0 ? (
+          <p>아직 새겨진 성흔이 없습니다.</p>
         ) : (
           <div>
-            {game.titles.map((titleId) => {
-              const title = TITLES.find((item) => item.id === titleId);
+            {game.stigmata.map((stigmaId) => {
+              const stigma = STIGMATA.find((item) => item.id === stigmaId);
               return (
                 <button
                   type="button"
-                  key={title.id}
-                  disabled={!title.equipable}
-                  className={game.equippedTitleId === title.id ? "is-equipped" : ""}
-                  onClick={() => onEquipTitle(title.id)}
+                  key={stigma.id}
+                  disabled={!stigma.equipable}
+                  className={game.equippedStigmaId === stigma.id ? "is-equipped" : ""}
+                  onClick={() => onEquipStigma(stigma.id)}
                 >
-                  {title.name}
+                  {stigma.name}
                   <small>
-                    {!title.equipable
-                      ? "장착 불가"
-                      : game.equippedTitleId === title.id
-                        ? "메인 · 효과 2배"
-                        : "누적 효과 적용"}
+                    {!stigma.equipable
+                      ? "주 성흔 지정 불가"
+                      : game.equippedStigmaId === stigma.id
+                        ? "주 성흔 · 효과 2배"
+                        : "성흔 효과 적용"}
                   </small>
                 </button>
               );
@@ -963,7 +980,7 @@ function App() {
     setGame((current) => {
       const nextTraits = applyTraitDelta(current.traits, option.traits);
       const activePhase = current.phase === "day" ? "day" : "night";
-      const adjustedEffects = applyTitleEffects(current, option, option.effects);
+      const adjustedEffects = applyStigmaEffects(current, option, option.effects);
       const nextCounters = {
         ...current.counters,
         choices: current.counters.choices + 1,
@@ -1111,12 +1128,12 @@ function App() {
     );
   }
 
-  function equipTitle(titleId) {
-    const title = TITLES.find((item) => item.id === titleId);
-    if (!title?.equipable || !game.titles.includes(titleId)) return;
+  function equipStigma(stigmaId) {
+    const stigma = STIGMATA.find((item) => item.id === stigmaId);
+    if (!stigma?.equipable || !game.stigmata.includes(stigmaId)) return;
     setGame((current) => ({
       ...current,
-      equippedTitleId: current.equippedTitleId === titleId ? null : titleId,
+      equippedStigmaId: current.equippedStigmaId === stigmaId ? null : stigmaId,
     }));
   }
 
@@ -1248,7 +1265,7 @@ function App() {
           game={game}
           jobCandidates={jobCandidates}
           selectedJob={selectedJob}
-          onEquipTitle={equipTitle}
+          onEquipStigma={equipStigma}
         />
       </div>
 
@@ -1258,7 +1275,7 @@ function App() {
             game={game}
             jobCandidates={jobCandidates}
             selectedJob={selectedJob}
-            onEquipTitle={equipTitle}
+            onEquipStigma={equipStigma}
           />
         </div>
       )}
