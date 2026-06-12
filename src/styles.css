@@ -1,0 +1,1076 @@
+@import url("https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap");
+
+:root {
+  color: #30342f;
+  background: #e9e4d7;
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 19px;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --ink: #30342f;
+  --muted: #777b72;
+  --line: rgba(70, 75, 64, 0.2);
+  --panel: rgba(250, 247, 237, 0.94);
+  --accent: #8c743a;
+  --green: #3d7a51;
+  --red: #a23e3e;
+  --gold: #b58b2d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #e9e4d7;
+}
+
+button {
+  color: inherit;
+  font: inherit;
+}
+
+button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 22px;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 15% 0%, rgba(255, 255, 255, 0.85), transparent 32%),
+    linear-gradient(140deg, #eee9dc, #d8d1c1);
+  transition: color 900ms ease, background 1200ms ease, filter 900ms ease;
+}
+
+.app-shell.theme-night {
+  --ink: #d7d2c6;
+  --muted: #898c88;
+  --line: rgba(220, 215, 204, 0.14);
+  --panel: rgba(17, 20, 23, 0.95);
+  --accent: #af5454;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 80% 0%, rgba(99, 21, 25, 0.24), transparent 32%),
+    linear-gradient(145deg, #15181c, #080a0c);
+}
+
+.topbar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 22px;
+  max-width: 1780px;
+  margin: 0 auto;
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand__crest {
+  display: grid;
+  width: 50px;
+  height: 56px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  color: var(--accent);
+  font-family: "Gowun Batang", serif;
+  font-size: 1.35rem;
+  clip-path: polygon(50% 0, 100% 15%, 90% 82%, 50% 100%, 10% 82%, 0 15%);
+}
+
+.brand p,
+.brand h1 {
+  margin: 0;
+}
+
+.brand p,
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.brand h1 {
+  margin-top: 4px;
+  font-family: "Gowun Batang", serif;
+  font-size: clamp(1.25rem, 2vw, 1.65rem);
+}
+
+.phase-clock {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 20px;
+  border-right: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.phase-clock span,
+.phase-clock em {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: normal;
+}
+
+.phase-clock strong {
+  font-family: "Gowun Batang", serif;
+  font-size: 1.3rem;
+}
+
+.topbar__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.topbar__actions button,
+.result-card button,
+.nightfall-overlay button,
+.complete-overlay button {
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  padding: 9px 13px;
+  color: var(--ink);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.resource-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(100px, 1fr));
+  gap: 8px;
+  max-width: 1780px;
+  margin: 0 auto;
+  padding: 15px 0;
+}
+
+.resource-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 8px;
+  min-height: 92px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 84%, transparent);
+  padding: 10px 12px;
+}
+
+.resource-card > span {
+  grid-row: 1 / 3;
+  color: var(--accent);
+}
+
+.resource-card small {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.resource-card strong {
+  font-family: "Gowun Batang", serif;
+  font-size: 1.3rem;
+}
+
+.resource-card em {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.56rem;
+  font-style: normal;
+  line-height: 1.45;
+}
+
+.resource-card--fear {
+  border-color: rgba(164, 49, 49, 0.48);
+  background: rgba(68, 10, 13, 0.42);
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: minmax(520px, 1.1fr) minmax(480px, 0.72fr) 330px;
+  gap: 14px;
+  max-width: 1780px;
+  margin: 0 auto;
+}
+
+.estate-column {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.estate-scene {
+  position: relative;
+  min-height: 590px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #d7c79a;
+}
+
+.estate-scene img {
+  width: 100%;
+  height: 100%;
+  min-height: 590px;
+  object-fit: cover;
+  transition: filter 1400ms ease, transform 1600ms ease;
+}
+
+.estate-scene--night img {
+  transform: scale(1.025);
+}
+
+.estate-scene__shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 48%, rgba(20, 20, 17, 0.7));
+  pointer-events: none;
+}
+
+.estate-scene--night .estate-scene__shade {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 43px, rgba(117, 16, 21, 0.06) 44px),
+    radial-gradient(circle at 73% 30%, transparent 0 12%, rgba(3, 4, 5, 0.58) 54%),
+    linear-gradient(180deg, rgba(26, 0, 0, 0.22), rgba(3, 4, 5, 0.88));
+}
+
+.estate-scene__caption {
+  position: absolute;
+  right: 20px;
+  bottom: 18px;
+  left: 20px;
+  color: #fff9e9;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+
+.estate-scene__caption span {
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+}
+
+.estate-scene__caption strong {
+  display: block;
+  margin-top: 4px;
+  font-family: "Gowun Batang", serif;
+  font-size: 1.8rem;
+}
+
+.estate-scene__caption p {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+}
+
+.cathedral-mark {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(18, 18, 17, 0.52);
+  color: #fff7df;
+  font-size: 0.66rem;
+}
+
+.theme-night .cathedral-mark {
+  border-color: rgba(151, 28, 32, 0.62);
+  color: #d57272;
+}
+
+.estate-report {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: center;
+  gap: 18px;
+  min-height: 98px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: 14px 16px;
+}
+
+.estate-report h2 {
+  margin: 4px 0 0;
+  font-family: "Gowun Batang", serif;
+  font-size: 1.15rem;
+}
+
+.estate-report p {
+  margin: 0;
+  color: var(--muted);
+  font-family: "Gowun Batang", serif;
+  font-size: 0.76rem;
+  line-height: 1.8;
+}
+
+.estate-report--peace {
+  border-color: rgba(61, 122, 81, 0.36);
+}
+
+.estate-report--void {
+  border-color: rgba(155, 37, 42, 0.6);
+  box-shadow: inset 0 0 38px rgba(91, 8, 12, 0.16);
+}
+
+.choice-panel,
+.character-panel {
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.choice-panel {
+  min-height: 700px;
+}
+
+.choice-panel__intro {
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.choice-panel__intro h2 {
+  margin: 7px 0 0;
+  font-family: "Gowun Batang", serif;
+  font-size: 1.45rem;
+}
+
+.choice-panel__intro p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-family: "Gowun Batang", serif;
+  font-size: 0.78rem;
+  line-height: 1.8;
+}
+
+.option-list,
+.job-list {
+  display: grid;
+  gap: 9px;
+  padding: 16px;
+}
+
+.option-list--single,
+.job-list--single {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 10px;
+}
+
+.option-button,
+.job-card {
+  position: relative;
+  display: flex;
+  min-height: 126px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 76%, #ffffff);
+  padding: 16px 18px;
+  text-align: left;
+  cursor: pointer;
+  transition: 180ms ease;
+}
+
+.option-list--single .option-button,
+.job-list--single .job-card {
+  min-height: 132px;
+  justify-content: center;
+  padding: 20px;
+  animation: offer-enter 420ms ease both;
+}
+
+.option-list--single .option-button strong,
+.job-list--single .job-card strong {
+  font-size: 1.35rem;
+}
+
+.option-list--single .option-button small,
+.job-list--single .job-card small {
+  max-width: 90%;
+  font-size: 0.76rem;
+}
+
+.option-button--locked,
+.job-card--locked {
+  filter: grayscale(1);
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.option-button--locked::after,
+.job-card--locked::after {
+  position: absolute;
+  top: 10px;
+  right: 11px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  content: "×";
+}
+
+.option-button--forfeit,
+.job-card--forfeit {
+  border-color: rgba(150, 44, 48, 0.68);
+  color: #481014;
+  background: linear-gradient(135deg, #f0d5d2, #c36568);
+}
+
+.theme-night .option-button--forfeit,
+.theme-night .job-card--forfeit {
+  color: #e8c7c7;
+  background: linear-gradient(135deg, #401317, #811d24);
+}
+
+.option-button__tone,
+.job-card > span {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+.option-button strong,
+.job-card strong {
+  font-family: "Gowun Batang", serif;
+  font-size: 1rem;
+}
+
+.option-button small,
+.job-card small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.option-button--good {
+  border-color: rgba(45, 132, 74, 0.58);
+  color: #276b3d;
+  background: linear-gradient(135deg, #f7fff8 0%, #dcefe1 52%, #a9d6b4 100%);
+}
+
+.option-button--bad {
+  border-color: rgba(158, 51, 51, 0.62);
+  color: #963838;
+  background: linear-gradient(135deg, #fff8f7 0%, #f1d8d5 52%, #dda6a2 100%);
+}
+
+.option-button--neutral {
+  border-color: rgba(175, 175, 168, 0.72);
+  color: #353735;
+  background: linear-gradient(135deg, #ffffff 0%, #f7f7f4 58%, #e8e8e2 100%);
+}
+
+.option-button--holy {
+  border-color: #cfaa43;
+  color: #fffdf3;
+  background: linear-gradient(135deg, #fff8d8 0%, #d9b44d 45%, #9a6e18 100%);
+  box-shadow: 0 0 22px rgba(202, 161, 54, 0.18);
+}
+
+.option-button--holy small {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.option-button--lethal {
+  border-color: #280306;
+  color: #080506;
+  background:
+    linear-gradient(135deg, #e33a40 0%, #a41319 48%, #4d0308 100%);
+  box-shadow: inset 0 0 24px rgba(31, 0, 3, 0.42);
+}
+
+.option-button--lethal small {
+  color: #1b090a;
+}
+
+.theme-night .option-button--good {
+  color: #95d9a8;
+  background: linear-gradient(135deg, #12251a 0%, #214c31 54%, #367448 100%);
+}
+
+.theme-night .option-button--bad {
+  color: #e99c9c;
+  background: linear-gradient(135deg, #2a0b0d 0%, #5f1b20 54%, #96333a 100%);
+}
+
+.theme-night .option-button--neutral {
+  border-color: rgba(255, 255, 255, 0.72);
+  color: #292c2c;
+  background: linear-gradient(135deg, #ffffff 0%, #f3f3f0 55%, #d8dad8 100%);
+}
+
+.theme-night .job-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015));
+}
+
+.color-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 2px 16px 18px;
+}
+
+.offer-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 0;
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.offer-progress > div {
+  display: flex;
+  gap: 5px;
+}
+
+.offer-progress i {
+  display: block;
+  width: 24px;
+  height: 3px;
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+}
+
+.offer-progress i.is-seen {
+  background: var(--accent);
+}
+
+.offer-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.offer-actions button {
+  min-height: 56px;
+  border: 1px solid var(--line);
+  padding: 10px 14px;
+  font-size: 0.74rem;
+  cursor: pointer;
+  transition: 160ms ease;
+}
+
+.offer-actions button:hover {
+  transform: translateY(-2px);
+}
+
+.accept-offer {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--line)) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--panel) 82%, white), color-mix(in srgb, var(--accent) 20%, var(--panel)));
+  color: var(--ink);
+}
+
+.skip-offer {
+  background: linear-gradient(135deg, #fff, #e8e8e3);
+  color: #3b3d3b;
+}
+
+.theme-night .skip-offer {
+  background: linear-gradient(135deg, #fff, #dedfdd);
+  color: #252727;
+}
+
+.give-up-offer {
+  border-color: rgba(148, 32, 36, 0.66) !important;
+  background: linear-gradient(135deg, #e8b8b4, #9f2a2f);
+  color: #2b080a;
+}
+
+.color-legend span {
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.6rem;
+}
+
+.legend-good { border-color: rgba(45, 132, 74, 0.42) !important; }
+.legend-bad { border-color: rgba(158, 51, 51, 0.42) !important; }
+.legend-holy { border-color: rgba(207, 170, 67, 0.62) !important; }
+.legend-lethal { border-color: rgba(120, 9, 14, 0.62) !important; }
+
+.character-panel {
+  align-self: start;
+  padding: 16px;
+}
+
+.character-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.portrait-placeholder {
+  display: grid;
+  width: 66px;
+  height: 78px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 18%),
+    linear-gradient(150deg, color-mix(in srgb, var(--panel) 80%, #ffffff), var(--panel));
+  color: var(--accent);
+  font-family: "Gowun Batang", serif;
+  font-size: 0.75rem;
+}
+
+.character-panel h2 {
+  margin: 5px 0 0;
+  font-family: "Gowun Batang", serif;
+  font-size: 0.9rem;
+}
+
+.character-panel__head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 7px;
+  padding: 14px 0;
+}
+
+.stat-grid div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--line);
+  padding: 7px 8px;
+}
+
+.stat-grid span {
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.stat-grid strong {
+  font-family: "Gowun Batang", serif;
+  font-size: 0.88rem;
+}
+
+.skill-block {
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+.skill-block > div,
+.complete-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.skill-block > div span,
+.complete-skills span {
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.candidate-note {
+  margin: 13px 0 0;
+  color: var(--accent);
+  font-size: 0.66rem;
+  line-height: 1.6;
+}
+
+.title-block {
+  margin-top: 13px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+.title-block > p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.title-block > div {
+  display: grid;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.title-block button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 80%, white);
+  padding: 7px 8px;
+  color: var(--ink);
+  font-size: 0.65rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.title-block button.is-equipped {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.title-block button:disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+}
+
+.title-block button small {
+  color: var(--muted);
+  font-size: 0.52rem;
+}
+
+.special-records {
+  margin-top: 13px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+.special-records p {
+  margin: 7px 0 0;
+  color: var(--accent);
+  font-size: 0.58rem;
+  line-height: 1.5;
+}
+
+.job-card--easy {
+  border-color: rgba(61, 122, 81, 0.62);
+}
+
+.job-card--hidden {
+  border-color: #8b1116;
+  color: #050404;
+  background: #a41319;
+}
+
+.job-card--hidden.job-card--holy {
+  border-color: #d9b54c;
+  color: #fffdf3;
+  background: linear-gradient(135deg, #fff6c7 0%, #c69b2f 46%, #76510d 100%);
+  box-shadow: 0 0 24px rgba(207, 170, 67, 0.24);
+}
+
+.job-card--hidden.job-card--holy small {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.job-card--hidden.job-card--lethal {
+  border-color: #280306;
+  color: #080506;
+  background: linear-gradient(135deg, #e33a40 0%, #a41319 48%, #4d0308 100%);
+  box-shadow: inset 0 0 24px rgba(31, 0, 3, 0.42);
+}
+
+.job-card--hidden.job-card--lethal small {
+  color: #1b090a;
+}
+
+.job-card--locked {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.result-overlay,
+.nightfall-overlay,
+.complete-overlay,
+.mobile-character-modal {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 10, 11, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.result-card,
+.complete-overlay > section {
+  width: min(620px, calc(100% - 32px));
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: 28px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+  animation: result-enter 500ms ease both;
+}
+
+.result-card h2,
+.complete-overlay h2 {
+  margin: 8px 0 0;
+  font-family: "Gowun Batang", serif;
+  font-size: 1.55rem;
+}
+
+.result-card > p,
+.complete-overlay p {
+  color: var(--muted);
+  font-family: "Gowun Batang", serif;
+  font-size: 0.82rem;
+  line-height: 1.9;
+}
+
+.world-report {
+  margin: 20px 0;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--panel) 72%, var(--accent));
+  padding: 13px 15px;
+}
+
+.world-report span {
+  color: var(--accent);
+  font-size: 0.67rem;
+  font-weight: 700;
+}
+
+.world-report p {
+  margin: 7px 0 0;
+  color: var(--ink);
+  font-size: 0.74rem;
+  line-height: 1.8;
+}
+
+.evaluation-signs {
+  display: flex;
+  gap: 18px;
+  padding-top: 4px;
+}
+
+.evaluation-sign {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.evaluation-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #8d9088;
+}
+
+.evaluation-dot--neutral { border: 1px solid #babdb8; background: linear-gradient(135deg, #fff, #e5e6e2); }
+.evaluation-dot--good { background: linear-gradient(135deg, #bce4c5, #287d45); }
+.evaluation-dot--bad { background: linear-gradient(135deg, #efb0ac, #9d292d); }
+.evaluation-dot--holy { background: linear-gradient(135deg, #fff4bd, #c18b16); box-shadow: 0 0 12px #d9ad3d; }
+.evaluation-dot--lethal { border-radius: 0; background: linear-gradient(135deg, #ec3a40, #660309); box-shadow: 0 0 0 3px #190204; }
+
+.hidden-score-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.result-card button,
+.complete-overlay button {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.nightfall-overlay {
+  overflow: hidden;
+  background: #efe7ce;
+  animation: night-bg 2600ms ease both;
+}
+
+.nightfall-overlay__sun {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: #f3c85c;
+  box-shadow: 0 0 80px #f3c85c;
+  animation: sunset 2600ms ease both;
+}
+
+.nightfall-overlay__copy {
+  position: relative;
+  z-index: 2;
+  color: #eee9de;
+  text-align: center;
+  animation: night-copy 2600ms ease both;
+}
+
+.nightfall-overlay__copy span {
+  color: #ba5b5b;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+}
+
+.nightfall-overlay__copy h2 {
+  margin: 10px 0;
+  font-family: "Gowun Batang", serif;
+  font-size: 3rem;
+}
+
+.nightfall-overlay__copy p {
+  color: #aaa5a0;
+  font-family: "Gowun Batang", serif;
+  font-size: 0.85rem;
+}
+
+.nightfall-overlay__copy button {
+  margin-top: 16px;
+  color: #e9e4d9;
+  background: #191b1f;
+}
+
+.complete-overlay {
+  z-index: 70;
+  background: rgba(5, 6, 7, 0.88);
+}
+
+.complete-overlay > section {
+  text-align: center;
+}
+
+.complete-overlay strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--accent);
+  font-family: "Gowun Batang", serif;
+}
+
+.complete-skills {
+  justify-content: center;
+}
+
+.complete-message {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.mobile-character-modal {
+  display: none;
+}
+
+@keyframes result-enter {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes offer-enter {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes sunset {
+  0% { transform: translateY(-160px) scale(1.3); }
+  100% { transform: translateY(460px) scale(0.55); background: #8e2429; box-shadow: 0 0 35px #8e2429; }
+}
+
+@keyframes night-bg {
+  0%, 28% { background: #efe7ce; }
+  100% { background: #080a0c; }
+}
+
+@keyframes night-copy {
+  0%, 42% { opacity: 0; transform: translateY(15px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 1460px) {
+  .dashboard {
+    grid-template-columns: minmax(500px, 1fr) minmax(440px, 0.82fr);
+  }
+
+  .dashboard > .character-panel {
+    display: none;
+  }
+
+  .mobile-character-modal {
+    display: grid;
+  }
+
+  .mobile-character-modal .character-panel {
+    width: min(380px, calc(100% - 30px));
+  }
+}
+
+@media (max-width: 1020px) {
+  :root {
+    font-size: 17px;
+  }
+
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .estate-scene,
+  .estate-scene img {
+    min-height: 460px;
+  }
+
+  .choice-panel {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    padding: 12px;
+  }
+
+  .topbar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .phase-clock {
+    border-right: 0;
+  }
+
+  .topbar__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .resource-strip {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .estate-scene,
+  .estate-scene img {
+    min-height: 350px;
+  }
+
+  .estate-report {
+    grid-template-columns: 1fr;
+  }
+
+  .option-button,
+  .job-card {
+    min-height: 108px;
+  }
+
+  .option-list--single,
+  .job-list--single {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
