@@ -9,9 +9,9 @@ if errorlevel 1 (
   exit /b 1
 )
 
-if not exist "node_modules" (
+if not exist "node_modules\.bin\vite.cmd" (
   echo Preparing the first launch...
-  call npm.cmd install
+  call npm.cmd ci
   if errorlevel 1 (
     echo Setup failed.
     pause
@@ -19,7 +19,7 @@ if not exist "node_modules" (
   )
 )
 
-echo Opening Eldroa Estate...
+echo Opening Rosenthal Estate...
 echo Closing this window will stop the game.
 call npm.cmd start
 

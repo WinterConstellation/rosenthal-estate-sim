@@ -1,101 +1,162 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  assessChoice,
-  clampMap,
-  createInitialGame,
-  deriveStigma,
+  beginPrologue,
+  canManualSave,
+  chooseDayAction,
+  chooseEscapeTransformedFate,
+  chooseExplorationOption,
+  chooseFinaleOption,
+  chooseSpecialEvent,
+  chooseTransformedFate,
+  completeTransition,
+  continueAfterResult,
+  createNewRun,
+  createStartState,
+  deliverKeepsake,
+  displayCompanion,
+  finishVerticalSlice,
+  forfeitDay,
+  getCompanionOffers,
+  getCurrentExplorationEvent,
+  getCurrentFinale,
+  getDayEightScript,
   getDayOffers,
-  getCriticalState,
-  getEstateState,
-  getJob,
-  getJobStatDelta,
-  hasPeacefulLordEnding,
-  getNightOffers,
-  getPassive,
-  getStigmaName,
-  getTitle,
-  getTitles,
-  resolveChoice,
-} from "./engine/rulesEngine";
-import { RESOURCE_META, STAT_META, TRAIT_META } from "./rules/systemRules";
+  getDirectionOffers,
+  getEnding,
+  getFinaleOptions,
+  getNpcSpeaker,
+  getSpecialGroup,
+  isExplorationOptionAvailable,
+  openFirstDay,
+  retreatExpedition,
+  selectCompanion,
+  skipNightEntry,
+  startExpedition,
+} from "./engine/rosenthalEngine.js";
+import {
+  clearAutoSave,
+  getSaveSlots,
+  loadAutoSave,
+  loadManual,
+  saveAuto,
+  saveManual,
+} from "./engine/saveManager.js";
+import { getJob, getPassive, getStigmaName } from "./engine/rulesEngine.js";
+import {
+  PASSIVES,
+  RESOURCE_META,
+  STIGMA_PREFIXES,
+  STIGMA_SUFFIXES,
+  TRAIT_META,
+} from "./rules/systemRules.js";
 import {
   DAY_INTERLUDES,
   DAY_OPENING_SCRIPT,
-  DAY_PERIODS,
-  ENDINGS,
-  FORFEIT_RESULTS,
   NIGHT_ENTRY_SCRIPT,
   PROLOGUE,
-  WORKER_NAME_CHOICES,
-} from "./rules/tutorialRules";
+} from "./rules/tutorialRules.js";
 
-const STORAGE_KEY = "eldroa-estate-run-v9";
-
-const ESTATE_META = {
-  stability: { label: "안정도" },
-  trust: { label: "주민 신뢰" },
-  recordIntegrity: { label: "장부 상태" },
-  corruption: { label: "이상 징후" },
-  missing: { label: "실종자" },
+const LABELS = {
+  health: "체력",
+  insight: "통찰",
+  resolve: "결단",
+  charm: "매력",
+  faith: "신앙",
+  stamina: "스태미나",
+  food: "식량",
+  timber: "목재",
+  silver: "은화",
+  salt: "축성 소금",
+  population: "인구",
+  fear: "공포",
+  stability: "안정도",
+  trust: "신뢰",
+  recordIntegrity: "기록 완전성",
+  corruption: "이상 징후",
+  missing: "실종",
 };
 
-function withTopicParticle(word) {
-  if (!word) return word;
-  const lastCode = word.charCodeAt(word.length - 1);
-  const hasFinalConsonant = lastCode >= 0xac00 && lastCode <= 0xd7a3 && (lastCode - 0xac00) % 28 !== 0;
-  return `${word}${hasFinalConsonant ? "은" : "는"}`;
-}
+const STATUS_LABELS = {
+  alive: "생존",
+  dead: "사망",
+  missing: "실종",
+  transformed: "변질",
+};
 
-function loadGame() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return createInitialGame();
-    const parsed = JSON.parse(saved);
-    return parsed.version === 9 ? parsed : createInitialGame();
-  } catch {
-    return createInitialGame();
+const STAT_DETAILS = {
+  health: "0 미만이 되면 이번 기록은 종료된다.",
+  insight: "0 미만이면 획득하려던 양수 변화가 같은 크기의 음수 변화로 뒤집힌다.",
+  resolve: "0 미만이면 성공과 실패를 가르는 확률이 절반으로 줄어든다.",
+  charm: "0 미만이면 호감도가 있는 인물의 선택을 고를 때마다 관계가 악화된다.",
+  faith: "0 미만이면 신성 보너스를 얻는 선택을 고를 수 없다.",
+  stamina: "0 미만이면 현재 시간대의 행동을 중단하고 강제로 귀환한다.",
+};
+
+const TRAIT_DETAILS = {
+  record: "장부, 증언, 기록의 모순을 다루는 성향.",
+  knight: "호위와 정면 대응을 택하는 성향.",
+  mansion: "저택의 구조와 반복되는 동선을 읽는 성향.",
+  trade: "물자와 교환 관계를 활용하는 성향.",
+  life: "사람들의 일상과 생존을 우선하는 성향.",
+  shortcut: "정해진 절차 밖의 빠른 방법을 택하는 성향.",
+  exorcism: "악한 것을 몰아내고 봉쇄하는 성향.",
+  execution: "위험을 남기지 않고 끝내는 성향.",
+  divine: "신성한 방식과 축복을 받아들이는 성향.",
+  suspicion: "평범해 보이는 장면의 어긋남을 의심하는 성향.",
+};
+
+function resourceStage(key, value) {
+  const amount = Math.max(0, Math.min(value ?? 0, 100));
+  if (key === "fear") {
+    if (amount <= 20) return "평온";
+    if (amount <= 40) return "불안";
+    if (amount <= 60) return "공포";
+    if (amount <= 80) return "패닉";
+    return "붕괴 직전";
   }
+  if (amount <= 20) return "고갈";
+  if (amount <= 40) return "부족함";
+  if (amount <= 60) return "보통";
+  if (amount <= 80) return "넉넉함";
+  return "풍족함";
 }
 
-function getResourceTrace(statKey, isNight) {
-  const labels = {
-    food: "식량",
-    timber: "목재",
-    silver: "은화",
-    salt: "소금",
-    population: "인구",
-    faith: "신앙",
-    fear: "공포",
-  };
-  return isNight ? `${labels[statKey]} 기록 없음` : `${labels[statKey]} 보고 전`;
+function getEstatePresentation(game, isNight) {
+  if ((game.estate?.corruption ?? 0) >= 60) {
+    return { name: "위험구역", tone: "danger", script: "사람들은 아직 일상을 지키고 있다. 저택은 더 이상 그들을 흉내 내지 않는다." };
+  }
+  if ((game.estate?.trust ?? 0) <= 20 || (game.estate?.stability ?? 0) <= 20) {
+    return { name: "흔들리는 영지", tone: "danger", script: "보고는 늦어지고, 닫힌 문 안에서 낮은 목소리가 오래 이어진다." };
+  }
+  if (isNight) {
+    return { name: "밤의 로젠탈", tone: "night", script: "저택의 불이 대부분 꺼졌다. 지하로 이어지는 문만 열려 있다." };
+  }
+  if ((game.estate?.trust ?? 0) >= 65 && (game.estate?.stability ?? 0) >= 65) {
+    return { name: "평화로운 영지", tone: "good", script: "사람들은 맡은 일을 마치고 당신의 다음 결정을 기다린다." };
+  }
+  return { name: "일반 영지", tone: "neutral", script: "로젠탈은 평온하다. 적어도, 해가 떠 있는 동안에는." };
 }
 
 function ResourceCard({ statKey, value, isNight, revealed }) {
   const meta = RESOURCE_META[statKey];
   return (
-    <article className={`resource-card resource-card--${statKey}`}>
+    <article className={`resource-card resource-card--${statKey}`} title={`${meta.label}의 현재 상태를 다섯 단계로 표시한다.`}>
       <span>{meta.icon}</span>
       <small>{meta.label}</small>
-      <strong>{revealed ? value : "?"}</strong>
-      <em>{getResourceTrace(statKey, isNight)}</em>
+      <strong>{revealed ? resourceStage(statKey, value) : "?"}</strong>
+      <em>{isNight ? "밤에는 보고가 올라오지 않는다" : revealed ? "현재 장부 기록" : "첫날 장부 확인 전"}</em>
     </article>
   );
 }
 
-function EstateScene({ isNight, estateState }) {
+function SceneImage({ isNight, estateState }) {
   return (
     <section className={`estate-scene ${isNight ? "estate-scene--night" : ""}`}>
-      <img
-        className="estate-scene__image"
-        src="/assets/eldroa-estate-day.jpg"
-        alt={isNight ? "밤의 엘드로아 영지 전경" : "낮의 엘드로아 영지 전경"}
-        decoding="async"
-        fetchPriority="high"
-      />
+      <img className="estate-scene__image" src="./assets/eldroa-estate-day.jpg" alt={isNight ? "밤의 로젠탈 영지" : "낮의 로젠탈 영지"} />
       <div className="estate-scene__shade" />
       <div className="estate-scene__caption">
-        <span>영지의 취급 · 일반 영지</span>
-        <strong>{estateState.name}</strong>
+        <span>영지의 취급 · {estateState.name}</span>
+        <strong>{isNight ? "문이 열려 있다" : "아무 일도 일어나지 않았다"}</strong>
         <p>{isNight ? "저택의 불이 대부분 꺼져 있다." : "영지는 평온하다."}</p>
       </div>
     </section>
@@ -103,32 +164,31 @@ function EstateScene({ isNight, estateState }) {
 }
 
 function CharacterPanel({ game }) {
-  const isRevealed = game.day > 1 || game.phase === "night" || game.phase === "worker-name" || game.phase === "ending";
-  const isDayGuide = game.phase === "day";
-  const showRuleDescriptions = game.phase === "day" || game.phase === "ending";
-  const job = getJob(game);
-  const rankedTraits = Object.entries(game.traits)
+  const companions = Object.values(game.companionStates ?? {});
+  const transformed = companions.filter((person) => person.status === "transformed").length;
+  const lost = companions.filter((person) => ["dead", "missing"].includes(person.status)).length;
+  const rankedTraits = Object.entries(game.traits ?? {})
     .sort((left, right) => right[1] - left[1])
     .slice(0, 4);
+  const job = getJob(game);
+  const revealed = game.day > 1 || game.phase === "ending" || game.phase === "record-stop";
 
   return (
-    <aside className={`character-panel ${isRevealed ? "is-revealed" : ""}`}>
+    <aside className="character-panel">
       <div className="character-panel__head">
-        <div className="portrait-placeholder">
-          <span>{isRevealed ? "영주" : "?"}</span>
-        </div>
+        <div className="portrait-placeholder"><span>{revealed ? "영주" : "?"}</span></div>
         <div>
-          <span className="eyebrow">시드</span>
-          <h2>이세계에 떨어진? 영주</h2>
-          <p className="seed-text">{game.runSeed.slice(0, 18)}</p>
+          <span className="eyebrow">이번 기록</span>
+          <h2>{game.specialSeedName ?? "시작 전"}</h2>
+          <p>{game.specialSeedRule ?? "새 게임을 시작하면 기록이 정해진다."}</p>
         </div>
       </div>
 
       <div className="stat-grid">
-        {Object.entries(game.stats).map(([id, value]) => (
-          <div key={id} className={value < 0 ? "is-negative" : ""}>
-            <span>{STAT_META[id]?.label ?? id}</span>
-            <strong>{isRevealed ? value : "?"}</strong>
+        {Object.entries(game.stats ?? {}).map(([key, value]) => (
+          <div className={value < 0 ? "is-negative" : ""} key={key} title={STAT_DETAILS[key]}>
+            <span>{LABELS[key] ?? key}</span>
+            <strong>{revealed ? value : "?"}</strong>
           </div>
         ))}
       </div>
@@ -136,587 +196,762 @@ function CharacterPanel({ game }) {
       <div className="rule-block">
         <span className="eyebrow">성향</span>
         <div className="rule-chip-list">
-          {rankedTraits.map(([id, value]) => (
-            <span key={id}>
-              {TRAIT_META[id].label} {isRevealed ? value : "?"}
-            </span>
-          ))}
+          {rankedTraits.map(([key, value]) => <span key={key} title={TRAIT_DETAILS[key]}>{TRAIT_META[key]?.label ?? key} {revealed ? value : "?"}</span>)}
         </div>
       </div>
-
       <div className="rule-block">
         <span className="eyebrow">직업</span>
-        <strong>{game.phase === "ending" ? job.name : "아직 정해지지 않음"}</strong>
-        {game.phase === "ending" && <small>{job.title}</small>}
-        {isDayGuide && <small>낮에 익힌 행동은 이후 선택에 영향을 줍니다.</small>}
+        <strong>{game.jobId ? job?.name : "아직 정해지지 않음"}</strong>
+        {game.jobId && <small>{job?.title}</small>}
       </div>
-
       <div className="rule-block">
-        <span className="eyebrow">칭호</span>
-        <div className="rule-chip-list">
-          {game.titles.length === 0
-            ? <span>아직 얻은 칭호 없음</span>
-            : game.titles.map((id) => <span key={id}>{getTitle(id)?.name}</span>)}
-        </div>
-      </div>
-
-      <div className="rule-block stigma-pair">
         <span className="eyebrow">성흔</span>
-        <strong>{getStigmaName(game)}</strong>
-        {isDayGuide && <small>밤이 지나면 성흔이 남습니다.</small>}
+        <strong>{game.stigma?.prefixId ? getStigmaName(game) : "아직 남지 않음"}</strong>
       </div>
-
       <div className="rule-block">
         <span className="eyebrow">패시브 스킬</span>
         <ol className="passive-list">
-          {game.passiveIds.map((id) => (
-            <li key={id}>
-              <strong>{getPassive(id)?.name}</strong>
-              {showRuleDescriptions && <small>{getPassive(id)?.description}</small>}
-            </li>
-          ))}
+          {(game.passiveIds ?? []).map((id) => <li key={id} title={getPassive(id)?.description}><strong>{getPassive(id)?.name}</strong></li>)}
         </ol>
+      </div>
+      <div className="rule-block">
+        <span className="eyebrow">사람들</span>
+        <small>영구 소실 {lost} · 변질 {transformed} · 유품 {game.keepsakes?.length ?? 0}</small>
+        <div className="roster-chips">
+          {companions.map((person) => (
+            <span className={`status-chip status-chip--${person.status}`} key={person.id} title={`${person.relation ?? person.reveal ?? "로젠탈의 주민"} · 현재 상태: ${STATUS_LABELS[person.status]}`}>
+              {displayCompanion(person)} · {STATUS_LABELS[person.status]}
+            </span>
+          ))}
+        </div>
       </div>
     </aside>
   );
 }
 
-function DialogueBox({ context, lines, onComplete, completeLabel = "계속" }) {
-  const [lineIndex, setLineIndex] = useState(0);
-  const line = lines[Math.min(lineIndex, lines.length - 1)];
-  const isLast = lineIndex >= lines.length - 1;
+function normalizeDialogue(value, defaultSpeaker = "narration") {
+  const source = Array.isArray(value) ? value : [value];
+  return source
+    .flatMap((entry) => {
+      const text = typeof entry === "object" && entry !== null ? entry.text : entry;
+      const speaker = typeof entry === "object" && entry !== null
+        ? entry.speaker ?? defaultSpeaker
+        : defaultSpeaker;
+      return String(text ?? "")
+        .split(/\n\s*\n/)
+        .map((paragraph) => ({ text: paragraph.trim(), speaker }));
+    })
+    .filter((entry) => entry.text);
+}
 
-  function advance() {
-    if (isLast) onComplete?.();
-    else setLineIndex((index) => index + 1);
-  }
+function resolveSpeakerLabel(speaker, game) {
+  if (speaker === "narration") return "들리지 않는 목소리";
+  if (speaker === "player") return "나";
+  if (!speaker || speaker === "unknown" || speaker === "*미정*") return "*미정*";
+  if (speaker.startsWith("npc:")) return getNpcSpeaker(game, speaker.slice(4));
+  return speaker;
+}
+
+function getSpeakerKind(speaker) {
+  if (speaker === "narration") return "narration";
+  if (speaker === "player") return "player";
+  if (speaker?.startsWith("npc:")) return "npc";
+  return "unknown";
+}
+
+function DialogueCard({ game, eyebrow, title, paragraphs, button, onContinue, danger = false }) {
+  const script = normalizeDialogue(paragraphs);
+  const scriptKey = script.map((line) => `${line.speaker}:${line.text}`).join("\u241e");
+  const [paragraphIndex, setParagraphIndex] = useState(0);
+
+  useEffect(() => {
+    setParagraphIndex(0);
+  }, [scriptKey]);
+
+  const currentIndex = Math.min(paragraphIndex, Math.max(script.length - 1, 0));
+  const hasNextParagraph = currentIndex < script.length - 1;
+  const currentLine = script[currentIndex];
+  const currentSpeaker = resolveSpeakerLabel(currentLine?.speaker, game);
+  const speakerKind = getSpeakerKind(currentLine?.speaker);
 
   return (
-    <section className="dialogue-box">
-      <div className="dialogue-box__head">
-        <span>{context}</span>
-        <span>{lineIndex + 1} / {lines.length}</span>
+    <section className={`dialogue-card dialogue-card--speaker-${speakerKind} ${danger ? "dialogue-card--danger" : ""}`}>
+      <div className="dialogue-card__head">
+        <span>{eyebrow}</span>
+        <div className="dialogue-card__head-actions">
+          <span>{currentIndex + 1} / {script.length}</span>
+          {hasNextParagraph && (
+            <button className="dialogue-card__skip" type="button" onClick={() => setParagraphIndex(script.length - 1)}>
+              <span>건너뛰기</span>
+              <b aria-hidden="true">»</b>
+            </button>
+          )}
+        </div>
       </div>
-      <strong className="dialogue-box__speaker">{line?.speaker ?? "서술"}</strong>
-      <p>{line?.text}</p>
-      {(!isLast || onComplete) && (
-        <button type="button" onClick={advance}>{isLast ? completeLabel : "다음"}</button>
+      {title && <h2 className="dialogue-card__title">{title}</h2>}
+      <strong className={`speaker-label speaker-label--${speakerKind} dialogue-card__speaker`}>{currentSpeaker}</strong>
+      <div className="dialogue-card__text">
+        {currentLine && <p key={`${scriptKey}-${currentIndex}`}>{currentLine.text}</p>}
+      </div>
+      <div className="dialogue-card__controls">
+        <button
+          type="button"
+          disabled={currentIndex === 0}
+          onClick={() => setParagraphIndex((index) => Math.max(index - 1, 0))}
+        >
+          이전으로
+        </button>
+        {hasNextParagraph ? (
+          <button type="button" onClick={() => setParagraphIndex((index) => index + 1)}>다음</button>
+        ) : (
+          button && <button type="button" onClick={onContinue}>{button}</button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SeedRevealModal({ name, rule, onContinue }) {
+  return (
+    <div className="seed-reveal-overlay">
+      <section className="seed-reveal-card">
+        <span className="eyebrow">이번 달의 이름</span>
+        <h2>{name}</h2>
+        <div className="seed-reveal-card__rule">
+          <small>공개된 특성</small>
+          <p>{rule}</p>
+        </div>
+        <button type="button" onClick={onContinue}>기록을 시작한다</button>
+      </section>
+    </div>
+  );
+}
+
+function ChoiceButton({ choice, onClick, selected, detail }) {
+  const unavailable = choice.available === false;
+  return (
+    <button
+      className={`choice choice--${choice.tone ?? "neutral"} ${selected ? "choice--selected" : ""} ${unavailable ? "choice--unavailable" : ""}`}
+      type="button"
+      disabled={selected || unavailable}
+      onClick={() => onClick(choice)}
+    >
+      {choice.categoryLabel && <small>{choice.categoryLabel}</small>}
+      <strong>{choice.label ?? choice.title}</strong>
+      {(detail || unavailable) && <span>{unavailable ? choice.unavailableReason ?? "현재 선택할 수 없다" : detail}</span>}
+    </button>
+  );
+}
+
+function ChoicePanel({ game, eyebrow, title, text, choices, onChoose, selectedId, footer }) {
+  const paragraphs = normalizeDialogue(text);
+  const scriptKey = paragraphs.map((line) => `${line.speaker}:${line.text}`).join("\u241e");
+  const [paragraphIndex, setParagraphIndex] = useState(0);
+
+  useEffect(() => {
+    setParagraphIndex(0);
+  }, [scriptKey]);
+
+  const currentIndex = Math.min(paragraphIndex, Math.max(paragraphs.length - 1, 0));
+  const hasNextParagraph = currentIndex < paragraphs.length - 1;
+  const currentLine = paragraphs[currentIndex];
+  const speakerKind = getSpeakerKind(currentLine?.speaker);
+
+  return (
+    <section className="choice-panel">
+      <header className="choice-panel__intro">
+        <span className="eyebrow">{eyebrow}</span>
+        <h2>{title}</h2>
+        {currentLine && (
+          <div className={`choice-context choice-context--${speakerKind}`}>
+            <small>선택 전 상황</small>
+            <strong className={`speaker-label speaker-label--${speakerKind} choice-panel__speaker`}>
+              {resolveSpeakerLabel(currentLine.speaker, game)}
+            </strong>
+            <p key={`${scriptKey}-${currentIndex}`}>{currentLine.text}</p>
+          </div>
+        )}
+      </header>
+      {hasNextParagraph ? (
+        <div className="paragraph-controls">
+          <button type="button" onClick={() => setParagraphIndex((index) => index + 1)}>다음</button>
+        </div>
+      ) : (
+        <>
+          <div className={`choice-list ${selectedId ? "is-resolving" : ""}`}>
+            {choices.map((choice) => (
+              <ChoiceButton
+                key={choice.id}
+                choice={choice}
+                onClick={onChoose}
+                selected={Boolean(selectedId)}
+                detail={choice.detail ?? choice.preview}
+              />
+            ))}
+          </div>
+          {footer}
+        </>
       )}
     </section>
   );
 }
 
-function StateChangeOverlay({ result, estateState, isNight, onContinue }) {
-  return (
-    <div className={`state-change-overlay state-change-overlay--${result.assessment.id}`}>
-      <section className="state-change-card">
-        <span className="eyebrow">상태 변경</span>
-        {!isNight && (
-          <div className="state-change-card__item">
-            <small>선택 평가</small>
-            <strong>{result.assessment.label}</strong>
-            <p>{result.assessment.script}</p>
-          </div>
-        )}
-        <div className={`state-change-card__item state-change-card__item--${estateState.tone}`}>
-          <small>영지 상태</small>
-          <strong>{estateState.name}</strong>
-          <p>{estateState.script}</p>
-        </div>
-        {!isNight && result.ruleTrace?.length > 0 && (
-          <p className="state-change-card__trace">적용 순서 · {result.ruleTrace.join(" · ")}</p>
-        )}
-        {result.changes?.length > 0 && (
-          <div className="parameter-changes">
-            <small>조정된 파라미터</small>
-            <ul>
-              {result.changes.map((change, index) => (
-                <li className={change.delta > 0 ? "is-increase" : "is-decrease"} key={`${change.group}-${change.id}-${index}`}>
-                  <span>{change.group} · {change.label}</span>
-                  <strong>{change.delta > 0 ? "증가" : "감소"} {change.arrows}</strong>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {result.notices?.length > 0 && (
-          <div className="effect-notices">
-            {result.notices.map((notice, index) => <span key={`${notice}-${index}`}>{notice}</span>)}
-          </div>
-        )}
-        <button type="button" onClick={onContinue}>확인</button>
-      </section>
-    </div>
-  );
-}
+function ResultOverlay({ game, result, onContinue }) {
+  const paragraphs = normalizeDialogue(result?.result, result?.speaker ?? "narration");
+  const scriptKey = paragraphs.map((line) => `${line.speaker}:${line.text}`).join("\u241e");
+  const [paragraphIndex, setParagraphIndex] = useState(0);
 
-function ResultSequence({ result, estateState, isNight, onContinue }) {
-  const [stage, setStage] = useState("dialogue");
+  useEffect(() => {
+    setParagraphIndex(0);
+  }, [scriptKey]);
+
   if (!result) return null;
-  if (stage === "status") {
-    return <StateChangeOverlay result={result} estateState={estateState} isNight={isNight} onContinue={onContinue} />;
-  }
-  return (
-    <div className={`result-overlay result-overlay--${result.assessment.id}`}>
-      <div className="result-dialogue">
-        <DialogueBox
-          context={result.label}
-          lines={[{ speaker: "선택 이후", text: result.result }]}
-          onComplete={() => setStage("status")}
-          completeLabel="상태 확인"
-        />
-      </div>
-    </div>
-  );
-}
+  const currentIndex = Math.min(paragraphIndex, Math.max(paragraphs.length - 1, 0));
+  const hasNextParagraph = currentIndex < paragraphs.length - 1;
+  const currentLine = paragraphs[currentIndex];
+  const speakerKind = getSpeakerKind(currentLine?.speaker);
 
-function PrologueOverlay({ onContinue }) {
   return (
-    <div className="prologue-overlay">
-      <section>
-        <span className="eyebrow">{PROLOGUE.tag}</span>
-        <h2>{PROLOGUE.title}</h2>
-        {PROLOGUE.text.map((line, index) => <p key={`${index}-${line}`}>{line}</p>)}
-        <button type="button" onClick={onContinue}>영주의 자리에 앉는다</button>
-      </section>
-    </div>
-  );
-}
-
-function NightfallOverlay({ onContinue }) {
-  return (
-    <div className="nightfall-overlay">
-      <div className="nightfall-overlay__sun" />
-      <div className="nightfall-overlay__copy">
-        <span>저녁이 끝났다</span>
-        <h2>해가 졌다.</h2>
-        <p>해가 지자 메이드가 찾아왔다. 준비를 마친 사람처럼 태연한 얼굴이었다.</p>
-        <button type="button" onClick={onContinue}>지하로 내려갈 준비를 한다</button>
-      </div>
-    </div>
-  );
-}
-
-function DayInterludeOverlay({ interlude, onContinue }) {
-  if (!interlude) return null;
-  return (
-    <div className="day-interlude-overlay">
-      <section>
-        <div className="day-interlude-overlay__head">
-          <span className="eyebrow">{interlude.tag}</span>
-          <h2>{interlude.title}</h2>
+    <div className="overlay result-overlay">
+      <section className={`result-card result-card--${result.tone ?? "neutral"}`}>
+        <div className="result-card__head">
+          <span>{result.success === false ? "실패" : "선택 이후"}</span>
+          <strong>{result.title}</strong>
         </div>
-        <div className="day-interlude-overlay__paragraphs">
-          {interlude.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-        </div>
-        <button type="button" onClick={onContinue}>{interlude.button}</button>
+        {currentLine && <strong className={`speaker-label speaker-label--${speakerKind} result-card__speaker`}>{resolveSpeakerLabel(currentLine.speaker, game)}</strong>}
+        {currentLine && <p key={`${scriptKey}-${currentIndex}`}>{currentLine.text}</p>}
+        {hasNextParagraph ? (
+          <div className="result-card__controls">
+            <button type="button" onClick={() => setParagraphIndex((index) => index + 1)}>다음</button>
+          </div>
+        ) : (
+          <>
+            {result.notices?.length > 0 && (
+              <div className="notice-list">
+                {result.notices.map((notice, index) => <span key={`${notice}-${index}`}>{notice}</span>)}
+              </div>
+            )}
+            {result.changes?.length > 0 && (
+              <div className="change-list">
+                {result.changes.map((change, index) => (
+                  <span className={change.delta < 0 ? "change--negative" : "change--positive"} key={`${change.group}-${change.key}-${index}`}>
+                    {LABELS[change.key] ?? change.label} {change.delta > 0 ? "+" : ""}{change.delta}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="result-card__controls">
+              <button type="button" onClick={onContinue}>확인한다</button>
+            </div>
+          </>
+        )}
       </section>
     </div>
   );
 }
 
-function DaybreakOverlay({ game, onContinue }) {
-  const nightLine = game.nightChoiceId === "night-forfeit"
-    ? "당신은 지하로 내려가지 않았다."
-    : game.lostTarget
-      ? `${withTopicParticle(game.lostTarget)} 돌아오지 않았다.`
-      : "당신은 혼자 돌아왔다.";
-  return (
-    <div className="state-change-overlay daybreak-overlay">
-      <section className="state-change-card">
-        <span className="eyebrow">{game.day}일차 종료</span>
-        <h2>아침이 온다.</h2>
-        <p>{nightLine}</p>
-        <p>저택의 사람들은 평소처럼 다음 날의 일을 준비한다.</p>
-        <button type="button" onClick={onContinue}>{game.day + 1}일차 시작</button>
-      </section>
-    </div>
-  );
-}
-
-function EndingOverlay({ ending, game, onReset }) {
-  if (!ending) return null;
-  return (
-    <div className="ending-overlay">
-      <section>
-        <span className="eyebrow">{ending.tag}</span>
-        <h2>{ending.title}</h2>
-        <strong>{ending.subtitle}</strong>
-        <div className="ending-overlay__text">
-          {ending.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-        </div>
-        <div className="ending-overlay__record">
-          <span>경과 · {game.day}일</span>
-          <span>지하 진입 포기 · {game.nightForfeitCount}회</span>
-          <span>0 미만 기록 · 없음</span>
-        </div>
-        <button type="button" onClick={onReset}>새 시드로 시작</button>
-      </section>
-    </div>
-  );
-}
-
-function GameOverOverlay({ onReset }) {
-  return (
-    <div className="game-over-overlay">
-      <section>
-        <span className="eyebrow">게임 종료</span>
-        <h2>당신은 돌아오지 못했다.</h2>
-        <p>체력이 영 아래로 떨어졌다. 영지는 다음 영주를 기다린다.</p>
-        <button type="button" onClick={onReset}>새 시드로 시작</button>
-      </section>
-    </div>
-  );
-}
-
-function remainsNonnegative(current, delta) {
-  return Object.entries(delta).every(([key, value]) => (current[key] ?? 0) + value >= 0);
-}
-
-function getArrows(delta) {
-  const count = Math.abs(delta) >= 6 ? 3 : Math.abs(delta) >= 3 ? 2 : 1;
-  return (delta > 0 ? "▲" : "▼").repeat(count);
-}
-
-function getMapChanges(before, after, meta, group) {
-  return Object.keys(after).flatMap((id) => {
-    const delta = (after[id] ?? 0) - (before[id] ?? 0);
-    if (delta === 0) return [];
-    return [{
-      id,
-      group,
-      label: meta[id]?.label ?? id,
-      delta,
-      arrows: getArrows(delta),
-    }];
-  });
-}
-
-function getAffinityChanges(before, after) {
-  const meta = Object.fromEntries(Object.keys(after).map((id) => [id, { label: `${id} 호감도` }]));
-  return getMapChanges(before, after, meta, "인물");
-}
-
-function applyResolvedChoice(current, choice, extra = {}) {
-  const resolved = resolveChoice(current, choice);
-  const assessment = assessChoice(choice, resolved);
-  const nextTraits = clampMap(current.traits, resolved.traitDelta, -99, 99);
-  const nextStats = clampMap(current.stats, resolved.statDelta, -99, 999);
-  const nextAffinities = clampMap(current.affinities, resolved.affinityDelta, -99, 99);
-  const nextResources = clampMap(current.resources, resolved.resourceDelta);
-  const nextEstate = clampMap(current.estate, resolved.estateDelta, 0, 100);
-  const stayedNonnegative =
-    current.stayedNonnegative
-    && remainsNonnegative(current.resources, resolved.resourceDelta)
-    && remainsNonnegative(current.estate, resolved.estateDelta)
-    && remainsNonnegative(current.traits, resolved.traitDelta)
-    && remainsNonnegative(current.stats, resolved.statDelta);
-  const changes = [
-    ...getMapChanges(current.stats, nextStats, STAT_META, "능력치"),
-    ...getMapChanges(current.resources, nextResources, RESOURCE_META, "자원"),
-    ...getMapChanges(current.estate, nextEstate, ESTATE_META, "영지"),
-    ...getMapChanges(current.traits, nextTraits, TRAIT_META, "성향"),
-    ...getAffinityChanges(current.affinities, nextAffinities),
-  ];
-  const criticalState = getCriticalState(nextStats, current.phase);
-  return {
-    ...current,
-    ...extra,
-    stayedNonnegative,
-    resources: nextResources,
-    estate: nextEstate,
-    traits: nextTraits,
-    stats: nextStats,
-    affinities: nextAffinities,
-    nextTurn: resolved.nextTurn,
-    ruleTrace: resolved.traceLabels,
-    pendingGameOver: criticalState.gameOver ? "health" : null,
-    forcedReturn: criticalState.forcedReturn,
-    assessments: {
-      ...current.assessments,
-      [assessment.id]: (current.assessments[assessment.id] ?? 0) + 1,
-    },
-    counters: {
-      ...current.counters,
-      choices: current.counters.choices + 1,
-      physicalDamage: current.counters.physicalDamage + (choice.event === "physical-damage" ? 1 : 0),
-    },
-    history: [
-      ...current.history,
-      {
-        day: current.day,
-        phase: current.phase,
-        choiceId: choice.id,
-        label: choice.label ?? choice.title,
-        event: choice.event,
-        assessment: assessment.id,
-      },
-    ],
-    pendingResult: {
-      label: choice.label ?? choice.title,
-      tone: choice.tone,
-      result: resolved.result ?? choice.result,
-      ruleTrace: resolved.traceLabels,
-      changes,
-      notices: resolved.traceLabels
-        .filter((label) => label !== "성향")
-        .map((label) => label.startsWith("패시브 ") ? `${label} 적용` : label),
-      assessment,
-    },
+function SaveModal({ game, onClose, onLoad }) {
+  const [slots, setSlots] = useState(() => getSaveSlots());
+  const saveAllowed = canManualSave(game);
+  const saveSlot = (index) => {
+    saveManual(index, game);
+    setSlots(getSaveSlots());
   };
+  return (
+    <div className="overlay overlay--top">
+      <section className="save-modal">
+        <header>
+          <div>
+            <span className="eyebrow">로컬 저장</span>
+            <h2>기록 보관함</h2>
+          </div>
+          <button type="button" onClick={onClose}>닫기</button>
+        </header>
+        <p>자동 저장은 선택 결과마다 갱신됩니다. 수동 저장은 하루가 시작될 때만 가능합니다.</p>
+        <div className="slot-list">
+          {slots.map((slot, index) => (
+            <article className="save-slot" key={index}>
+              <div>
+                <strong>수동 기록 {index + 1}</strong>
+                <span>{slot ? `${slot.state.day}일차 · ${slot.state.specialSeedName}` : "비어 있음"}</span>
+              </div>
+              <button type="button" disabled={!saveAllowed} onClick={() => saveSlot(index)}>저장</button>
+              <button type="button" disabled={!slot} onClick={() => onLoad(index)}>불러오기</button>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function RulesModal({ game, tutorial, onClose, onTogglePassive, onEquipStigma }) {
+  const ownedPassives = game.ownedPassiveIds ?? game.passiveIds ?? [];
+  const ownedPrefixes = game.ownedStigmaPrefixIds ?? (game.stigma?.prefixId ? [game.stigma.prefixId] : []);
+  const ownedSuffixes = game.ownedStigmaSuffixIds ?? (game.stigma?.suffixId ? [game.stigma.suffixId] : []);
+  return (
+    <div className="overlay overlay--top">
+      <section className="rules-modal">
+        <header>
+          <div>
+            <span className="eyebrow">{tutorial ? "튜토리얼 종료" : "규칙"}</span>
+            <h2>{tutorial ? "이제부터의 기록" : "로젠탈에서 살아남는 법"}</h2>
+          </div>
+          <button type="button" onClick={onClose}>닫기</button>
+        </header>
+
+        <div className="rules-modal__guide">
+          <article>
+            <strong>당신이 처한 상황</strong>
+            <p>당신은 매주 새 제물 후보에게 주어지는 로젠탈의 임시 영주 자리에 앉아 있다. 일곱째 밤까지 살아남으면 여덟째 날의 기록이 열린다.</p>
+          </article>
+          <article>
+            <strong>해야 할 것</strong>
+            <p>낮에는 영지를 관리하고 사람들을 알아간다. 밤에는 지하를 탐사하고, 귀환하기 전에 함께 내려간 사람에게 일어난 일을 책임져야 한다.</p>
+          </article>
+          <article>
+            <strong>성향</strong>
+            <p>성향은 선택의 누적 기록이다. 높은 성향은 관련 선택을 끌어오고 직업·성흔·사건의 조건을 바꾸지만, 숫자가 높다는 사실만으로 정답이 되지는 않는다.</p>
+          </article>
+        </div>
+
+        <section className="loadout-section">
+          <div>
+            <span className="eyebrow">패시브 장착</span>
+            <strong>{game.passiveIds?.length ?? 0} / 3</strong>
+          </div>
+          <p>보유한 패시브 가운데 세 개까지 직접 장착한다.</p>
+          <div className="loadout-list">
+            {ownedPassives.map((id) => {
+              const passive = PASSIVES.find((item) => item.id === id);
+              const active = game.passiveIds?.includes(id);
+              return (
+                <button className={active ? "is-equipped" : ""} type="button" key={id} onClick={() => onTogglePassive(id)} title={passive?.description}>
+                  <strong>{passive?.name}</strong>
+                  <small>{passive?.description}</small>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="loadout-section">
+          <span className="eyebrow">성흔 장착</span>
+          <p>획득한 접두 성흔과 접미 성흔을 각각 하나씩 장착한다.</p>
+          <div className="stigma-loadout">
+            <div>
+              <strong>접두</strong>
+              {ownedPrefixes.length === 0 && <small>아직 획득하지 않음</small>}
+              {ownedPrefixes.map((id) => {
+                const stigma = STIGMA_PREFIXES.find((item) => item.id === id);
+                return <button className={game.stigma?.prefixId === id ? "is-equipped" : ""} type="button" key={id} onClick={() => onEquipStigma("prefixId", id)} title={stigma?.description}>{stigma?.name}</button>;
+              })}
+            </div>
+            <div>
+              <strong>접미</strong>
+              {ownedSuffixes.length === 0 && <small>아직 획득하지 않음</small>}
+              {ownedSuffixes.map((id) => {
+                const stigma = STIGMA_SUFFIXES.find((item) => item.id === id);
+                return <button className={game.stigma?.suffixId === id ? "is-equipped" : ""} type="button" key={id} onClick={() => onEquipStigma("suffixId", id)} title={stigma?.description}>{stigma?.name}</button>;
+              })}
+            </div>
+          </div>
+        </section>
+
+        <CharacterPanel game={game} />
+      </section>
+    </div>
+  );
+}
+
+function TransitionOverlay({ kind, onContinue }) {
+  const isDawn = kind === "daybreak";
+  return (
+    <div className={`time-transition time-transition--${kind}`}>
+      <div className="time-transition__orb" />
+      <div className="time-transition__copy">
+        <span>{isDawn ? "밤이 끝난다" : "저녁이 끝났다"}</span>
+        <h2>{isDawn ? "달이 떨어진다." : "해가 떨어진다."}</h2>
+        <p>{isDawn ? "밤의 색이 걷히고 로젠탈의 지붕 위로 아침이 번진다." : "마지막 햇빛이 사라지자 지하에서 문 두드리는 소리가 들린다."}</p>
+        <button type="button" onClick={onContinue}>{isDawn ? "아침을 맞는다" : "밤을 맞는다"}</button>
+      </div>
+    </div>
+  );
+}
+
+function StartScreen({ hasContinue, onContinue, onNew }) {
+  return (
+    <div className="start-screen">
+      <img className="start-screen__image" src="./assets/eldroa-estate-day.jpg" alt="" />
+      <div className="start-screen__veil" />
+      <section>
+        <h1 style={{ marginBottom: "64px" }}>로젠탈 관리일지</h1>
+        <div>
+          {hasContinue && <button type="button" onClick={onContinue}>지난 꿈을 이어간다</button>}
+          <button type="button" onClick={onNew}>잠에서 깨어난다</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function getDayNarration(game) {
+  if (game.day !== 1) return ["선택한 행동은 오늘 다시 고를 수 없다."];
+  if (game.dayTurn === 0) return DAY_OPENING_SCRIPT;
+  if (game.dayTurn === 1) return DAY_INTERLUDES[0].paragraphs;
+  if (game.dayTurn === 3) return DAY_INTERLUDES[1].paragraphs;
+  if (game.dayTurn === 4) return DAY_INTERLUDES[2].paragraphs;
+  return ["선택한 행동은 오늘 다시 고를 수 없다."];
 }
 
 function App() {
-  const [game, setGame] = useState(loadGame);
-  const [isCharacterOpen, setIsCharacterOpen] = useState(false);
-  const [dismissedSceneKey, setDismissedSceneKey] = useState(null);
-  const [selectedChoiceId, setSelectedChoiceId] = useState(null);
-
-  const isNight = ["nightfall", "night", "worker-name", "daybreak"].includes(game.phase);
-  const estateState = useMemo(() => getEstateState(game), [game]);
-  const offers = useMemo(
-    () => game.phase === "day" ? getDayOffers(game) : game.phase === "night" ? getNightOffers(game) : [],
-    [game],
-  );
+  const saved = useMemo(() => loadAutoSave(), []);
+  const [game, setGame] = useState(() => saved.phase === "start" ? createStartState() : saved);
+  const [showStart, setShowStart] = useState(true);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [tutorialPrompt, setTutorialPrompt] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
-  }, [game]);
+    if (!showStart && game.phase !== "start") saveAuto(game);
+  }, [game, showStart]);
 
-  function startTutorial() {
-    setGame((current) => ({ ...current, phase: "day", step: 0 }));
-  }
-
-  function animateChoice(choiceId, commit) {
-    if (selectedChoiceId) return;
-    setSelectedChoiceId(choiceId);
-    window.setTimeout(() => {
-      commit();
-      setSelectedChoiceId(null);
-    }, 180);
-  }
-
-  function chooseDayAction(action) {
-    if (!action.available) return;
-    animateChoice(action.id, () => {
-      setGame((current) => applyResolvedChoice(current, action, {
-        chosenDayActionIds: [...current.chosenDayActionIds, action.id],
-        unlockedNightChoiceIds: [...new Set([...current.unlockedNightChoiceIds, ...action.unlocks])],
-      }));
-    });
-  }
-
-  function chooseNightAction(choice) {
-    if (!choice.available) return;
-    animateChoice(choice.id, () => {
-      setGame((current) => {
-        const next = applyResolvedChoice(current, choice, {
-          lostTarget: choice.kind === "self" ? null : choice.target,
-          lostKind: choice.kind,
-          playerMarked: choice.kind === "self",
-          nightChoiceId: choice.id,
-        });
-        const isNewJob = !next.jobId;
-        const job = getJob(next);
-        const rawJobDelta = getJobStatDelta(job.id);
-        const jobDelta = current.stats.insight < 0
-          ? Object.fromEntries(Object.entries(rawJobDelta).map(([key, value]) => [key, value > 0 ? -value : value]))
-          : rawJobDelta;
-        const jobStats = isNewJob
-          ? clampMap(next.stats, jobDelta, -99, 999)
-          : next.stats;
-        const withJob = {
-          ...next,
-          jobId: job.id,
-          stats: jobStats,
-          stayedNonnegative: next.stayedNonnegative && (!isNewJob || remainsNonnegative(next.stats, jobDelta)),
-        };
-        const stigma = deriveStigma(withJob);
-        const withStigma = { ...withJob, stigma };
-        const notices = [...(next.pendingResult.notices ?? [])];
-        const changes = [...(next.pendingResult.changes ?? [])].filter((change) => change.group !== "능력치");
-        if (isNewJob) {
-          notices.push(`직업 · ${job.name} 획득`);
-        }
-        changes.unshift(...getMapChanges(current.stats, jobStats, STAT_META, "능력치"));
-        if (getStigmaName(current) !== getStigmaName(withStigma)) {
-          notices.push(`성흔 · ${getStigmaName(withStigma)} 획득`);
-        }
-        return {
-          ...withStigma,
-          pendingResult: { ...next.pendingResult, notices, changes },
-        };
-      });
-    });
-  }
-
-  function chooseWorkerMemory(choice) {
-    animateChoice(choice.id, () => {
-      setGame((current) => applyResolvedChoice(current, choice, {
-        rememberedWorker: choice.id === "remember-worker",
-      }));
-    });
-  }
-
-  function giveUp() {
-    animateChoice("forfeit", () => {
-      setGame((current) => {
-        const night = current.phase === "night";
-        const choice = {
-          id: night ? "night-forfeit" : `day-forfeit-${current.step}`,
-          label: "포기한다",
-          tone: "danger",
-          isForfeit: true,
-          event: "forfeit",
-          traits: night ? { suspicion: 1 } : {},
-          stats: night ? { stamina: -2 } : { stamina: -1 },
-          resources: night ? { fear: 2, faith: -1 } : { silver: -4, fear: 2 },
-          estate: night
-            ? { stability: -1, trust: -1 }
-            : { stability: -3, trust: -1, recordIntegrity: -1 },
-          result: FORFEIT_RESULTS[night ? "night" : "day"],
-        };
-        const next = applyResolvedChoice(current, choice, night
-          ? {
-            lostTarget: null,
-            lostKind: null,
-            playerMarked: false,
-            nightChoiceId: choice.id,
-            nightForfeitCount: current.nightForfeitCount + 1,
-          }
-          : {});
-        next.counters = { ...next.counters, forfeits: current.counters.forfeits + 1 };
-        if (!night) next.dayForfeitCount = current.dayForfeitCount + 1;
-        return next;
-      });
-    });
-  }
-
-  function finishNight(current) {
-    if (hasPeacefulLordEnding(current)) {
-      const ending = { ...current, phase: "ending", endingId: "peacefulLord", pendingResult: null };
-      return { ...ending, titles: getTitles(ending) };
+  useEffect(() => {
+    if (!showStart && game.day === 2 && game.phase === "day" && !game.tutorialSummarySeen) {
+      setTutorialPrompt(true);
+      setRulesOpen(true);
     }
-    return { ...current, phase: "daybreak", pendingResult: null };
-  }
+  }, [game.day, game.phase, game.tutorialSummarySeen, showStart]);
 
-  function continueAfterResult() {
+  const isNight = ["nightfall-transition", "night-companion", "night-direction", "expedition", "finale", "escape-transformed-choice", "daybreak-transition"].includes(game.phase)
+    || (game.phase === "result" && ["night-companion", "night-direction", "expedition", "finale", "daybreak"].includes(game.resumePhase));
+  const estateState = getEstatePresentation(game, isNight);
+  const animate = (id, action) => {
+    if (selectedId) return;
+    setSelectedId(id);
+    window.setTimeout(() => {
+      setGame(action);
+      setSelectedId(null);
+    }, 150);
+  };
+
+  const newGame = () => {
+    clearAutoSave();
+    setGame(createNewRun({ second: new Date().getSeconds() }));
+    setShowStart(false);
+    setRulesOpen(false);
+    setTutorialPrompt(false);
+  };
+  const loadSlot = (index) => {
+    const loaded = loadManual(index);
+    if (loaded) {
+      setGame(loaded);
+      setShowStart(false);
+      setSaveOpen(false);
+      setRulesOpen(false);
+      setTutorialPrompt(false);
+    }
+  };
+
+  const closeRules = () => {
+    setRulesOpen(false);
+    if (tutorialPrompt) {
+      setTutorialPrompt(false);
+      setGame((current) => ({ ...current, tutorialSummarySeen: true }));
+    }
+  };
+
+  const togglePassive = (passiveId) => {
     setGame((current) => {
-      if (current.pendingGameOver === "health") {
-        return { ...current, phase: "game-over", pendingResult: null, pendingGameOver: null, forcedReturn: null };
+      const active = current.passiveIds ?? [];
+      if (active.includes(passiveId)) {
+        return { ...current, passiveIds: active.filter((id) => id !== passiveId) };
       }
-      if (current.forcedReturn === "nightfall") {
-        return { ...current, phase: "nightfall", pendingResult: null, forcedReturn: null };
-      }
-      if (current.forcedReturn === "daybreak") {
-        return finishNight({ ...current, pendingResult: null, forcedReturn: null });
-      }
-      if (current.phase === "night" && current.nightChoiceId === "worker") {
-        return { ...current, phase: "worker-name", pendingResult: null };
-      }
-      if (current.phase === "night" || current.phase === "worker-name") {
-        return finishNight(current);
-      }
-      if (current.phase === "day") {
-        const completedDayActions = current.chosenDayActionIds.length + current.dayForfeitCount;
-        if (current.day === 1) {
-          return { ...current, phase: "day-interlude", pendingResult: null };
-        }
-        if (completedDayActions >= 3) {
-          return { ...current, phase: "nightfall", pendingResult: null };
-        }
-        return { ...current, step: current.step + 1, pendingResult: null };
-      }
-      return { ...current, step: current.step + 1, pendingResult: null };
+      if (active.length >= 3) return current;
+      return { ...current, passiveIds: [...active, passiveId] };
     });
+  };
+
+  const equipStigma = (slot, stigmaId) => {
+    setGame((current) => ({ ...current, stigma: { ...current.stigma, [slot]: stigmaId } }));
+  };
+
+  if (showStart) {
+    return <StartScreen hasContinue={game.phase !== "start"} onContinue={() => setShowStart(false)} onNew={newGame} />;
   }
 
-  function continueAfterDayInterlude() {
-    setGame((current) => {
-      const completedDayActions = current.chosenDayActionIds.length + current.dayForfeitCount;
-      if (completedDayActions >= 3) {
-        return { ...current, phase: "nightfall" };
-      }
-      return { ...current, phase: "day", step: current.step + 1 };
-    });
-  }
+  const mainContent = (() => {
+    if (game.phase === "seed-reveal") {
+      return (
+        <SeedRevealModal
+          name={game.specialSeedName}
+          rule={game.specialSeedRule}
+          onContinue={() => setGame(beginPrologue(game))}
+        />
+      );
+    }
+    if (game.phase === "prologue") {
+      return (
+        <DialogueCard
+          game={game}
+          eyebrow={PROLOGUE.tag}
+          paragraphs={PROLOGUE.text.map((text, index) => ({ text, speaker: PROLOGUE.speakers[index] ?? "unknown" }))}
+          button="영주의 자리에 앉는다"
+          onContinue={() => setGame(openFirstDay(game))}
+        />
+      );
+    }
+    if (game.phase === "special-event") {
+      const group = getSpecialGroup(game);
+      const stage = group.stages[game.specialProgress];
+      return (
+        <ChoicePanel
+          game={game}
+          eyebrow={`특수 사건 · ${group.name}`}
+          title={stage.title}
+          text={stage.text}
+          choices={stage.options}
+          selectedId={selectedId}
+          onChoose={(choice) => animate(choice.id, (current) => chooseSpecialEvent(current, choice))}
+        />
+      );
+    }
+    if (game.phase === "day") {
+      const choices = getDayOffers(game).map((choice) => ({
+        ...choice,
+        categoryLabel: {
+          gathering: "자원 채집",
+          interaction: "NPC 상호작용",
+          investigation: "조사",
+          training: "수련",
+          rest: "휴식",
+          other: "기타",
+        }[choice.category],
+      }));
+      return (
+        <ChoicePanel
+          game={game}
+          eyebrow={`${game.day}일차 · 낮 ${game.dayTurn + 1} / 5`}
+          title="영주의 일을 선택한다"
+          text={getDayNarration(game)}
+          choices={choices}
+          selectedId={selectedId}
+          onChoose={(choice) => animate(choice.id, (current) => chooseDayAction(current, choice))}
+          footer={<button className="forfeit-button" type="button" onClick={() => animate("day-forfeit", forfeitDay)}>포기한다</button>}
+        />
+      );
+    }
+    if (game.phase === "night-companion") {
+      const companions = getCompanionOffers(game).map((person) => ({
+        ...person,
+        detail: person.kind === "unnamed" ? "이름 없는 인원 · 보충되지 않음" : person.relation,
+      }));
+      return (
+        <ChoicePanel
+          game={game}
+          eyebrow={`${game.day}번째 밤 · 진입 준비`}
+          title="누구와 내려가겠습니까?"
+          text={NIGHT_ENTRY_SCRIPT}
+          choices={companions}
+          selectedId={selectedId}
+          onChoose={(choice) => animate(choice.id, (current) => selectCompanion(current, choice.id))}
+          footer={<button className="forfeit-button" type="button" onClick={() => animate("skip-night", skipNightEntry)}>지하에 들어가지 않는다</button>}
+        />
+      );
+    }
+    if (game.phase === "night-direction") {
+      const choices = getDirectionOffers().map((direction) => ({ ...direction, detail: direction.text }));
+      return (
+        <ChoicePanel
+          game={game}
+          eyebrow={`${game.day}번째 밤 · 진입 방향`}
+          title="어느 길을 택하겠습니까?"
+          text="방향과 이번 기록의 내부 난수가 탐사의 길이를 정한다."
+          choices={choices}
+          selectedId={selectedId}
+          onChoose={(choice) => animate(choice.id, (current) => startExpedition(current, choice.id))}
+        />
+      );
+    }
+    if (game.phase === "expedition") {
+      const event = getCurrentExplorationEvent(game);
+      const choices = event.options.map((choice) => {
+        const available = isExplorationOptionAvailable(game, choice);
+        const effectiveChance = game.stats.resolve < 0 ? choice.chance / 2 : choice.chance;
+        return {
+          ...choice,
+          available,
+          unavailableReason: choice.requiresHealthyCompanion ? "정상 상태의 동행자가 필요하다" : undefined,
+          detail: `성공률 ${Math.round(effectiveChance * 100)}%`,
+          tone: effectiveChance < 0.7 ? "danger" : "neutral",
+        };
+      });
+      return (
+        <ChoicePanel
+          game={game}
+          eyebrow={`밤 탐사 · ${game.expedition.stepIndex + 1} / ${game.expedition.totalSteps}`}
+          title={event.title}
+          text={event.text}
+          choices={choices}
+          selectedId={selectedId}
+          onChoose={(choice) => animate(choice.id, (current) => chooseExplorationOption(current, event, choice))}
+          footer={<button className="forfeit-button" type="button" onClick={() => animate("retreat", retreatExpedition)}>포기하고 귀환한다</button>}
+        />
+      );
+    }
+    if (game.phase === "finale") {
+      const currentFinale = getCurrentFinale(game);
+      const choices = getFinaleOptions(game, currentFinale).map((choice) => ({
+        ...choice,
+        preview: exactOptionPreview(game, choice),
+        tone: choice.intentionalLoss ? "lethal" : choice.chance < 0.7 ? "danger" : "extreme",
+      }));
+      return (
+        <ChoicePanel
+          game={game}
+          eyebrow={`최종 ${currentFinale.kind === "combat" ? "전투" : "퍼즐"}`}
+          title={currentFinale.title}
+          text={currentFinale.text}
+          choices={choices}
+          selectedId={selectedId}
+          onChoose={(choice) => animate(choice.id, (current) => chooseFinaleOption(current, currentFinale, choice))}
+        />
+      );
+    }
+    if (game.phase === "keepsake-delivery") {
+      return (
+        <ChoicePanel
+          game={game}
+          eyebrow="낮 · NPC 상호작용"
+          title="유품을 누구에게 전달합니까?"
+          text="전달 대상은 이후 관계와 사건을 바꾸지만 제물 수치는 바꾸지 않는다."
+          choices={[
+            { id: "family", label: "가족에게 전달한다", tone: "neutral" },
+            { id: "colleagues", label: "동료에게 전달한다", tone: "neutral" },
+          ]}
+          selectedId={selectedId}
+          onChoose={(choice) => animate(choice.id, (current) => deliverKeepsake(current, choice.id))}
+        />
+      );
+    }
+    if (game.phase === "transformed-choice") {
+      const person = game.companionStates[game.selectedTransformedId];
+      return (
+        <ChoicePanel
+          game={game}
+          eyebrow="낮 · 변질된 사람"
+          title={displayCompanion(person)}
+          text="처치하는 순간 제물로 계산되고 유품을 얻는다. 살려두면 이후 사건에서 다시 나타날 수 있다."
+          choices={[
+            { id: "spare", label: "살려둔다", tone: "extreme" },
+            { id: "kill", label: "처치한다", tone: "lethal" },
+          ]}
+          selectedId={selectedId}
+          onChoose={(choice) => animate(choice.id, (current) => chooseTransformedFate(current, choice.id))}
+        />
+      );
+    }
+    if (game.phase === "escape-transformed-choice") {
+      const person = game.companionStates[game.selectedCompanionId];
+      return (
+        <ChoicePanel
+          game={game}
+          eyebrow="귀환 직전 · 변질된 동행자"
+          title={displayCompanion(person)}
+          text="귀환로는 열려 있다. 이 상태로 지상에 데려갈지, 여기서 끝낼지 결정해야 한다."
+          choices={[
+            { id: "spare", label: "손을 놓지 않고 함께 탈출한다", tone: "extreme" },
+            { id: "kill", label: "탈출하기 전에 처치한다", tone: "lethal" },
+          ]}
+          selectedId={selectedId}
+          onChoose={(choice) => animate(choice.id, (current) => chooseEscapeTransformedFate(current, choice.id))}
+        />
+      );
+    }
+    if (game.phase === "day-eight") {
+      return (
+        <DialogueCard
+          game={game}
+          eyebrow={`8일차 · ${game.route === "altered" ? "변질 축" : "정상 축"}`}
+          title={game.route === "altered" ? "지하의 존재들이 영주를 맞이한다." : "로젠탈에 여덟째 날이 왔다."}
+          paragraphs={getDayEightScript(game)}
+          button="기록을 확인한다"
+          onContinue={() => setGame(finishVerticalSlice(game))}
+          danger={game.route === "altered"}
+        />
+      );
+    }
+    if (game.phase === "record-stop") {
+      return (
+        <DialogueCard
+          game={game}
+          eyebrow="수직 완성본 · 기록 중단"
+          title="이 기록은 여기서 끊겨 있다."
+          paragraphs={[
+            `열린 축 · ${game.route === "altered" ? "변질 축" : "정상 축"}`,
+            `■■ ${game.sacrificeCount} / 3`,
+            `진실 단서 · ${game.truthFlags.truthDiscovered ? "확인함" : "확인하지 못함"}`,
+            `선택 기록 · ${game.history.length}개`,
+          ]}
+          button="새 기록을 시작한다"
+          onContinue={newGame}
+        />
+      );
+    }
+    if (game.phase === "ending") {
+      const ending = getEnding(game);
+      return (
+        <DialogueCard
+          game={game}
+          eyebrow="엔딩"
+          title={ending.title}
+          paragraphs={ending.text}
+          button={game.endingId === "health-death" ? "다시 시작" : "꿈을 되돌린다"}
+          onContinue={newGame}
+          danger
+        />
+      );
+    }
+    return null;
+  })();
 
-  function beginNight() {
-    setGame((current) => ({
-      ...current,
-      phase: "night",
-      step: 0,
-      stats: { ...current.stats, stamina: 10 },
-    }));
-  }
-
-  function beginNextDay() {
-    setGame((current) => ({
-      ...current,
-      day: current.day + 1,
-      phase: "day",
-      step: 0,
-      chosenDayActionIds: [],
-      dayForfeitCount: 0,
-      unlockedNightChoiceIds: [],
-      nightChoiceId: null,
-      lostTarget: null,
-      lostKind: null,
-      playerMarked: false,
-      pendingResult: null,
-      pendingGameOver: null,
-      forcedReturn: null,
-      stats: { ...current.stats, stamina: 10 },
-    }));
-  }
-
-  function resetGame() {
-    localStorage.removeItem(STORAGE_KEY);
-    setIsCharacterOpen(false);
-    setDismissedSceneKey(null);
-    setSelectedChoiceId(null);
-    setGame(createInitialGame());
-  }
-
-  const dayActionCount = game.chosenDayActionIds.length + game.dayForfeitCount;
-  const dayPeriodIndex = game.phase === "day-interlude"
-    ? Math.max(dayActionCount - 1, 0)
-    : Math.min(dayActionCount, DAY_PERIODS.length - 1);
-  const dayPeriod = DAY_PERIODS[dayPeriodIndex];
-  const dayInterlude = DAY_INTERLUDES[Math.max(dayActionCount - 1, 0)];
-  const sceneKey = `${game.day}-${game.phase}-${game.step}`;
-  const sceneDialogue = game.phase === "day" && game.day === 1 && game.step === 0
-    ? DAY_OPENING_SCRIPT
-    : game.phase === "night"
-      ? NIGHT_ENTRY_SCRIPT
-      : [];
-  const panelTitle = game.phase === "night"
-    ? "누구와, 혹은 무엇과 함께 내려가겠습니까?"
-    : "오늘 무엇을 영주의 일로 받아들이겠습니까?";
-  const panelText = game.phase === "night"
-    ? "당신이 부른 이들만 계단 앞에 서 있다."
-    : game.day === 1
-      ? "낮 동안 세 번 행동합니다. 선택의 의미는 선택한 뒤에만 드러납니다."
-      : "오늘의 일을 선택하십시오.";
+  const dayPeriod = game.dayTurn < 2 ? "오전" : game.dayTurn < 4 ? "오후" : "저녁";
+  const phaseLabel = isNight ? "밤" : game.phase === "day" ? dayPeriod : "기록";
+  const phaseProgress = game.phase === "day"
+    ? `${Math.min(game.dayTurn + 1, 5)} / 5`
+    : game.phase === "expedition"
+      ? `${game.expedition.stepIndex + 1} / ${game.expedition.totalSteps}`
+      : "—";
+  const headerTitle = game.phase === "daybreak-transition"
+    ? `로젠탈의 ${Math.max(game.day - 1, 1)}번째 밤이 끝난다`
+    : isNight
+      ? `${game.day}번째 밤`
+      : `기록 ${game.day}일차`;
 
   return (
     <main className={`app-shell ${isNight ? "theme-night" : "theme-day"}`}>
       <header className="topbar">
         <div className="brand">
-          <span className="brand__crest">{isNight ? "夜" : "E"}</span>
+          <span className="brand__crest">{isNight ? "夜" : "R"}</span>
           <div>
             <p>{isNight ? "THE HOUSE IS STILL KIND" : "A KIND WORLD AWAITS"}</p>
-            <h1>{isNight ? `저택의 ${game.day}번째 밤` : `친절한 영지의 ${game.day}일차`}</h1>
+            <h1>{headerTitle}</h1>
           </div>
         </div>
         <div className="phase-clock">
-          <span>{isNight ? "밤" : dayPeriod}</span>
-          <strong>{isNight ? "1 / 1" : `${game.phase === "day" ? dayActionCount + 1 : dayActionCount} / 3`}</strong>
+          <span>{phaseLabel}</span>
+          <strong>{phaseProgress}</strong>
           <em>{game.day}일차</em>
         </div>
         <div className="topbar__actions">
-          <button type="button" onClick={() => setIsCharacterOpen((open) => !open)}>규칙·주인공</button>
-          <button type="button" onClick={resetGame}>새 시드</button>
+          <div className="sacrifice-counter">
+            <span>■■</span>
+            <strong>{game.sacrificeCount ?? 0} / 3</strong>
+          </div>
+          <button type="button" onClick={() => setRulesOpen(true)}>규칙</button>
+          <button type="button" onClick={() => setSaveOpen(true)}>저장 기록</button>
+          <button type="button" onClick={() => setShowStart(true)}>첫 화면</button>
         </div>
       </header>
 
@@ -725,16 +960,16 @@ function App() {
           <ResourceCard
             key={key}
             statKey={key}
-            value={game.resources[key]}
+            value={game.resources?.[key] ?? 0}
             isNight={isNight}
-            revealed={game.day > 1 || game.phase === "ending"}
+            revealed={game.day > 1 || game.phase === "record-stop" || game.phase === "ending"}
           />
         ))}
       </section>
 
       <div className="dashboard">
         <div className="estate-column">
-          <EstateScene isNight={isNight} estateState={estateState} />
+          <SceneImage isNight={isNight} estateState={estateState} />
           <section className={`estate-report estate-report--${estateState.tone}`}>
             <div>
               <span className="eyebrow">영지 상태</span>
@@ -742,110 +977,38 @@ function App() {
             </div>
             <p>{estateState.script}</p>
           </section>
-          {sceneDialogue.length > 0 && !game.pendingResult && dismissedSceneKey !== sceneKey && (
-            <DialogueBox
-              key={sceneKey}
-              context={game.phase === "night" ? "저택 지하" : "첫날의 업무"}
-              lines={sceneDialogue}
-              onComplete={() => setDismissedSceneKey(sceneKey)}
-              completeLabel="선택지 보기"
-            />
-          )}
         </div>
-
-        <section className="choice-panel">
-          {(game.phase === "day" || game.phase === "night") && (
-            <>
-              <div className="choice-panel__intro">
-                <span className="eyebrow">
-                  {game.phase === "night" ? "밤 · 저택 지하" : `${dayPeriod} · 영지 업무`}
-                </span>
-                <h2>{panelTitle}</h2>
-                <p>{panelText}</p>
-              </div>
-              <div className={`option-list option-list--single ${selectedChoiceId ? "is-resolving" : ""}`}>
-                {offers.map((option) => (
-                  <button
-                    type="button"
-                    className={`option-button option-button--${option.tone} ${!option.available ? "option-button--locked" : ""} ${selectedChoiceId === option.id ? "is-selected" : selectedChoiceId ? "is-dismissed" : ""}`}
-                    key={option.id}
-                    disabled={!option.available || Boolean(selectedChoiceId)}
-                    onClick={() => game.phase === "day" ? chooseDayAction(option) : chooseNightAction(option)}
-                  >
-                    <strong>{option.title}</strong>
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className={`option-button option-button--forfeit ${selectedChoiceId === "forfeit" ? "is-selected" : selectedChoiceId ? "is-dismissed" : ""}`}
-                  disabled={Boolean(selectedChoiceId)}
-                  onClick={giveUp}
-                >
-                  <strong>포기한다</strong>
-                </button>
-              </div>
-            </>
-          )}
-
-          {game.phase === "worker-name" && (
-            <>
-              <div className="choice-panel__intro">
-                <span className="eyebrow">밤 · 돌아오는 길</span>
-                <h2>잡부의 이름을 기억하십니까?</h2>
-              </div>
-              <div className={`option-list option-list--single ${selectedChoiceId ? "is-resolving" : ""}`}>
-                {WORKER_NAME_CHOICES.map((choice) => (
-                  <button
-                    type="button"
-                    className={`option-button option-button--${choice.tone} ${selectedChoiceId === choice.id ? "is-selected" : selectedChoiceId ? "is-dismissed" : ""}`}
-                    key={choice.id}
-                    disabled={Boolean(selectedChoiceId)}
-                    onClick={() => chooseWorkerMemory(choice)}
-                  >
-                    <strong>{choice.title}</strong>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {game.phase === "prologue" && (
-            <div className="choice-panel__intro quiet-panel">
-              <span className="eyebrow">아직 아무것도 선택하지 않았습니다.</span>
-              <h2>모든 것이 친절하다.</h2>
-              <p>이상할 정도로.</p>
-            </div>
-          )}
+        <section className="action-column" key={`${game.phase}-${game.day}-${game.dayTurn}-${game.expedition?.stepIndex ?? 0}`}>
+          {mainContent}
         </section>
-
         <CharacterPanel game={game} />
       </div>
 
-      {isCharacterOpen && (
-        <div className="mobile-character-modal" onClick={() => setIsCharacterOpen(false)}>
-          <CharacterPanel game={game} />
-        </div>
+      {game.phase === "nightfall-transition" && <TransitionOverlay kind="nightfall" onContinue={() => setGame(completeTransition(game))} />}
+      {game.phase === "daybreak-transition" && <TransitionOverlay kind="daybreak" onContinue={() => setGame(completeTransition(game))} />}
+      <ResultOverlay game={game} result={game.phase === "result" ? game.pendingResult : null} onContinue={() => setGame(continueAfterResult(game))} />
+      {rulesOpen && (
+        <RulesModal
+          game={game}
+          tutorial={tutorialPrompt}
+          onClose={closeRules}
+          onTogglePassive={togglePassive}
+          onEquipStigma={equipStigma}
+        />
       )}
-
-      {game.phase === "prologue" && <PrologueOverlay onContinue={startTutorial} />}
-      {game.phase === "day-interlude" && (
-        <DayInterludeOverlay interlude={dayInterlude} onContinue={continueAfterDayInterlude} />
-      )}
-      {game.phase === "nightfall" && <NightfallOverlay onContinue={beginNight} />}
-      {game.phase === "daybreak" && <DaybreakOverlay game={game} onContinue={beginNextDay} />}
-      <ResultSequence
-        key={`${game.history.length}-${game.pendingResult?.label ?? "none"}`}
-        result={game.pendingResult}
-        estateState={estateState}
-        isNight={isNight}
-        onContinue={continueAfterResult}
-      />
-      {game.phase === "ending" && (
-        <EndingOverlay ending={ENDINGS[game.endingId]} game={game} onReset={resetGame} />
-      )}
-      {game.phase === "game-over" && <GameOverOverlay onReset={resetGame} />}
+      {saveOpen && <SaveModal game={game} onClose={() => setSaveOpen(false)} onLoad={loadSlot} />}
     </main>
   );
 }
 
 export default App;
+
+function exactOptionPreview(game, choice) {
+  const chance = game.stats.resolve < 0 ? choice.chance / 2 : choice.chance;
+  const effects = choice.success ?? {};
+  const deltas = Object.entries(effects).flatMap(([group, values]) =>
+    Object.entries(values ?? {}).map(([key, value]) => `${LABELS[key] ?? key} ${value > 0 ? "+" : ""}${value}`),
+  );
+  if (choice.intentionalLoss) deltas.push("동행자 영구 실종");
+  return [`성공률 ${Math.round(chance * 100)}%`, ...deltas].join(" · ");
+}

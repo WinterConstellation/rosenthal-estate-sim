@@ -30,7 +30,7 @@ export const STAT_META = {
 
 export const TRAIT_META = {
   record: { label: "기록", stat: "통찰" },
-  knight: { label: "기사성", stat: "결단" },
+  knight: { label: "기사도", stat: "결단" },
   mansion: { label: "저택", stat: "통찰" },
   trade: { label: "거래", stat: "매력" },
   life: { label: "생활", stat: "체력" },
@@ -65,7 +65,7 @@ export const JOBS = [
   },
   {
     id: "sword-bearer",
-    name: "검술가",
+    name: "검사",
     title: "위험 앞에서 직접 검을 든다.",
     focus: ["execution", "knight", "life"],
     passiveId: "first-strike",
@@ -151,7 +151,7 @@ export const STIGMA_SUFFIXES = [
   },
   {
     id: "funeral-bell",
-    name: "장례종",
+    name: "장례식의 종",
     description: "공포를 2 낮추고 사라진 대상을 기록한다.",
     effect: { resources: { fear: -2 }, estate: { recordIntegrity: 2 } },
   },
@@ -196,7 +196,7 @@ export const PASSIVES = [
   },
   {
     id: "common-memory",
-    name: "주민의 얼굴",
+    name: "주민과의 교류",
     description: "생활 선택이 주민 신뢰를 1 더 높인다.",
     rule: "boost-life-trust",
   },
