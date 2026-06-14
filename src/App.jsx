@@ -119,7 +119,7 @@ function CharacterPanel({ game }) {
         </div>
         <div>
           <span className="eyebrow">시드</span>
-          <h2>이세계에 떨어진 영주</h2>
+          <h2>이세계에 떨어진? 영주</h2>
           <p className="seed-text">{game.runSeed.slice(0, 18)}</p>
         </div>
       </div>
@@ -163,11 +163,11 @@ function CharacterPanel({ game }) {
       <div className="rule-block stigma-pair">
         <span className="eyebrow">성흔</span>
         <strong>{getStigmaName(game)}</strong>
-        {isDayGuide && <small>밤이 지나면 두 개의 성흔이 남습니다.</small>}
+        {isDayGuide && <small>밤이 지나면 성흔이 남습니다.</small>}
       </div>
 
       <div className="rule-block">
-        <span className="eyebrow">패시브 · 1 · 2 · 3</span>
+        <span className="eyebrow">패시브 스킬</span>
         <ol className="passive-list">
           {game.passiveIds.map((id) => (
             <li key={id}>
