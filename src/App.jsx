@@ -122,7 +122,7 @@ function getMoonPhaseStyle(day) {
 
 
 const HORROR_FRAGMENTS = [
-  "기록은 숨을 쉬다",
+  "기록은 숨을 쉰다",
   "문장이 피를 흘린다",
   "아직 아무 일도 일어나지 않았다",
   "이름을 잊지 마라",
