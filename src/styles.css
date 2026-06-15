@@ -199,6 +199,68 @@ button:focus-visible {
   font-size: 1.3rem;
 }
 
+.topbar__center {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+}
+
+.moon-phase {
+  display: block;
+  width: 128px;
+  height: 128px;
+  background-repeat: no-repeat;
+  background-size: 3968px 128px;
+}
+
+.celestial-indicator {
+  position: relative;
+  width: 72px;
+  height: 42px;
+  pointer-events: none;
+}
+
+.celestial-indicator__sun,
+.celestial-indicator__moon {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transition: opacity 450ms ease, transform 450ms ease;
+  will-change: opacity, transform;
+}
+
+.celestial-indicator__sun {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3ad, #f0b85d 58%, #b45534);
+  box-shadow: 0 0 28px rgba(239, 184, 93, 0.62);
+}
+
+.celestial-indicator__moon {
+  transform-origin: top left;
+}
+
+.celestial-indicator--day .celestial-indicator__sun {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.celestial-indicator--day .celestial-indicator__moon {
+  opacity: 0;
+  transform: translate(-20px, 18px) scale(0.28);
+}
+
+.celestial-indicator--night .celestial-indicator__sun {
+  opacity: 0;
+  transform: translateX(-50%) translateY(18px) scale(0.72);
+}
+
+.celestial-indicator--night .celestial-indicator__moon {
+  opacity: 1;
+  transform: translate(-20px, 0) scale(0.32);
+}
+
 .topbar__actions {
   display: flex;
   align-items: center;
@@ -1298,7 +1360,7 @@ button:focus-visible {
 
 .time-transition--nightfall {
   background:
-    radial-gradient(circle at 50% 35%, rgba(255, 218, 128, 0.32), transparent 28%),
+    radial-gradient(circle at 50% 28%, rgba(255, 218, 128, 0.34), transparent 28%),
     linear-gradient(180deg, #efe7ce, #c99a79);
 }
 
@@ -1310,7 +1372,7 @@ button:focus-visible {
 
 .time-transition--daybreak {
   background:
-    radial-gradient(circle at 50% 40%, rgba(93, 111, 146, 0.24), transparent 32%),
+    radial-gradient(circle at 50% 34%, rgba(93, 111, 146, 0.24), transparent 32%),
     linear-gradient(180deg, #0a0d15, #191925);
 }
 
@@ -1323,24 +1385,38 @@ button:focus-visible {
 .time-transition__orb {
   position: absolute;
   z-index: 1;
+  top: 36%;
+  left: 50%;
+  will-change: opacity, transform;
+}
+
+.time-transition__sun {
   width: 160px;
   height: 160px;
   border-radius: 50%;
-  animation: falling-orb 1800ms ease both;
-  will-change: transform;
-}
-
-.time-transition--nightfall .time-transition__orb {
   background: radial-gradient(circle at 42% 38%, #ffe29a, #d7774d 62%, #792129);
   box-shadow: 0 0 48px rgba(243, 200, 92, 0.58);
 }
 
-.time-transition--daybreak .time-transition__orb {
-  background:
-    radial-gradient(circle at 37% 32%, rgba(255, 255, 255, 0.42) 0 8%, transparent 9%),
-    radial-gradient(circle at 56% 58%, rgba(92, 100, 121, 0.25) 0 13%, transparent 14%),
-    radial-gradient(circle, #f0eee5, #9fa7b9 68%, #626b83);
-  box-shadow: 0 0 56px rgba(197, 211, 244, 0.48);
+.time-transition__moon {
+  border-radius: 50%;
+  filter: drop-shadow(0 0 34px rgba(197, 211, 244, 0.52));
+}
+
+.time-transition--nightfall .time-transition__sun {
+  animation: sun-fall 1800ms ease both;
+}
+
+.time-transition--nightfall .time-transition__moon {
+  animation: moon-rise 1800ms ease both;
+}
+
+.time-transition--daybreak .time-transition__moon {
+  animation: moon-fall 1800ms ease both;
+}
+
+.time-transition--daybreak .time-transition__sun {
+  animation: sun-rise 1800ms ease both;
 }
 
 .time-transition__copy {
@@ -1401,9 +1477,26 @@ button:focus-visible {
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes falling-orb {
-  from { transform: translateY(-240px) scale(1.25); }
-  to { transform: translateY(520px) scale(0.55); }
+@keyframes sun-fall {
+  0% { opacity: 1; transform: translate(-50%, -260px) scale(1.24); }
+  58% { opacity: 1; }
+  100% { opacity: 0.18; transform: translate(-50%, 520px) scale(0.55); }
+}
+
+@keyframes moon-rise {
+  0%, 28% { opacity: 0; transform: translate(-50%, 520px) scale(0.54); }
+  100% { opacity: 1; transform: translate(-50%, -110px) scale(1.08); }
+}
+
+@keyframes moon-fall {
+  0% { opacity: 1; transform: translate(-50%, -110px) scale(1.08); }
+  58% { opacity: 1; }
+  100% { opacity: 0.12; transform: translate(-50%, 520px) scale(0.54); }
+}
+
+@keyframes sun-rise {
+  0%, 28% { opacity: 0; transform: translate(-50%, 520px) scale(0.55); }
+  100% { opacity: 1; transform: translate(-50%, -260px) scale(1.24); }
 }
 
 @keyframes transition-veil {

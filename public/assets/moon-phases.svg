@@ -1,0 +1,378 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3968" height="128" viewBox="0 0 3968 128">
+<defs>
+<radialGradient id="moonLit" cx="38%" cy="30%" r="72%"><stop offset="0" stop-color="#fffdf0"/><stop offset="0.48" stop-color="#d8d5c8"/><stop offset="1" stop-color="#8d96ac"/></radialGradient>
+<radialGradient id="moonDark" cx="42%" cy="34%" r="74%"><stop offset="0" stop-color="#4d5873"/><stop offset="1" stop-color="#1b2030"/></radialGradient>
+</defs>
+<g transform="translate(0 0)">
+<clipPath id="moonClip1"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip1)">
+<ellipse cx="64.00" cy="64" rx="64.00" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.420"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.420"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.420"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.420"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(128 0)">
+<clipPath id="moonClip2"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip2)">
+<ellipse cx="68.21" cy="64" rx="59.79" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.403"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.403"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.403"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.403"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(256 0)">
+<clipPath id="moonClip3"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip3)">
+<ellipse cx="72.43" cy="64" rx="55.57" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.386"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.386"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.386"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.386"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(384 0)">
+<clipPath id="moonClip4"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip4)">
+<ellipse cx="76.64" cy="64" rx="51.36" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.369"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.369"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.369"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.369"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(512 0)">
+<clipPath id="moonClip5"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip5)">
+<ellipse cx="80.86" cy="64" rx="47.14" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.351"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.351"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.351"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.351"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(640 0)">
+<clipPath id="moonClip6"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip6)">
+<ellipse cx="85.07" cy="64" rx="42.93" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.334"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.334"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.334"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.334"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(768 0)">
+<clipPath id="moonClip7"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip7)">
+<ellipse cx="89.29" cy="64" rx="38.71" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.317"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.317"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.317"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.317"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(896 0)">
+<clipPath id="moonClip8"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip8)">
+<ellipse cx="93.50" cy="64" rx="34.50" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.300"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.300"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.300"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.300"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(1024 0)">
+<clipPath id="moonClip9"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip9)">
+<ellipse cx="97.71" cy="64" rx="30.29" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.283"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.283"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.283"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.283"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(1152 0)">
+<clipPath id="moonClip10"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip10)">
+<ellipse cx="101.93" cy="64" rx="26.07" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.266"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.266"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.266"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.266"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(1280 0)">
+<clipPath id="moonClip11"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip11)">
+<ellipse cx="106.14" cy="64" rx="21.86" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.249"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.249"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.249"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.249"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(1408 0)">
+<clipPath id="moonClip12"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip12)">
+<ellipse cx="110.36" cy="64" rx="17.64" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.231"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.231"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.231"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.231"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(1536 0)">
+<clipPath id="moonClip13"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip13)">
+<ellipse cx="114.57" cy="64" rx="13.43" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.214"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.214"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.214"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.214"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(1664 0)">
+<clipPath id="moonClip14"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip14)">
+<ellipse cx="118.79" cy="64" rx="9.21" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.197"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.197"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.197"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.197"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(1792 0)">
+<clipPath id="moonClip15"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip15)">
+<ellipse cx="123.00" cy="64" rx="5.00" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.180"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.180"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.180"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.180"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(1920 0)">
+<clipPath id="moonClip16"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip16)">
+<ellipse cx="119.31" cy="64" rx="8.69" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.195"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.195"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.195"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.195"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(2048 0)">
+<clipPath id="moonClip17"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip17)">
+<ellipse cx="115.63" cy="64" rx="12.38" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.210"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.210"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.210"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.210"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(2176 0)">
+<clipPath id="moonClip18"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip18)">
+<ellipse cx="111.94" cy="64" rx="16.06" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.225"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.225"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.225"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.225"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(2304 0)">
+<clipPath id="moonClip19"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip19)">
+<ellipse cx="108.25" cy="64" rx="19.75" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.240"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.240"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.240"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.240"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(2432 0)">
+<clipPath id="moonClip20"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip20)">
+<ellipse cx="104.56" cy="64" rx="23.44" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.255"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.255"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.255"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.255"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(2560 0)">
+<clipPath id="moonClip21"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip21)">
+<ellipse cx="100.88" cy="64" rx="27.13" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.270"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.270"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.270"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.270"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(2688 0)">
+<clipPath id="moonClip22"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip22)">
+<ellipse cx="97.19" cy="64" rx="30.81" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.285"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.285"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.285"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.285"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(2816 0)">
+<clipPath id="moonClip23"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip23)">
+<ellipse cx="93.50" cy="64" rx="34.50" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.300"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.300"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.300"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.300"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(2944 0)">
+<clipPath id="moonClip24"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip24)">
+<ellipse cx="89.81" cy="64" rx="38.19" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.315"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.315"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.315"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.315"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(3072 0)">
+<clipPath id="moonClip25"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip25)">
+<ellipse cx="86.13" cy="64" rx="41.88" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.330"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.330"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.330"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.330"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(3200 0)">
+<clipPath id="moonClip26"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip26)">
+<ellipse cx="82.44" cy="64" rx="45.56" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.345"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.345"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.345"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.345"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(3328 0)">
+<clipPath id="moonClip27"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip27)">
+<ellipse cx="78.75" cy="64" rx="49.25" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.360"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.360"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.360"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.360"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(3456 0)">
+<clipPath id="moonClip28"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip28)">
+<ellipse cx="75.06" cy="64" rx="52.94" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.375"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.375"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.375"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.375"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(3584 0)">
+<clipPath id="moonClip29"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip29)">
+<ellipse cx="71.38" cy="64" rx="56.63" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.390"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.390"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.390"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.390"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(3712 0)">
+<clipPath id="moonClip30"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip30)">
+<ellipse cx="67.69" cy="64" rx="60.31" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.405"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.405"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.405"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.405"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+<g transform="translate(3840 0)">
+<clipPath id="moonClip31"><circle cx="64" cy="64" r="58"/></clipPath>
+<circle cx="64" cy="64" r="58" fill="url(#moonDark)"/>
+<g clip-path="url(#moonClip31)">
+<ellipse cx="64.00" cy="64" rx="64.00" ry="61" fill="url(#moonLit)"/>
+<circle cx="43" cy="42" r="7" fill="#7d879e" opacity="0.420"/>
+<circle cx="82" cy="49" r="5" fill="#6e788f" opacity="0.420"/>
+<circle cx="61" cy="83" r="9" fill="#7a8499" opacity="0.420"/>
+<circle cx="95" cy="79" r="4" fill="#5f6b83" opacity="0.420"/>
+</g>
+<circle cx="64" cy="64" r="58" fill="none" stroke="#eef0f7" stroke-opacity="0.18" stroke-width="2"/>
+</g>
+</svg>

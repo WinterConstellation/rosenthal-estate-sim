@@ -105,6 +105,21 @@ const TRAIT_DETAILS = {
   suspicion: "평범해 보이는 장면의 어긋남을 의심하는 성향.",
 };
 
+const MOON_FRAME_COUNT = 31;
+const MOON_FRAME_SIZE = 128;
+
+function getMoonFrameIndex(day) {
+  const numericDay = Number(day) || 1;
+  return Math.min(MOON_FRAME_COUNT - 1, Math.max(0, numericDay - 1));
+}
+
+function getMoonPhaseStyle(day) {
+  return {
+    backgroundImage: 'url("./assets/moon-phases.svg")',
+    backgroundPosition: `-${getMoonFrameIndex(day) * MOON_FRAME_SIZE}px 0`,
+  };
+}
+
 function resourceStage(key, value) {
   const amount = Math.max(0, Math.min(value ?? 0, 100));
   if (key === "fear") {
@@ -563,11 +578,32 @@ function RulesModal({ game, tutorial, onClose, onTogglePassive, onEquipStigma })
   );
 }
 
-function TransitionOverlay({ kind, onContinue }) {
+function MoonPhase({ day, className = "" }) {
+  return (
+    <span
+      className={`moon-phase ${className}`.trim()}
+      style={getMoonPhaseStyle(day)}
+      aria-hidden="true"
+    />
+  );
+}
+
+function CelestialIndicator({ day, isNight }) {
+  const label = isNight ? `${day}일차 달` : "낮의 태양";
+  return (
+    <div className={`celestial-indicator ${isNight ? "celestial-indicator--night" : "celestial-indicator--day"}`} role="img" aria-label={label} title={label}>
+      <span className="celestial-indicator__sun" aria-hidden="true" />
+      <MoonPhase day={day} className="celestial-indicator__moon" />
+    </div>
+  );
+}
+
+function TransitionOverlay({ kind, day, onContinue }) {
   const isDawn = kind === "daybreak";
   return (
     <div className={`time-transition time-transition--${kind}`}>
-      <div className="time-transition__orb" />
+      <span className="time-transition__orb time-transition__sun" aria-hidden="true" />
+      <MoonPhase day={day} className="time-transition__orb time-transition__moon" />
       <div className="time-transition__copy">
         <span>{isDawn ? "밤이 끝난다" : "저녁이 끝났다"}</span>
         <h2>{isDawn ? "달이 떨어진다." : "해가 떨어진다."}</h2>
@@ -938,10 +974,13 @@ function App() {
             <h1>{headerTitle}</h1>
           </div>
         </div>
-        <div className="phase-clock">
-          <span>{phaseLabel}</span>
-          <strong>{phaseProgress}</strong>
-          <em>{game.day}일차</em>
+        <div className="topbar__center">
+          <CelestialIndicator day={game.day} isNight={isNight} />
+          <div className="phase-clock">
+            <span>{phaseLabel}</span>
+            <strong>{phaseProgress}</strong>
+            <em>{game.day}일차</em>
+          </div>
         </div>
         <div className="topbar__actions">
           <div className="sacrifice-counter">
@@ -983,8 +1022,8 @@ function App() {
         <CharacterPanel game={game} />
       </div>
 
-      {game.phase === "nightfall-transition" && <TransitionOverlay kind="nightfall" onContinue={() => setGame(completeTransition(game))} />}
-      {game.phase === "daybreak-transition" && <TransitionOverlay kind="daybreak" onContinue={() => setGame(completeTransition(game))} />}
+      {game.phase === "nightfall-transition" && <TransitionOverlay kind="nightfall" day={game.day} onContinue={() => setGame(completeTransition(game))} />}
+      {game.phase === "daybreak-transition" && <TransitionOverlay kind="daybreak" day={game.day} onContinue={() => setGame(completeTransition(game))} />}
       <ResultOverlay game={game} result={game.phase === "result" ? game.pendingResult : null} onContinue={() => setGame(continueAfterResult(game))} />
       {rulesOpen && (
         <RulesModal
