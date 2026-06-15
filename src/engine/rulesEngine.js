@@ -27,6 +27,10 @@ export function roundToTenth(value) {
   return Math.round(asNumber(value) * 10) / 10;
 }
 
+export function truncateToTenth(value) {
+  return Math.trunc(asNumber(value) * 10) / 10;
+}
+
 function clampNumber(value, lower, upper) {
   return Math.min(Math.max(value, lower), upper);
 }
@@ -43,12 +47,36 @@ function shouldApplyChancePressure(game) {
   return CHANCE_PENALTY_PHASES.has(game?.phase);
 }
 
-export function getEffectiveChoiceChance(game, baseChance) {
+function isDangerChoice(choice = {}) {
+  return ["danger", "extreme", "lethal"].includes(choice.tone)
+    || choice.lossRisk === true
+    || Boolean(choice.intentionalLoss);
+}
+
+function getSeedRules(game) {
+  return [game?.specialSeedTrait?.benefit, game?.specialSeedTrait?.burden].filter(Boolean);
+}
+
+function getSeedChanceAdjustment(game, choice, kind) {
+  const rule = getSeedRules(game).find((item) => item.modifier?.kind === kind);
+  if (!rule) return null;
+  if (kind === "chance-pressure" && shouldApplyChancePressure(game) && getChoiceChancePressure(game) > 0) return rule;
+  if (kind === "final-chance" && isDangerChoice(choice)) return rule;
+  return null;
+}
+
+export function getEffectiveChoiceChance(game, baseChance, choice = {}) {
   if (baseChance == null) return null;
   let chancePercent = clampNumber(asNumber(baseChance) * 100, 0, 100);
   if ((game?.stats?.resolve ?? 0) < 0) chancePercent *= 0.5;
-  if (shouldApplyChancePressure(game)) chancePercent -= getChoiceChancePressure(game);
-  return clampNumber(roundToTenth(chancePercent), 0, 100) / 100;
+  if (shouldApplyChancePressure(game)) {
+    const pressureRule = getSeedChanceAdjustment(game, choice, "chance-pressure");
+    const pressureMultiplier = pressureRule?.modifier?.multiplier ?? 1;
+    chancePercent -= getChoiceChancePressure(game) * pressureMultiplier;
+  }
+  const finalChanceRule = getSeedChanceAdjustment(game, choice, "final-chance");
+  if (finalChanceRule) chancePercent *= finalChanceRule.modifier.multiplier;
+  return Number((clampNumber(roundToTenth(chancePercent), 0, 100) / 100).toFixed(3));
 }
 
 function getSeedGrowthMultiplier(game, statKey) {
@@ -61,13 +89,81 @@ function applySeedGrowthMultipliers(game, statDelta, trace) {
     const amount = asNumber(value);
     if (amount > 0) {
       const multiplier = getSeedGrowthMultiplier(game, key);
-      statDelta[key] = roundToTenth(amount * multiplier);
+      statDelta[key] = amount * multiplier;
       if (multiplier !== 1) {
         trace.push(`\uc2dc\ub4dc \u00b7 ${STAT_META[key]?.label ?? key} \uc131\uc7a5 x${multiplier.toFixed(1)}`);
       }
       return;
     }
-    statDelta[key] = roundToTenth(amount);
+    statDelta[key] = amount;
+  });
+}
+
+const INVERTED_DELTA_KEYS = {
+  resources: new Set(["fear"]),
+  estate: new Set(["corruption", "missing"]),
+};
+
+function isBeneficialDelta(group, key, value) {
+  if (value === 0) return false;
+  return INVERTED_DELTA_KEYS[group]?.has(key) ? value < 0 : value > 0;
+}
+
+function isHarmfulDelta(group, key, value) {
+  if (value === 0) return false;
+  return !isBeneficialDelta(group, key, value);
+}
+
+function seedRuleMatches(rule, game, choice, success, deltas) {
+  const trigger = rule?.trigger;
+  if (!trigger) return false;
+  if (trigger.kind === "category") return choice.category === trigger.value;
+  if (trigger.kind === "phase-result") return game.phase === trigger.phase && success === trigger.success;
+  if (trigger.kind === "night-result") return CHANCE_PENALTY_PHASES.has(game.phase) && success === trigger.success;
+  if (trigger.kind === "danger-result") return isDangerChoice(choice) && success === trigger.success;
+  if (trigger.kind === "negative-delta") return (deltas[trigger.group]?.[trigger.key] ?? 0) < 0;
+  if (trigger.kind === "forfeit") return choice.isForfeit === true || choice.isRetreat === true;
+  return false;
+}
+
+function applySeedDeltaRule(rule, deltas) {
+  const modifier = rule?.modifier;
+  if (!modifier || ["chance-pressure", "final-chance"].includes(modifier.kind)) return false;
+  let applied = false;
+  Object.entries(deltas).forEach(([group, delta]) => {
+    Object.entries(delta).forEach(([key, value]) => {
+      const matches = modifier.kind === "beneficial"
+        ? isBeneficialDelta(group, key, value)
+        : modifier.kind === "harmful"
+          ? isHarmfulDelta(group, key, value)
+          : modifier.kind === "specific-harmful"
+            && group === modifier.group
+            && key === modifier.key
+            && isHarmfulDelta(group, key, value);
+      if (!matches) return;
+      delta[key] = value * modifier.multiplier;
+      applied = true;
+    });
+  });
+  return applied;
+}
+
+function applyConditionalSeedTraits(game, choice, success, deltas, trace) {
+  getSeedRules(game).forEach((rule) => {
+    if (!seedRuleMatches(rule, game, choice, success, deltas)) return;
+    if (applySeedDeltaRule(rule, deltas)) trace.push(`성인의 달 · ${rule.text}`);
+  });
+}
+
+function copyDeltaMaps(deltas) {
+  return Object.fromEntries(Object.entries(deltas).map(([group, delta]) => [group, { ...delta }]));
+}
+
+function roundDeltaMaps(deltas) {
+  Object.values(deltas).forEach((delta) => {
+    Object.entries(delta).forEach(([key, value]) => {
+      delta[key] = roundToTenth(value);
+    });
   });
 }
 
@@ -359,7 +455,7 @@ function applyPassive(passiveId, context, trace, slot) {
 
 export function resolveChoice(game, choice) {
   const baseChance = choice.successChance;
-  const effectiveChance = getEffectiveChoiceChance(game, baseChance);
+  const effectiveChance = getEffectiveChoiceChance(game, baseChance, choice);
   const outcomeSeed = game.runSeed ?? game.runRngSeed ?? "run";
   const historyLength = game.history?.length ?? 0;
   const success = effectiveChance == null
@@ -376,8 +472,12 @@ export function resolveChoice(game, choice) {
     trace.push(success ? "판정 · 성공" : "판정 · 실패");
     if ((game.stats?.resolve ?? 0) < 0) trace.push("결단 저하 · 성공 가능성 절반");
     const pressure = shouldApplyChancePressure(game) ? getChoiceChancePressure(game) : 0;
-    const displayedPressure = Math.trunc(pressure);
+    const pressureRule = getSeedChanceAdjustment(game, choice, "chance-pressure");
+    const displayedPressure = Math.trunc(pressure * (pressureRule?.modifier?.multiplier ?? 1));
     if (displayedPressure > 0) trace.push(`\uacf5\ud3ec/\uc774\uc0c1\ud604\uc0c1 \u00b7 \uc131\uacf5\ub960 -${displayedPressure}%`);
+    if (pressureRule) trace.push(`성인의 달 · ${pressureRule.text}`);
+    const finalChanceRule = getSeedChanceAdjustment(game, choice, "final-chance");
+    if (finalChanceRule) trace.push(`성인의 달 · ${finalChanceRule.text}`);
   }
 
   Object.entries(game.nextTurn).forEach(([key, value]) => {
@@ -424,7 +524,9 @@ export function resolveChoice(game, choice) {
     applyPassive(passiveId, { resourceDelta, estateDelta, choice: outcome }, trace, `패시브 ${index + 1}`);
   });
 
-  applySeedGrowthMultipliers(game, statDelta, trace);
+  const deltas = { resources: resourceDelta, estate: estateDelta, stats: statDelta };
+  if (game.specialSeedTrait) applyConditionalSeedTraits(game, outcome, success, deltas, trace);
+  else applySeedGrowthMultipliers(game, statDelta, trace);
 
   if ((game.stats?.insight ?? 0) < 0) {
     [resourceDelta, estateDelta, traitDelta, statDelta, affinityDelta].forEach((delta) => {
@@ -435,12 +537,28 @@ export function resolveChoice(game, choice) {
     trace.push("통찰 저하 · 획득값 반전");
   }
 
+  const displayDeltas = copyDeltaMaps({
+    resources: resourceDelta,
+    estate: estateDelta,
+    traits: traitDelta,
+    stats: statDelta,
+    affinities: affinityDelta,
+  });
+  roundDeltaMaps({
+    resources: resourceDelta,
+    estate: estateDelta,
+    traits: traitDelta,
+    stats: statDelta,
+    affinities: affinityDelta,
+  });
+
   return {
     resourceDelta,
     estateDelta,
     traitDelta,
     statDelta,
     affinityDelta,
+    displayDeltas,
     nextTurn,
     success,
     effectiveChance,

@@ -61,55 +61,56 @@ const RAW_SEEDS = [
   ["성녀 카타리나 드렉셀의 달", "교육과 봉사", "interaction"],
 ];
 
-const MIN_SEED_GROWTH_MULTIPLIER = 0.1;
-const MAX_SEED_GROWTH_MULTIPLIER = 2;
+export const SEED_BENEFIT_RULES = [
+  { id: "gathering-boon", trigger: { kind: "category", value: "gathering" }, modifier: { kind: "beneficial", multiplier: 1.1 }, text: "자원 채집의 이로운 변화 x1.1" },
+  { id: "interaction-boon", trigger: { kind: "category", value: "interaction" }, modifier: { kind: "beneficial", multiplier: 1.1 }, text: "NPC 상호작용의 이로운 변화 x1.1" },
+  { id: "investigation-boon", trigger: { kind: "category", value: "investigation" }, modifier: { kind: "beneficial", multiplier: 1.1 }, text: "조사의 이로운 변화 x1.1" },
+  { id: "training-boon", trigger: { kind: "category", value: "training" }, modifier: { kind: "beneficial", multiplier: 1.1 }, text: "수련의 이로운 변화 x1.1" },
+  { id: "rest-boon", trigger: { kind: "category", value: "rest" }, modifier: { kind: "beneficial", multiplier: 1.1 }, text: "휴식의 이로운 변화 x1.1" },
+  { id: "other-boon", trigger: { kind: "category", value: "other" }, modifier: { kind: "beneficial", multiplier: 1.1 }, text: "기타 행동의 이로운 변화 x1.1" },
+  { id: "day-success-boon", trigger: { kind: "phase-result", phase: "day", success: true }, modifier: { kind: "beneficial", multiplier: 1.1 }, text: "낮 행동 성공의 이로운 변화 x1.1" },
+  { id: "night-success-boon", trigger: { kind: "night-result", success: true }, modifier: { kind: "beneficial", multiplier: 1.1 }, text: "밤·특수 사건 성공의 이로운 변화 x1.1" },
+  { id: "danger-success-boon", trigger: { kind: "danger-result", success: true }, modifier: { kind: "harmful", multiplier: 0.9 }, text: "위험 선택 성공의 해로운 변화 x0.9" },
+  { id: "pressure-boon", trigger: { kind: "chance-pressure" }, modifier: { kind: "chance-pressure", multiplier: 0.9 }, text: "공포·이상 징후의 성공률 압박 x0.9" },
+];
 
-function getBoonGrowthMultiplier(amount) {
-  return Math.min(MAX_SEED_GROWTH_MULTIPLIER, 1 + Math.max(Number(amount) || 0, 0) * 0.5);
-}
-
-function getBurdenGrowthMultiplier() {
-  return MIN_SEED_GROWTH_MULTIPLIER;
-}
+export const SEED_BURDEN_RULES = [
+  { id: "day-failure-burden", trigger: { kind: "phase-result", phase: "day", success: false }, modifier: { kind: "harmful", multiplier: 1.1 }, text: "낮 행동 실패의 해로운 변화 x1.1" },
+  { id: "night-failure-burden", trigger: { kind: "night-result", success: false }, modifier: { kind: "harmful", multiplier: 1.1 }, text: "밤·특수 사건 실패의 해로운 변화 x1.1" },
+  { id: "danger-chance-burden", trigger: { kind: "danger-choice" }, modifier: { kind: "final-chance", multiplier: 0.9 }, text: "위험·극단·치명 선택의 성공률 x0.9" },
+  { id: "stamina-loss-burden", trigger: { kind: "negative-delta", group: "stats", key: "stamina" }, modifier: { kind: "specific-harmful", group: "stats", key: "stamina", multiplier: 1.1 }, text: "스태미나 손실 x1.1" },
+  { id: "health-loss-burden", trigger: { kind: "negative-delta", group: "stats", key: "health" }, modifier: { kind: "specific-harmful", group: "stats", key: "health", multiplier: 1.1 }, text: "체력 손실 x1.1" },
+  { id: "forfeit-burden", trigger: { kind: "forfeit" }, modifier: { kind: "harmful", multiplier: 1.1 }, text: "포기·탐사 귀환의 해로운 변화 x1.1" },
+];
 
 export function getSeedGrowthMultipliers(seed) {
   if (seed?.growthMultipliers) return { ...seed.growthMultipliers };
-  const multipliers = {};
-  if (seed?.boon?.key) multipliers[seed.boon.key] = getBoonGrowthMultiplier(seed.boon.amount);
-  if (seed?.burden?.key) multipliers[seed.burden.key] = getBurdenGrowthMultiplier(seed.burden.amount);
-  return multipliers;
+  return {};
+}
+
+export function getSeedTrait(seed) {
+  if (seed?.trait) return {
+    benefit: { ...seed.trait.benefit, trigger: { ...seed.trait.benefit.trigger }, modifier: { ...seed.trait.benefit.modifier } },
+    burden: { ...seed.trait.burden, trigger: { ...seed.trait.burden.trigger }, modifier: { ...seed.trait.burden.modifier } },
+  };
+  return null;
 }
 
 export const SAINT_SEEDS = RAW_SEEDS.map(([name, symbol, category], index) => {
-  const statBenefits = [
-    ["stats", "health", "체력"],
-    ["stats", "insight", "통찰"],
-    ["stats", "resolve", "결단"],
-    ["stats", "charm", "매력"],
-    ["stats", "faith", "신앙"],
-    ["stats", "stamina", "스태미나"],
-  ];
-  const benefitIndex = index % statBenefits.length;
-  const burdenOffset = (Math.floor(index / statBenefits.length) % (statBenefits.length - 1)) + 1;
-  const benefit = statBenefits[benefitIndex];
-  const burden = statBenefits[(benefitIndex + burdenOffset) % statBenefits.length];
-  const boonAmount = 1 + Math.floor(index / 30);
-  const burdenAmount = 1;
-  const boonMultiplier = getBoonGrowthMultiplier(boonAmount);
-  const burdenMultiplier = getBurdenGrowthMultiplier(-burdenAmount);
+  const benefit = SEED_BENEFIT_RULES[index % SEED_BENEFIT_RULES.length];
+  const burden = SEED_BURDEN_RULES[Math.floor(index / SEED_BENEFIT_RULES.length)];
+  const trait = { benefit, burden };
   return {
     id: index,
     name,
     symbol,
     category,
     eventGroupId: Math.floor(index / 5),
-    boon: { group: benefit[0], key: benefit[1], amount: boonAmount },
-    burden: { group: burden[0], key: burden[1], amount: -burdenAmount },
-    growthMultipliers: {
-      [benefit[1]]: boonMultiplier,
-      [burden[1]]: burdenMultiplier,
-    },
-    ruleText: `${benefit[2]} \uc131\uc7a5 x${boonMultiplier.toFixed(1)} \u00b7 ${burden[2]} \uc131\uc7a5 x${burdenMultiplier.toFixed(1)}`,
+    boon: { group: null, key: null, amount: 0 },
+    burden: { group: null, key: null, amount: 0 },
+    growthMultipliers: {},
+    trait,
+    ruleText: `${benefit.text} · ${burden.text}`,
   };
 });
 

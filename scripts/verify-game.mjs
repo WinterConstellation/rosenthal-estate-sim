@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { SAINT_SEEDS } from "../src/data/saintSeeds.js";
+import { SAINT_SEEDS, SEED_BENEFIT_RULES, SEED_BURDEN_RULES } from "../src/data/saintSeeds.js";
 import {
   CORE_NPCS,
   DAY_ACTIONS,
@@ -10,9 +10,16 @@ import {
   SPECIAL_EVENT_GROUPS,
 } from "../src/data/rosenthalContent.js";
 import {
+  DAY_ACTIONS as LEGACY_DAY_ACTIONS,
   DAY_INTERLUDES,
+  DAY_OPENING_SCRIPT,
+  DAY_PERIODS,
+  ENDINGS,
+  FORFEIT_RESULTS,
+  NIGHT_CHOICES,
   NIGHT_ENTRY_SCRIPT,
   PROLOGUE as USER_PROLOGUE,
+  WORKER_NAME_CHOICES,
 } from "../src/rules/tutorialRules.js";
 import {
   applyPermanentLoss,
@@ -24,14 +31,17 @@ import {
   createNewRun,
   finishNight,
   getDayOffers,
+  getExplorationOptions,
   getFinaleOptions,
   getNpcSpeaker,
   isExplorationOptionAvailable,
+  isNightDisplayPhase,
   openFirstDay,
   refreshSeedState,
+  retreatExpedition,
   startExpedition,
 } from "../src/engine/rosenthalEngine.js";
-import { getEffectiveChoiceChance, resolveChoice } from "../src/engine/rulesEngine.js";
+import { getEffectiveChoiceChance, resolveChoice, roundToTenth, truncateToTenth } from "../src/engine/rulesEngine.js";
 
 assert.equal(SAINT_SEEDS.length, 60);
 assert.equal(new Set(SAINT_SEEDS.map((seed) => seed.name)).size, 60);
@@ -40,10 +50,13 @@ assert.deepEqual(SAINT_SEEDS.map((seed) => seed.eventGroupId), Array.from({ leng
 assert.ok(SAINT_SEEDS.every((seed) => /^(성|성녀|성자|성인) /.test(seed.name) && seed.name.endsWith("의 달")));
 assert.ok(SAINT_SEEDS.every((seed) => !seed.name.includes("聖")));
 assert.ok(SAINT_SEEDS.every((seed) => !["김대건", "정하상", "고순이", "권진이", "김효임", "김효주"].some((name) => seed.name.includes(name))));
-assert.ok(SAINT_SEEDS.every((seed) => seed.boon.group === "stats" && seed.burden.group === "stats"));
-assert.ok(SAINT_SEEDS.every((seed) => seed.boon.amount > 0 && seed.burden.amount < 0));
-assert.ok(SAINT_SEEDS.every((seed) => Object.values(seed.growthMultipliers ?? {}).every((value) => value >= 0.1 && value <= 2)));
-assert.ok(SAINT_SEEDS.every((seed) => !seed.ruleText.includes("일차") && !seed.ruleText.includes("행동")));
+assert.equal(SEED_BENEFIT_RULES.length, 10);
+assert.equal(SEED_BURDEN_RULES.length, 6);
+assert.equal(new Set(SAINT_SEEDS.map((seed) => `${seed.trait.benefit.id}:${seed.trait.burden.id}`)).size, 60);
+assert.ok(SAINT_SEEDS.every((seed) => [seed.trait.benefit, seed.trait.burden]
+  .every((rule) => rule.modifier.multiplier >= 0.9 && rule.modifier.multiplier <= 1.1)));
+assert.ok(SAINT_SEEDS.every((seed) => seed.boon && seed.burden && seed.growthMultipliers));
+assert.ok(SAINT_SEEDS.every((seed) => !seed.ruleText.includes("일차")));
 
 assert.equal(DAY_ACTIONS.length, 30);
 for (const category of ["gathering", "interaction", "investigation", "training", "rest", "other"]) {
@@ -68,6 +81,30 @@ assert.equal(USER_PROLOGUE.tag, "프롤로그");
 assert.equal(USER_PROLOGUE.title, "들리지 않는 목소리");
 assert.equal(USER_PROLOGUE.speakers.length, USER_PROLOGUE.text.length);
 assert.ok(USER_PROLOGUE.speakers.every((speaker) => ["narration", "player", "unknown"].includes(speaker) || speaker.startsWith("npc:")));
+assert.deepEqual(USER_PROLOGUE.speakers, [
+  "narration",
+  "player",
+  "player",
+  "player",
+  "player",
+  "narration",
+  "narration",
+  "npc:maid",
+  "narration",
+  "narration",
+  "narration",
+  "player",
+  "player",
+  "player",
+  "player",
+]);
+assert.equal(USER_PROLOGUE.speakers[USER_PROLOGUE.text.indexOf("“좋은 아침입니다, 영주님.”")], "npc:maid");
+assert.equal(USER_PROLOGUE.speakers[USER_PROLOGUE.text.findIndex((line) => line.startsWith("당신은 이 세계의 언어도"))], "narration");
+assert.equal(USER_PROLOGUE.speakers[USER_PROLOGUE.text.indexOf("어째서?")], "player");
+assert.ok([DAY_OPENING_SCRIPT, DAY_PERIODS, DAY_INTERLUDES, NIGHT_ENTRY_SCRIPT, LEGACY_DAY_ACTIONS, NIGHT_CHOICES, WORKER_NAME_CHOICES]
+  .every((value) => Array.isArray(value)));
+assert.ok(ENDINGS && typeof ENDINGS === "object");
+assert.ok(FORFEIT_RESULTS && typeof FORFEIT_RESULTS === "object");
 assert.equal(CORE_NPCS.find((npc) => npc.id === "maid")?.name, "샤를로트");
 assert.equal(CORE_NPCS.find((npc) => npc.id === "knight")?.name, "리오넬");
 assert.ok(CORE_NPCS.filter((npc) => !["maid", "knight"].includes(npc.id)).every((npc) => npc.name === "*미정*"));
@@ -77,16 +114,18 @@ assert.ok(DAY_INTERLUDES[0].paragraphs[0].startsWith("당신은 선택을 해야
 assert.ok(DAY_INTERLUDES[1].paragraphs.some((paragraph) => paragraph.includes("힐링물 같은 세계")));
 assert.ok(DAY_INTERLUDES[2].paragraphs.some((paragraph) => paragraph.includes("아무 일도 일어나지 않는다")));
 
-const deterministicA = createNewRun({ second: 37, runRngSeed: "fixed-run" });
-const deterministicB = createNewRun({ second: 37, runRngSeed: "fixed-run" });
-const seed37 = SAINT_SEEDS[37];
+const deterministicA = createNewRun({ second: 0, runRngSeed: "fixed-run" });
+const deterministicB = createNewRun({ second: 0, runRngSeed: "fixed-run" });
+const seed0 = SAINT_SEEDS[0];
 const baseStats = { health: 8, insight: 7, resolve: 7, charm: 8, faith: 4, stamina: 10 };
-assert.equal(deterministicA.specialSeedId, 37);
-assert.equal(deterministicA.eventGroupId, Math.floor(37 / 5));
-assert.equal(deterministicA.specialSeedName, seed37.name);
-assert.equal(deterministicA.specialSeedRule, seed37.ruleText);
+assert.equal(deterministicA.specialSeedId, 0);
+assert.equal(deterministicA.eventGroupId, 0);
+assert.equal(deterministicA.specialSeedName, seed0.name);
+assert.equal(deterministicA.specialSeedRule, seed0.ruleText);
 assert.deepEqual(deterministicA.stats, baseStats);
-assert.deepEqual(deterministicA.specialSeedGrowthMultipliers, seed37.growthMultipliers);
+assert.deepEqual(deterministicA.displayStats, baseStats);
+assert.deepEqual(deterministicA.specialSeedGrowthMultipliers, seed0.growthMultipliers);
+assert.deepEqual(deterministicA.specialSeedTrait, seed0.trait);
 assert.equal(deterministicA.ownedPassiveIds.length, 5);
 assert.equal(deterministicA.passiveIds.length, 3);
 assert.deepEqual(getDayOffers({ ...deterministicA, phase: "day" }), getDayOffers({ ...deterministicB, phase: "day" }));
@@ -105,11 +144,20 @@ const refreshedLegacy = refreshSeedState({
   specialSeedStatsApplied: false,
   stats: baseStats,
 });
-assert.equal(refreshedLegacy.specialSeedName, seed37.name);
-assert.equal(refreshedLegacy.specialSeedRule, seed37.ruleText);
+assert.equal(refreshedLegacy.specialSeedName, seed0.name);
+assert.equal(refreshedLegacy.specialSeedRule, seed0.ruleText);
 assert.deepEqual(refreshedLegacy.stats, baseStats);
-assert.deepEqual(refreshedLegacy.specialSeedGrowthMultipliers, seed37.growthMultipliers);
+assert.deepEqual(refreshedLegacy.specialSeedGrowthMultipliers, seed0.growthMultipliers);
+assert.deepEqual(refreshedLegacy.specialSeedTrait, seed0.trait);
+assert.deepEqual(refreshedLegacy.displayStats, baseStats);
 assert.deepEqual(refreshSeedState(refreshedLegacy).stats, refreshedLegacy.stats);
+const refreshedDaybreakSave = refreshSeedState({
+  ...deterministicA,
+  phase: "daybreak-transition",
+  transitionTargetPhase: "day",
+});
+assert.equal(refreshedDaybreakSave.phase, "day");
+assert.equal(refreshedDaybreakSave.transitionTargetPhase, null);
 assert.equal(getNpcSpeaker(deterministicA, "maid"), "메이드");
 const maidInteraction = DAY_ACTIONS.find((action) => action.id === "maid-tea");
 const afterMaidInteraction = chooseDayAction({ ...deterministicA, phase: "day" }, maidInteraction);
@@ -127,6 +175,11 @@ assert.equal(getNpcSpeaker(afterKnightInteraction, "knight"), "리오넬");
 const nightfall = continueAfterResult({ ...deterministicA, phase: "result", resumePhase: "night-companion" });
 assert.equal(nightfall.phase, "nightfall-transition");
 assert.equal(completeTransition(nightfall).phase, "night-companion");
+assert.equal(isNightDisplayPhase({ ...deterministicA, phase: "result", resumePhase: "night-companion" }), false);
+assert.equal(isNightDisplayPhase({ ...deterministicA, phase: "nightfall-transition" }), false);
+assert.equal(isNightDisplayPhase({ ...deterministicA, phase: "night-companion" }), true);
+assert.equal(isNightDisplayPhase({ ...deterministicA, phase: "result", resumePhase: "daybreak" }), true);
+assert.equal(isNightDisplayPhase({ ...deterministicA, phase: "daybreak-transition" }), false);
 
 const restActions = DAY_ACTIONS.filter((action) => action.category === "rest");
 assert.ok(restActions.every((action) => action.effects.stats.health >= 1 && action.effects.stats.health <= 5));
@@ -155,6 +208,13 @@ assert.equal(staminaCollapse.resumePhase, "night-companion");
 assert.ok(staminaCollapse.pendingResult.notices.includes("스태미나 고갈 · 강제 귀환"));
 
 const secureOption = EXPLORATION_EVENTS[0].options.find((option) => option.id === "secure");
+const explorationOptions = getExplorationOptions(EXPLORATION_EVENTS[0]);
+const undergroundRest = explorationOptions.find((option) => option.id === "underground-rest");
+assert.equal(explorationOptions.length, EXPLORATION_EVENTS[0].options.length + 1);
+assert.ok(EXPLORATION_EVENTS.every((event) => getExplorationOptions(event).some((option) => option.id === "underground-rest")));
+assert.deepEqual(undergroundRest.success.stats, { health: 1, stamina: 3, resolve: -1, insight: -1 });
+assert.deepEqual(undergroundRest.success.resources, { fear: 3 });
+assert.deepEqual(undergroundRest.success.estate, { corruption: 5 });
 assert.equal(secureOption.chance, 1);
 assert.equal(secureOption.success.stats.stamina, -1);
 assert.equal(secureOption.failure.stats.stamina, -2);
@@ -165,6 +225,13 @@ const operationalExpedition = {
   expedition: { directionId: "stairs", totalSteps: 3, stepIndex: 0, eventIds: [EXPLORATION_EVENTS[0].id, EXPLORATION_EVENTS[1].id, EXPLORATION_EVENTS[2].id] },
 };
 assert.equal(isExplorationOptionAvailable(operationalExpedition, secureOption), true);
+const afterUndergroundRest = chooseExplorationOption(operationalExpedition, EXPLORATION_EVENTS[0], undergroundRest);
+assert.equal(afterUndergroundRest.stats.health, operationalExpedition.stats.health + 1);
+assert.equal(afterUndergroundRest.stats.stamina, operationalExpedition.stats.stamina + 3);
+assert.equal(afterUndergroundRest.stats.resolve, operationalExpedition.stats.resolve - 1);
+assert.equal(afterUndergroundRest.stats.insight, operationalExpedition.stats.insight - 1);
+assert.equal(afterUndergroundRest.resources.fear, operationalExpedition.resources.fear + 3);
+assert.equal(afterUndergroundRest.estate.corruption, operationalExpedition.estate.corruption + 5);
 const transformedExpedition = {
   ...operationalExpedition,
   companionStates: {
@@ -216,16 +283,145 @@ assert.equal(getEffectiveChoiceChance({
   resources: { ...operationalExpedition.resources, fear: 120 },
   estate: { ...operationalExpedition.estate, corruption: 20 },
 }, 0.4), 0);
-const seedGrowth = resolveChoice({
+const seedTrait = (benefitId, burdenId) => ({
+  benefit: SEED_BENEFIT_RULES.find((rule) => rule.id === benefitId),
+  burden: SEED_BURDEN_RULES.find((rule) => rule.id === burdenId),
+});
+const seedRuleGame = (trait, phase = "day") => ({
+  ...deterministicA,
+  phase,
+  specialSeedTrait: trait,
+  specialSeedGrowthMultipliers: {},
+  passiveIds: [],
+  titles: [],
+  stigma: { prefixId: null, suffixId: null },
+  nextTurn: {},
+  history: [],
+  runSeed: "seed-rule-check",
+});
+
+for (const category of ["gathering", "interaction", "investigation", "training", "rest", "other"]) {
+  const categoryBenefit = resolveChoice(seedRuleGame(seedTrait(`${category}-boon`, "night-failure-burden")), {
+    id: `category-${category}`,
+    category,
+    stats: { health: 1 },
+    resources: { fear: 1 },
+  });
+  assert.equal(categoryBenefit.statDelta.health, 1.1);
+  assert.equal(categoryBenefit.resourceDelta.fear, 1);
+}
+const daySuccessBenefit = resolveChoice(seedRuleGame(seedTrait("day-success-boon", "night-failure-burden")), {
+  id: "day-success-benefit",
+  stats: { health: 1 },
+});
+assert.equal(daySuccessBenefit.statDelta.health, 1.1);
+const nightSuccessBenefit = resolveChoice(seedRuleGame(seedTrait("night-success-boon", "day-failure-burden"), "night"), {
+  id: "night-success-benefit",
+  stats: { insight: 1 },
+});
+assert.equal(nightSuccessBenefit.statDelta.insight, 1.1);
+const dangerSuccessBenefit = resolveChoice(seedRuleGame(seedTrait("danger-success-boon", "day-failure-burden")), {
+  id: "danger-success-benefit",
+  tone: "danger",
+  stats: { health: -1 },
+  resources: { fear: 1 },
+  estate: { corruption: 1 },
+});
+assert.equal(dangerSuccessBenefit.statDelta.health, -0.9);
+assert.equal(dangerSuccessBenefit.resourceDelta.fear, 0.9);
+assert.equal(dangerSuccessBenefit.estateDelta.corruption, 0.9);
+
+const pressuredSeedGame = {
+  ...seedRuleGame(seedTrait("pressure-boon", "day-failure-burden"), "night"),
+  resources: { ...deterministicA.resources, fear: 5 },
+  estate: { ...deterministicA.estate, corruption: 2 },
+};
+assert.equal(getEffectiveChoiceChance(pressuredSeedGame, 1, { id: "pressure-benefit" }), 0.901);
+const dayFailureBurden = resolveChoice(seedRuleGame(seedTrait("night-success-boon", "day-failure-burden")), {
+  id: "day-failure-burden",
+  successChance: 0,
+  failure: { stats: { stamina: -1 }, resources: { fear: 1 } },
+});
+assert.equal(dayFailureBurden.statDelta.stamina, -1.1);
+assert.equal(dayFailureBurden.resourceDelta.fear, 1.1);
+const nightFailureBurden = resolveChoice(seedRuleGame(seedTrait("day-success-boon", "night-failure-burden"), "night"), {
+  id: "night-failure-burden",
+  successChance: 0,
+  failure: { stats: { health: -1 } },
+});
+assert.equal(nightFailureBurden.statDelta.health, -1.1);
+assert.equal(
+  getEffectiveChoiceChance(seedRuleGame(seedTrait("day-success-boon", "danger-chance-burden"), "night"), 1, { id: "danger-chance", tone: "danger" }),
+  0.9,
+);
+const staminaLossBurden = resolveChoice(seedRuleGame(seedTrait("night-success-boon", "stamina-loss-burden")), {
+  id: "stamina-loss-burden",
+  stats: { stamina: -2, health: -2 },
+});
+assert.equal(staminaLossBurden.statDelta.stamina, -2.2);
+assert.equal(staminaLossBurden.statDelta.health, -2);
+const healthLossBurden = resolveChoice(seedRuleGame(seedTrait("night-success-boon", "health-loss-burden")), {
+  id: "health-loss-burden",
+  stats: { stamina: -2, health: -2 },
+});
+assert.equal(healthLossBurden.statDelta.health, -2.2);
+assert.equal(healthLossBurden.statDelta.stamina, -2);
+const forfeitBurden = resolveChoice(seedRuleGame(seedTrait("night-success-boon", "forfeit-burden")), {
+  id: "forfeit-burden",
+  isForfeit: true,
+  estate: { stability: -1 },
+  resources: { fear: 1 },
+});
+assert.equal(forfeitBurden.estateDelta.stability, -1.1);
+assert.equal(forfeitBurden.resourceDelta.fear, 1.1);
+const retreatBurden = retreatExpedition({
+  ...seedRuleGame(seedTrait("day-success-boon", "forfeit-burden"), "expedition"),
+  expedition: { directionId: "stairs", totalSteps: 3, stepIndex: 1, eventIds: [] },
+});
+assert.equal(retreatBurden.estate.stability, deterministicA.estate.stability - 1.1);
+assert.equal(retreatBurden.resources.fear, deterministicA.resources.fear + 1.1);
+assert.ok(retreatBurden.pendingResult.notices.some((notice) => notice.startsWith("성인의 달 ·")));
+
+assert.equal(roundToTenth(1.1999999), 1.2);
+assert.equal(truncateToTenth(1.1999999), 1.1);
+assert.equal(truncateToTenth(1.2), 1.2);
+const rawDisplayDelta = resolveChoice({
+  ...seedRuleGame(null),
+  specialSeedTrait: null,
+}, {
+  id: "raw-display-delta",
+  stats: { health: 1.1999999 },
+});
+assert.equal(rawDisplayDelta.statDelta.health, 1.2);
+assert.equal(rawDisplayDelta.displayDeltas.stats.health, 1.1999999);
+const restSeedRun = createNewRun({ second: 4, runRngSeed: "rest-display-run" });
+const restSeedResult = chooseDayAction({ ...restSeedRun, phase: "day" }, longSleep);
+assert.equal(restSeedResult.stats.health, restSeedRun.stats.health + 3.3);
+assert.equal(truncateToTenth(restSeedResult.displayStats.health), restSeedRun.stats.health + 3.3);
+
+const insightInversion = resolveChoice({
   ...deterministicA,
   phase: "day",
   runSeed: deterministicA.runRngSeed,
+  stats: { ...deterministicA.stats, insight: -1 },
 }, {
-  id: "seed-growth-check",
-  stats: { [seed37.boon.key]: 1, [seed37.burden.key]: 1 },
+  id: "insight-inversion-check",
+  stats: { insight: 2, charm: -3 },
+  resources: { food: 4, fear: -2 },
+  estate: { stability: 3, corruption: -1 },
+  traits: { life: 2, suspicion: -2 },
+  affinities: { maid: 2, knight: -2 },
 });
-assert.equal(seedGrowth.statDelta[seed37.boon.key], seed37.growthMultipliers[seed37.boon.key]);
-assert.equal(seedGrowth.statDelta[seed37.burden.key], seed37.growthMultipliers[seed37.burden.key]);
+assert.equal(insightInversion.statDelta.insight, -2);
+assert.equal(insightInversion.statDelta.charm, -3);
+assert.equal(insightInversion.resourceDelta.food, -4);
+assert.equal(insightInversion.resourceDelta.fear, -2);
+assert.equal(insightInversion.estateDelta.stability, -3);
+assert.equal(insightInversion.estateDelta.corruption, -1);
+assert.equal(insightInversion.traitDelta.life, -2);
+assert.equal(insightInversion.traitDelta.suspicion, -2);
+assert.equal(insightInversion.affinityDelta.maid, -2);
+assert.equal(insightInversion.affinityDelta.knight, -2);
 
 let sacrificeRun = createNewRun({ second: 0, runRngSeed: "sacrifice-run" });
 sacrificeRun = applyPermanentLoss(sacrificeRun, "guard-father", "dead", "test");
@@ -251,10 +447,38 @@ assert.equal(sacrificeRun.sacrificeCount, 2);
 const altered = finishNight({ ...sacrificeRun, day: 7, sacrificeCount: 3, deathAtDaybreak: false });
 assert.equal(altered.route, "altered");
 assert.equal(altered.day, 8);
-assert.equal(altered.phase, "daybreak-transition");
-assert.equal(completeTransition(altered).phase, "day-eight");
+assert.equal(altered.phase, "day-eight");
 const normal = finishNight({ ...sacrificeRun, day: 7, sacrificeCount: 2, deathAtDaybreak: false });
 assert.equal(normal.route, "normal");
+const nextDayInsightReset = finishNight({
+  ...deterministicA,
+  day: 3,
+  stats: { ...deterministicA.stats, insight: -4, stamina: -2 },
+  deathAtDaybreak: false,
+});
+assert.equal(nextDayInsightReset.day, 4);
+assert.equal(nextDayInsightReset.stats.insight, 0);
+assert.equal(nextDayInsightReset.stats.stamina, 10);
+assert.equal(nextDayInsightReset.displayStats.insight, 0);
+assert.equal(nextDayInsightReset.displayStats.stamina, 10);
+const positiveInsightKept = finishNight({
+  ...deterministicA,
+  day: 3,
+  stats: { ...deterministicA.stats, insight: 5 },
+  displayStats: { ...deterministicA.displayStats, insight: 4.9999999 },
+  deathAtDaybreak: false,
+});
+assert.equal(positiveInsightKept.stats.insight, 5);
+assert.equal(positiveInsightKept.displayStats.insight, 4.9999999);
+const dayEightInsightReset = finishNight({
+  ...sacrificeRun,
+  day: 7,
+  sacrificeCount: 2,
+  stats: { ...sacrificeRun.stats, insight: -3 },
+  deathAtDaybreak: false,
+});
+assert.equal(dayEightInsightReset.day, 8);
+assert.equal(dayEightInsightReset.stats.insight, 0);
 
 const transformedReturn = continueAfterResult({
   ...deterministicA,
@@ -269,6 +493,6 @@ const transformedReturn = continueAfterResult({
 assert.equal(transformedReturn.phase, "escape-transformed-choice");
 const sparedReturn = chooseEscapeTransformedFate(transformedReturn, "spare");
 assert.equal(sparedReturn.resumePhase, "daybreak");
-assert.equal(continueAfterResult(sparedReturn).phase, "daybreak-transition");
+assert.equal(continueAfterResult(sparedReturn).phase, "day");
 
 console.log("Rosenthal vertical slice verification passed.");

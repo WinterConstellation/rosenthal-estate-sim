@@ -23,10 +23,12 @@ import {
   getDayOffers,
   getDirectionOffers,
   getEnding,
+  getExplorationOptions,
   getFinaleOptions,
   getNpcSpeaker,
   getSpecialGroup,
   isExplorationOptionAvailable,
+  isNightDisplayPhase,
   openFirstDay,
   retreatExpedition,
   selectCompanion,
@@ -41,7 +43,7 @@ import {
   saveAuto,
   saveManual,
 } from "./engine/saveManager.js";
-import { getEffectiveChoiceChance, getJob, getPassive, getStigmaName } from "./engine/rulesEngine.js";
+import { getEffectiveChoiceChance, getJob, getPassive, getStigmaName, resolveChoice, truncateToTenth } from "./engine/rulesEngine.js";
 import {
   PASSIVES,
   RESOURCE_META,
@@ -105,22 +107,6 @@ const TRAIT_DETAILS = {
   suspicion: "평범해 보이는 장면의 어긋남을 의심하는 성향.",
 };
 
-const MOON_FRAME_COUNT = 31;
-const MOON_FRAME_SIZE = 128;
-
-function getMoonFrameIndex(day) {
-  const numericDay = Number(day) || 1;
-  return Math.min(MOON_FRAME_COUNT - 1, Math.max(0, numericDay - 1));
-}
-
-function getMoonPhaseStyle(day) {
-  return {
-    backgroundImage: 'url("./assets/moon-phases.svg")',
-    backgroundPosition: `-${getMoonFrameIndex(day) * MOON_FRAME_SIZE}px 0`,
-  };
-}
-
-
 const HORROR_FRAGMENTS = [
   "기록은 숨을 쉰다",
   "문장이 피를 흘린다",
@@ -151,30 +137,6 @@ const HORROR_FRAGMENT_LAYOUTS = [
   { x: 70, y: 88, s: 0.7, r: -5, d: -6 },
 ];
 
-const HORROR_RAIN_COLUMNS = [
-  "기\n록\n기\n억\n기\n록",
-  "문\n아\n래\n손\n끝",
-  "붉\n은\n잉\n크\n번\n짐",
-  "잊\n지\n마\n라\n잊\n지",
-  "밤\n밤\n밤\n밤\n밤",
-  "아\n직\n아\n직\n아\n직",
-  "돌\n아\n오\n지\n않\n음",
-  "지\n하\n가\n대\n답",
-  "이\n름\n이\n없\n다",
-];
-
-const HORROR_RAIN_LAYOUTS = [
-  { x: 9, d: -1, t: 8.4 },
-  { x: 18, d: -5, t: 7.2 },
-  { x: 31, d: -2, t: 9.1 },
-  { x: 47, d: -7, t: 6.8 },
-  { x: 59, d: -3, t: 8.8 },
-  { x: 72, d: -9, t: 7.5 },
-  { x: 84, d: -4, t: 9.6 },
-  { x: 93, d: -6, t: 7.9 },
-  { x: 39, d: -10, t: 8.1 },
-];
-
 const HORROR_STATIC_ROWS = [
   ". .-.*..--*.-..*...-..*.-.*..--..*.-",
   "-*..*...--..-.*..*.-..--*...*..-..",
@@ -191,9 +153,15 @@ function displayInteger(value) {
   return Number.isFinite(numeric) ? Math.trunc(numeric) : 0;
 }
 
-function displaySignedInteger(value) {
-  const integer = displayInteger(value);
-  return `${integer > 0 ? "+" : ""}${integer}`;
+function displayTenth(value) {
+  const truncated = truncateToTenth(value);
+  const normalized = Object.is(truncated, -0) ? 0 : truncated;
+  return Number.isInteger(normalized) ? `${normalized}` : normalized.toFixed(1);
+}
+
+function displaySignedTenth(value) {
+  const text = displayTenth(value);
+  return Number(text) > 0 ? `+${text}` : text;
 }
 
 function displayChancePercent(chance) {
@@ -204,7 +172,7 @@ function getHorrorIntensity(game, isNight) {
   const fear = Number(game.resources?.fear ?? 0) / 100;
   const corruption = Number(game.estate?.corruption ?? 0) / 100;
   const transformedCount = Object.values(game.companionStates ?? {}).filter((person) => person.status === "transformed").length;
-  const nightPhase = ["night-companion", "night-direction", "expedition", "finale", "escape-transformed-choice", "nightfall-transition", "daybreak-transition"].includes(game.phase);
+  const nightPhase = ["night-companion", "night-direction", "expedition", "finale", "escape-transformed-choice", "nightfall-transition"].includes(game.phase);
   const nightResult = game.phase === "result" && ["night-companion", "night-direction", "expedition", "finale", "daybreak"].includes(game.resumePhase);
   const phasePressure = nightPhase || nightResult ? 0.18 : 0;
   const routePressure = game.route === "altered" ? 0.14 : 0;
@@ -216,8 +184,8 @@ function HorrorTextOverlay({ game, isNight }) {
   const intensity = getHorrorIntensity(game, isNight);
   if (intensity < 0.12) return null;
 
-  const fragmentCount = Math.min(HORROR_FRAGMENTS.length, Math.max(3, Math.round(4 + intensity * 8)));
-  const rainCount = Math.min(HORROR_RAIN_COLUMNS.length, Math.max(3, Math.round(3 + intensity * 6)));
+  const fragmentCount = Math.min(8, Math.max(3, Math.round(3 + intensity * 5)));
+  const staticRows = intensity >= 0.58 ? HORROR_STATIC_ROWS.slice(0, 2) : [];
 
   return (
     <div
@@ -246,25 +214,8 @@ function HorrorTextOverlay({ game, isNight }) {
           );
         })}
       </div>
-      <div className="horror-text-overlay__rain">
-        {HORROR_RAIN_COLUMNS.slice(0, rainCount).map((text, index) => {
-          const layout = HORROR_RAIN_LAYOUTS[index % HORROR_RAIN_LAYOUTS.length];
-          return (
-            <span
-              key={text + "-" + index}
-              style={{
-                "--x": layout.x + "%",
-                "--delay": layout.d + "s",
-                "--duration": layout.t - intensity * 2 + "s",
-              }}
-            >
-              {text}
-            </span>
-          );
-        })}
-      </div>
       <div className="horror-text-overlay__static">
-        {HORROR_STATIC_ROWS.map((row, index) => (
+        {staticRows.map((row, index) => (
           <span
             key={row + "-" + index}
             style={{
@@ -281,6 +232,32 @@ function HorrorTextOverlay({ game, isNight }) {
   );
 }
 
+const RESOURCE_DETAILS = {
+  food: "영지 주민이 먹을 식량의 비축 상태.",
+  timber: "수리와 난방에 사용하는 목재의 비축 상태.",
+  silver: "거래와 영지 운영에 사용하는 은화.",
+  salt: "악한 것을 봉쇄하고 정화하는 데 사용하는 축성 소금.",
+  population: "현재 영지에 속한 사람의 수.",
+  faith: "영지 공동체가 유지하는 신앙의 상태.",
+  fear: "영지 전체에 쌓인 공포. 높을수록 일상이 흔들린다.",
+};
+
+const ESTATE_DETAILS = {
+  stability: "영지의 질서와 일상이 유지되는 정도.",
+  trust: "주민들이 영주의 선택을 신뢰하는 정도.",
+  recordIntegrity: "장부와 증언이 서로 모순 없이 남아 있는 정도.",
+  corruption: "저택과 영지에 퍼진 비정상적인 징후.",
+  missing: "돌아오지 않은 사람의 수.",
+};
+
+function getChangeDetail(change) {
+  if (change.group === "능력치") return STAT_DETAILS[change.key];
+  if (change.group === "성향") return TRAIT_DETAILS[change.key];
+  if (change.group === "자원") return RESOURCE_DETAILS[change.key];
+  if (change.group === "영지") return ESTATE_DETAILS[change.key];
+  return undefined;
+}
+
 function resourceStage(key, value) {
   const amount = Math.max(0, Math.min(value ?? 0, 100));
   if (key === "fear") {
@@ -295,6 +272,89 @@ function resourceStage(key, value) {
   if (amount <= 60) return "보통";
   if (amount <= 80) return "넉넉함";
   return "풍족함";
+}
+
+function resourceTone(key, value) {
+  const amount = Math.max(0, Math.min(value ?? 0, 100));
+  if (key === "fear") {
+    if (amount <= 20) return "good";
+    if (amount <= 40) return "neutral";
+    if (amount <= 60) return "warning";
+    if (amount <= 80) return "danger";
+    return "critical";
+  }
+  if (amount <= 20) return "critical";
+  if (amount <= 40) return "danger";
+  if (amount <= 60) return "neutral";
+  if (amount <= 80) return "good";
+  return "abundant";
+}
+
+function hasFinalConsonant(text) {
+  const code = text.at(-1)?.charCodeAt(0);
+  return code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 !== 0;
+}
+
+function joinLabels(labels) {
+  if (labels.length <= 1) return labels[0] ?? "";
+  return labels.map((label, index) => (
+    index === labels.length - 1 ? label : `${label}${hasFinalConsonant(label) ? "과" : "와"}`
+  )).join(" ");
+}
+
+function objectPhrase(labels) {
+  const text = joinLabels(labels);
+  return `${text}${hasFinalConsonant(text) ? "을" : "를"}`;
+}
+
+function subjectPhrase(labels) {
+  const text = joinLabels(labels);
+  return `${text}${hasFinalConsonant(text) ? "이" : "가"}`;
+}
+
+function describeEffects(effects = {}) {
+  const entries = Object.entries(effects).flatMap(([group, values]) =>
+    Object.entries(values ?? {}).map(([key, value]) => ({
+      group,
+      key,
+      value,
+      label: LABELS[key] ?? TRAIT_META[key]?.label ?? key,
+    })),
+  );
+  const positive = entries.filter((entry) => entry.value > 0);
+  const negative = entries.filter((entry) => entry.value < 0);
+  const sentences = [];
+  if (positive.length > 0) {
+    const recovery = positive.filter((entry) => ["health", "stamina"].includes(entry.key));
+    const gains = positive.filter((entry) => !["health", "stamina"].includes(entry.key));
+    if (recovery.length > 0) sentences.push(`${objectPhrase(recovery.map((entry) => entry.label))} 회복한다.`);
+    if (gains.length > 0) sentences.push(`${objectPhrase(gains.map((entry) => entry.label))} 늘린다.`);
+  }
+  if (negative.length > 0) {
+    const large = negative.filter((entry) => Math.abs(entry.value) >= 4);
+    const ordinary = negative.filter((entry) => Math.abs(entry.value) < 4);
+    if (large.length > 0) sentences.push(`${objectPhrase(large.map((entry) => entry.label))} 크게 소모한다.`);
+    if (ordinary.length > 0) sentences.push(`${subjectPhrase(ordinary.map((entry) => entry.label))} 감소한다.`);
+  }
+  return sentences.join(" ");
+}
+
+function describeChoice(choice) {
+  if (choice.tooltip) return choice.tooltip;
+  const categoryLead = {
+    gathering: "영지의 물자를 확보하거나 정리한다.",
+    interaction: "인물과 대화하며 관계와 영지 상태에 영향을 준다.",
+    investigation: "단서와 기록을 조사한다.",
+    training: "훈련을 통해 능력치를 높인다.",
+    rest: "휴식을 통해 몸을 회복한다.",
+    other: "일반 업무 밖의 행동을 시도한다.",
+  }[choice.category];
+  const effectText = describeEffects(choice.effects ?? choice.success);
+  const failureText = describeEffects(choice.failure);
+  if (failureText) {
+    return [categoryLead, effectText && `성공하면 ${effectText}`, `실패하면 ${failureText}`].filter(Boolean).join(" ");
+  }
+  return [categoryLead, effectText, choice.detail ?? choice.preview, "결과는 선택한 뒤 확인할 수 있다."].filter(Boolean).join(" ");
 }
 
 function getEstatePresentation(game, isNight) {
@@ -315,8 +375,9 @@ function getEstatePresentation(game, isNight) {
 
 function ResourceCard({ statKey, value, isNight, revealed }) {
   const meta = RESOURCE_META[statKey];
+  const tone = resourceTone(statKey, value);
   return (
-    <article className={`resource-card resource-card--${statKey}`} title={`${meta.label}의 현재 상태를 다섯 단계로 표시한다.`}>
+    <article className={`resource-card resource-card--${statKey} resource-card--${tone}`} title={`${meta.label}의 현재 상태를 다섯 단계로 표시한다.`}>
       <span>{meta.icon}</span>
       <small>{meta.label}</small>
       <strong>{revealed ? resourceStage(statKey, value) : "?"}</strong>
@@ -347,12 +408,11 @@ function CharacterPanel({ game }) {
     .sort((left, right) => right[1] - left[1])
     .slice(0, 4);
   const job = getJob(game);
-  const revealed = game.day > 1 || game.phase === "ending" || game.phase === "record-stop";
 
   return (
     <aside className="character-panel">
       <div className="character-panel__head">
-        <div className="portrait-placeholder"><span>{revealed ? "영주" : "?"}</span></div>
+        <div className="portrait-placeholder"><span>영주</span></div>
         <div>
           <span className="eyebrow">이번 기록</span>
           <h2>{game.specialSeedName ?? "시작 전"}</h2>
@@ -364,7 +424,7 @@ function CharacterPanel({ game }) {
         {Object.entries(game.stats ?? {}).map(([key, value]) => (
           <div className={value < 0 ? "is-negative" : ""} key={key} title={STAT_DETAILS[key]}>
             <span>{LABELS[key] ?? key}</span>
-            <strong>{revealed ? displayInteger(value) : "?"}</strong>
+            <strong>{displayTenth(game.displayStats?.[key] ?? value)}</strong>
           </div>
         ))}
       </div>
@@ -372,7 +432,7 @@ function CharacterPanel({ game }) {
       <div className="rule-block">
         <span className="eyebrow">성향</span>
         <div className="rule-chip-list">
-          {rankedTraits.map(([key, value]) => <span key={key} title={TRAIT_DETAILS[key]}>{TRAIT_META[key]?.label ?? key} {revealed ? displayInteger(value) : "?"}</span>)}
+          {rankedTraits.map(([key, value]) => <span key={key} title={TRAIT_DETAILS[key]}>{TRAIT_META[key]?.label ?? key} {displayInteger(value)}</span>)}
         </div>
       </div>
       <div className="rule-block">
@@ -510,6 +570,7 @@ function ChoiceButton({ choice, onClick, selected, detail }) {
       type="button"
       disabled={selected || unavailable}
       onClick={() => onClick(choice)}
+      title={unavailable ? choice.unavailableReason ?? "현재 선택할 수 없다" : describeChoice(choice)}
     >
       {choice.categoryLabel && <small>{choice.categoryLabel}</small>}
       <strong>{choice.label ?? choice.title}</strong>
@@ -521,38 +582,19 @@ function ChoiceButton({ choice, onClick, selected, detail }) {
 function ChoicePanel({ game, eyebrow, title, text, choices, onChoose, selectedId, footer }) {
   const paragraphs = normalizeDialogue(text);
   const scriptKey = paragraphs.map((line) => `${line.speaker}:${line.text}`).join("\u241e");
-  const [paragraphIndex, setParagraphIndex] = useState(0);
-
-  useEffect(() => {
-    setParagraphIndex(0);
-  }, [scriptKey]);
-
-  const currentIndex = Math.min(paragraphIndex, Math.max(paragraphs.length - 1, 0));
-  const hasNextParagraph = currentIndex < paragraphs.length - 1;
-  const currentLine = paragraphs[currentIndex];
-  const speakerKind = getSpeakerKind(currentLine?.speaker);
+  const dialogueKey = `${eyebrow}\u241f${title}\u241f${scriptKey}`;
+  const [completedScriptKey, setCompletedScriptKey] = useState(null);
+  const dialogueComplete = paragraphs.length === 0 || completedScriptKey === dialogueKey;
 
   return (
-    <section className="choice-panel">
-      <header className="choice-panel__intro">
-        <span className="eyebrow">{eyebrow}</span>
-        <h2>{title}</h2>
-        {currentLine && (
-          <div className={`choice-context choice-context--${speakerKind}`}>
-            <small>선택 전 상황</small>
-            <strong className={`speaker-label speaker-label--${speakerKind} choice-panel__speaker`}>
-              {resolveSpeakerLabel(currentLine.speaker, game)}
-            </strong>
-            <p key={`${scriptKey}-${currentIndex}`}>{currentLine.text}</p>
-          </div>
-        )}
-      </header>
-      {hasNextParagraph ? (
-        <div className="paragraph-controls">
-          <button type="button" onClick={() => setParagraphIndex((index) => index + 1)}>다음</button>
-        </div>
-      ) : (
-        <>
+    <>
+      <section className="choice-panel">
+        <header className="choice-panel__intro">
+          <span className="eyebrow">{eyebrow}</span>
+          <h2>{title}</h2>
+        </header>
+        {dialogueComplete ? (
+          <>
           <div className={`choice-list ${selectedId ? "is-resolving" : ""}`}>
             {choices.map((choice) => (
               <ChoiceButton
@@ -565,61 +607,93 @@ function ChoicePanel({ game, eyebrow, title, text, choices, onChoose, selectedId
             ))}
           </div>
           {footer}
-        </>
+          </>
+        ) : (
+          <div className="choice-panel__waiting">
+            <span>대화를 확인한 뒤 선택할 수 있다.</span>
+          </div>
+        )}
+      </section>
+      {!dialogueComplete && (
+        <DialogueCard
+          game={game}
+          eyebrow={eyebrow}
+          title={title}
+          paragraphs={paragraphs}
+          button="선택지를 확인한다"
+          onContinue={() => setCompletedScriptKey(dialogueKey)}
+        />
       )}
-    </section>
+    </>
   );
 }
 
 function ResultOverlay({ game, result, onContinue }) {
   const paragraphs = normalizeDialogue(result?.result, result?.speaker ?? "narration");
   const scriptKey = paragraphs.map((line) => `${line.speaker}:${line.text}`).join("\u241e");
-  const [paragraphIndex, setParagraphIndex] = useState(0);
-
-  useEffect(() => {
-    setParagraphIndex(0);
-  }, [scriptKey]);
+  const dialogueKey = `${result?.title ?? ""}\u241f${scriptKey}`;
+  const [completedScriptKey, setCompletedScriptKey] = useState(null);
+  const dialogueComplete = completedScriptKey === dialogueKey;
+  const changeGroups = [
+    { id: "stats", label: "주인공 능력치", changes: result?.changes?.filter((change) => change.group === "능력치") ?? [] },
+    { id: "resources", label: "영지 자원", changes: result?.changes?.filter((change) => change.group === "자원") ?? [] },
+    { id: "estate", label: "영지 상태", changes: result?.changes?.filter((change) => change.group === "영지") ?? [] },
+    { id: "traits", label: "성향", changes: result?.changes?.filter((change) => change.group === "성향") ?? [] },
+  ].filter((group) => group.changes.length > 0);
 
   if (!result) return null;
-  const currentIndex = Math.min(paragraphIndex, Math.max(paragraphs.length - 1, 0));
-  const hasNextParagraph = currentIndex < paragraphs.length - 1;
-  const currentLine = paragraphs[currentIndex];
-  const speakerKind = getSpeakerKind(currentLine?.speaker);
+  if (!dialogueComplete && paragraphs.length > 0) {
+    return (
+      <DialogueCard
+        game={game}
+        eyebrow="선택의 결과"
+        title={result.title}
+        paragraphs={paragraphs}
+        button="선택의 결과 확인"
+        onContinue={() => setCompletedScriptKey(dialogueKey)}
+        danger={["danger", "lethal"].includes(result.tone)}
+      />
+    );
+  }
 
   return (
     <div className="overlay result-overlay">
       <section className={`result-card result-card--${result.tone ?? "neutral"}`}>
         <div className="result-card__head">
-          <span>{result.success === false ? "실패" : "선택 이후"}</span>
+          <span>선택의 결과</span>
           <strong>{result.title}</strong>
         </div>
-        {currentLine && <strong className={`speaker-label speaker-label--${speakerKind} result-card__speaker`}>{resolveSpeakerLabel(currentLine.speaker, game)}</strong>}
-        {currentLine && <p key={`${scriptKey}-${currentIndex}`}>{currentLine.text}</p>}
-        {hasNextParagraph ? (
-          <div className="result-card__controls">
-            <button type="button" onClick={() => setParagraphIndex((index) => index + 1)}>다음</button>
+        <div className="result-card__summary">
+          <strong>{result.changes?.length > 0 ? `${result.changes.length}개 항목 변경` : "변화 없음"}</strong>
+        </div>
+        {result.notices?.length > 0 && (
+          <div className="notice-list">
+            {result.notices.map((notice, index) => <span key={`${notice}-${index}`}>{notice}</span>)}
           </div>
-        ) : (
-          <>
-            {result.notices?.length > 0 && (
-              <div className="notice-list">
-                {result.notices.map((notice, index) => <span key={`${notice}-${index}`}>{notice}</span>)}
-              </div>
-            )}
-            {result.changes?.length > 0 && (
-              <div className="change-list">
-                {result.changes.map((change, index) => (
-                  <span className={change.delta < 0 ? "change--negative" : "change--positive"} key={`${change.group}-${change.key}-${index}`}>
-                    {LABELS[change.key] ?? change.label} {displaySignedInteger(change.delta)}
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="result-card__controls">
-              <button type="button" onClick={onContinue}>확인한다</button>
-            </div>
-          </>
         )}
+        {changeGroups.length > 0 && (
+          <div className="change-groups">
+            {changeGroups.map((group) => (
+              <section className="change-group" key={group.id}>
+                <strong>{group.label}</strong>
+                <div className="change-list">
+                  {group.changes.map((change, index) => (
+                    <span
+                      className={change.delta < 0 ? "change--negative" : "change--positive"}
+                      key={`${change.group}-${change.key}-${index}`}
+                      title={getChangeDetail(change)}
+                    >
+                      {LABELS[change.key] ?? change.label} {displaySignedTenth(change.delta)}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+        <div className="result-card__controls">
+          <button type="button" onClick={onContinue}>확인</button>
+        </div>
       </section>
     </div>
   );
@@ -739,37 +813,15 @@ function RulesModal({ game, tutorial, onClose, onTogglePassive, onEquipStigma })
   );
 }
 
-function MoonPhase({ day, className = "" }) {
+function TransitionOverlay({ onContinue }) {
   return (
-    <span
-      className={`moon-phase ${className}`.trim()}
-      style={getMoonPhaseStyle(day)}
-      aria-hidden="true"
-    />
-  );
-}
-
-function CelestialIndicator({ day, isNight }) {
-  const label = isNight ? `${day}일차 달` : "낮의 태양";
-  return (
-    <div className={`celestial-indicator ${isNight ? "celestial-indicator--night" : "celestial-indicator--day"}`} role="img" aria-label={label} title={label}>
-      <span className="celestial-indicator__sun" aria-hidden="true" />
-      <MoonPhase day={day} className="celestial-indicator__moon" />
-    </div>
-  );
-}
-
-function TransitionOverlay({ kind, day, onContinue }) {
-  const isDawn = kind === "daybreak";
-  return (
-    <div className={`time-transition time-transition--${kind}`}>
+    <div className="time-transition time-transition--nightfall">
       <span className="time-transition__orb time-transition__sun" aria-hidden="true" />
-      <MoonPhase day={day} className="time-transition__orb time-transition__moon" />
       <div className="time-transition__copy">
-        <span>{isDawn ? "밤이 끝난다" : "저녁이 끝났다"}</span>
-        <h2>{isDawn ? "달이 떨어진다." : "해가 떨어진다."}</h2>
-        <p>{isDawn ? "밤의 색이 걷히고 로젠탈의 지붕 위로 아침이 번진다." : "마지막 햇빛이 사라지자 지하에서 문 두드리는 소리가 들린다."}</p>
-        <button type="button" onClick={onContinue}>{isDawn ? "아침을 맞는다" : "밤을 맞는다"}</button>
+        <span>저녁이 끝났다</span>
+        <h2>해가 떨어진다.</h2>
+        <p>마지막 햇빛이 사라지자 지하에서 문 두드리는 소리가 들린다.</p>
+        <button type="button" onClick={onContinue}>밤을 맞는다</button>
       </div>
     </div>
   );
@@ -820,8 +872,7 @@ function App() {
     }
   }, [game.day, game.phase, game.tutorialSummarySeen, showStart]);
 
-  const isNight = ["nightfall-transition", "night-companion", "night-direction", "expedition", "finale", "escape-transformed-choice", "daybreak-transition"].includes(game.phase)
-    || (game.phase === "result" && ["night-companion", "night-direction", "expedition", "finale", "daybreak"].includes(game.resumePhase));
+  const isNight = isNightDisplayPhase(game);
   const estateState = getEstatePresentation(game, isNight);
   const animate = (id, action) => {
     if (selectedId) return;
@@ -908,7 +959,7 @@ function App() {
           title={stage.title}
           text={stage.text}
           choices={stage.options.map((choice) => {
-            const effectiveChance = getEffectiveChoiceChance({ ...game, phase: "event" }, choice.chance);
+            const effectiveChance = getEffectiveChoiceChance({ ...game, phase: "event" }, choice.chance, { ...choice, tone: "extreme" });
             return effectiveChance == null
               ? choice
               : { ...choice, detail: `\uc131\uacf5\ub960 ${displayChancePercent(effectiveChance)}%` };
@@ -939,7 +990,7 @@ function App() {
           choices={choices}
           selectedId={selectedId}
           onChoose={(choice) => animate(choice.id, (current) => chooseDayAction(current, choice))}
-          footer={<button className="forfeit-button" type="button" onClick={() => animate("day-forfeit", forfeitDay)}>포기한다</button>}
+          footer={<button className="forfeit-button" type="button" title="오늘의 결정을 미룬다. 영지 안정도와 신뢰가 감소하고 공포가 늘어난다." onClick={() => animate("day-forfeit", forfeitDay)}>포기한다</button>}
         />
       );
     }
@@ -957,7 +1008,7 @@ function App() {
           choices={companions}
           selectedId={selectedId}
           onChoose={(choice) => animate(choice.id, (current) => selectCompanion(current, choice.id))}
-          footer={<button className="forfeit-button" type="button" onClick={() => animate("skip-night", skipNightEntry)}>지하에 들어가지 않는다</button>}
+          footer={<button className="forfeit-button" type="button" title="오늘 밤 지하에 들어가지 않는다. 지하 진입 포기 횟수가 누적된다." onClick={() => animate("skip-night", skipNightEntry)}>지하에 들어가지 않는다</button>}
         />
       );
     }
@@ -977,15 +1028,15 @@ function App() {
     }
     if (game.phase === "expedition") {
       const event = getCurrentExplorationEvent(game);
-      const choices = event.options.map((choice) => {
+      const choices = getExplorationOptions(event).map((choice) => {
         const available = isExplorationOptionAvailable(game, choice);
-        const effectiveChance = getEffectiveChoiceChance({ ...game, phase: "night" }, choice.chance);
+        const effectiveChance = getEffectiveChoiceChance({ ...game, phase: "night" }, choice.chance, choice);
         return {
           ...choice,
           available,
           unavailableReason: choice.requiresHealthyCompanion ? "정상 상태의 동행자가 필요하다" : undefined,
-          detail: `\uc131\uacf5\ub960 ${displayChancePercent(effectiveChance)}%`,
-          tone: effectiveChance < 0.7 ? "danger" : "neutral",
+          detail: effectiveChance == null ? "확정 행동" : `성공률 ${displayChancePercent(effectiveChance)}%`,
+          tone: choice.tone ?? ((effectiveChance ?? 1) < 0.7 ? "danger" : "neutral"),
         };
       });
       return (
@@ -997,14 +1048,14 @@ function App() {
           choices={choices}
           selectedId={selectedId}
           onChoose={(choice) => animate(choice.id, (current) => chooseExplorationOption(current, event, choice))}
-          footer={<button className="forfeit-button" type="button" onClick={() => animate("retreat", retreatExpedition)}>포기하고 귀환한다</button>}
+          footer={<button className="forfeit-button" type="button" title="현재 탐사를 중단하고 귀환한다. 일반 포기 횟수가 누적된다." onClick={() => animate("retreat", retreatExpedition)}>포기하고 귀환한다</button>}
         />
       );
     }
     if (game.phase === "finale") {
       const currentFinale = getCurrentFinale(game);
       const choices = getFinaleOptions(game, currentFinale).map((choice) => {
-        const effectiveChance = getEffectiveChoiceChance({ ...game, phase: "night" }, choice.chance);
+        const effectiveChance = getEffectiveChoiceChance({ ...game, phase: "night" }, choice.chance, choice);
         return {
           ...choice,
           preview: exactOptionPreview(game, choice),
@@ -1127,11 +1178,7 @@ function App() {
     : game.phase === "expedition"
       ? `${game.expedition.stepIndex + 1} / ${game.expedition.totalSteps}`
       : "—";
-  const headerTitle = game.phase === "daybreak-transition"
-    ? `로젠탈의 ${Math.max(game.day - 1, 1)}번째 밤이 끝난다`
-    : isNight
-      ? `${game.day}번째 밤`
-      : `기록 ${game.day}일차`;
+  const headerTitle = isNight ? `${game.day}번째 밤` : `기록 ${game.day}일차`;
 
   return (
     <main className={`app-shell ${isNight ? "theme-night" : "theme-day"}`}>
@@ -1144,13 +1191,10 @@ function App() {
             <h1>{headerTitle}</h1>
           </div>
         </div>
-        <div className="topbar__center">
-          <CelestialIndicator day={game.day} isNight={isNight} />
-          <div className="phase-clock">
-            <span>{phaseLabel}</span>
-            <strong>{phaseProgress}</strong>
-            <em>{game.day}일차</em>
-          </div>
+        <div className="phase-clock">
+          <span>{phaseLabel}</span>
+          <strong>{phaseProgress}</strong>
+          <em>{game.day}일차</em>
         </div>
         <div className="topbar__actions">
           <div className="sacrifice-counter">
@@ -1170,7 +1214,7 @@ function App() {
             statKey={key}
             value={game.resources?.[key] ?? 0}
             isNight={isNight}
-            revealed={game.day > 1 || game.phase === "record-stop" || game.phase === "ending"}
+            revealed
           />
         ))}
       </section>
@@ -1192,8 +1236,7 @@ function App() {
         <CharacterPanel game={game} />
       </div>
 
-      {game.phase === "nightfall-transition" && <TransitionOverlay kind="nightfall" day={game.day} onContinue={() => setGame(completeTransition(game))} />}
-      {game.phase === "daybreak-transition" && <TransitionOverlay kind="daybreak" day={game.day} onContinue={() => setGame(completeTransition(game))} />}
+      {game.phase === "nightfall-transition" && <TransitionOverlay onContinue={() => setGame(completeTransition(game))} />}
       <ResultOverlay game={game} result={game.phase === "result" ? game.pendingResult : null} onContinue={() => setGame(continueAfterResult(game))} />
       {rulesOpen && (
         <RulesModal
@@ -1212,10 +1255,24 @@ function App() {
 export default App;
 
 function exactOptionPreview(game, choice) {
-  const chance = getEffectiveChoiceChance({ ...game, phase: "night" }, choice.chance);
-  const effects = choice.success ?? {};
+  const chance = getEffectiveChoiceChance({ ...game, phase: "night" }, choice.chance, choice);
+  const resolved = resolveChoice({ ...game, phase: "night" }, {
+    ...choice,
+    id: `preview-${choice.id}`,
+    successChance: null,
+    stats: choice.success?.stats,
+    resources: choice.success?.resources,
+    estate: choice.success?.estate,
+    traits: choice.success?.traits,
+  });
+  const effects = {
+    stats: resolved.displayDeltas.stats,
+    resources: resolved.displayDeltas.resources,
+    estate: resolved.displayDeltas.estate,
+    traits: resolved.displayDeltas.traits,
+  };
   const deltas = Object.entries(effects).flatMap(([group, values]) =>
-    Object.entries(values ?? {}).map(([key, value]) => `${LABELS[key] ?? key} ${displaySignedInteger(value)}`),
+    Object.entries(values ?? {}).map(([key, value]) => `${LABELS[key] ?? key} ${displaySignedTenth(value)}`),
   );
   if (choice.intentionalLoss) deltas.push("\ub3d9\ud589\uc790 \uc601\uad6c \uc2e4\uc885");
   return [chance == null ? null : `\uc131\uacf5\ub960 ${displayChancePercent(chance)}%`, ...deltas].filter(Boolean).join(" \u00b7 " );

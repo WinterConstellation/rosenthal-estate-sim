@@ -9,7 +9,7 @@ import {
   SPECIAL_EVENT_GROUPS,
   UNNAMED_COMPANIONS,
 } from "../data/rosenthalContent.js";
-import { getSaintSeed, getSeedGrowthMultipliers } from "../data/saintSeeds.js";
+import { getSaintSeed, getSeedGrowthMultipliers, getSeedTrait } from "../data/saintSeeds.js";
 import {
   PASSIVES,
   STAT_META,
@@ -60,6 +60,18 @@ const TRUTH_FINALE = {
   ],
 };
 
+export const UNDERGROUND_REST_OPTION = {
+  id: "underground-rest",
+  label: "휴식한다",
+  tone: "danger",
+  tooltip: "지하에서 잠시 휴식한다. 체력 1과 스태미나 3을 회복하지만 결단과 통찰이 1씩 감소하고, 공포 3과 이상 징후 5가 증가한다.",
+  success: {
+    stats: { health: 1, stamina: 3, resolve: -1, insight: -1 },
+    resources: { fear: 3 },
+    estate: { corruption: 5 },
+  },
+};
+
 export function createStartState() {
   return {
     version: GAME_VERSION,
@@ -76,6 +88,7 @@ export function createNewRun({ second = new Date().getSeconds(), runRngSeed = cr
   const baseStats = deriveStats(emptyTraits);
   const stats = { ...baseStats };
   const specialSeedGrowthMultipliers = getSeedGrowthMultipliers(specialSeed);
+  const specialSeedTrait = getSeedTrait(specialSeed);
   const companionStates = {};
   CORE_NPCS.forEach((npc) => {
     companionStates[npc.id] = {
@@ -108,6 +121,7 @@ export function createNewRun({ second = new Date().getSeconds(), runRngSeed = cr
     specialSeedName: specialSeed.name,
     specialSeedRule: specialSeed.ruleText,
     specialSeedGrowthMultipliers,
+    specialSeedTrait,
     specialSeedStatsApplied: true,
     eventGroupId: specialSeed.eventGroupId,
     route: null,
@@ -132,6 +146,7 @@ export function createNewRun({ second = new Date().getSeconds(), runRngSeed = cr
     },
     traits: emptyTraits,
     stats,
+    displayStats: { ...stats },
     affinities: {},
     jobId: null,
     titles: [],
@@ -178,6 +193,13 @@ export function createNewRun({ second = new Date().getSeconds(), runRngSeed = cr
 
 export function getSpecialGroup(state) {
   return SPECIAL_EVENT_GROUPS[state.eventGroupId];
+}
+
+export function isNightDisplayPhase(state) {
+  if (["night-companion", "night-direction", "expedition", "finale", "escape-transformed-choice"].includes(state.phase)) {
+    return true;
+  }
+  return state.phase === "result" && ["expedition", "finale", "daybreak"].includes(state.resumePhase);
 }
 
 export function beginPrologue(state) {
@@ -280,6 +302,10 @@ function normalizeActionChoice(state, action, phaseKind = "day") {
     estate: { ...(effects.estate ?? {}) },
     affinities: { ...(effects.affinities ?? {}) },
     event: action.event,
+    isForfeit: action.isForfeit,
+    isRetreat: action.isRetreat,
+    lossRisk: action.lossRisk,
+    intentionalLoss: action.intentionalLoss,
     result: action.result,
     successChance: action.successChance,
     failure: action.failure,
@@ -287,11 +313,19 @@ function normalizeActionChoice(state, action, phaseKind = "day") {
   return { choice, phaseKind };
 }
 
-function getChanges(before, after, group, labels = {}) {
-  return Object.keys(after).flatMap((key) => {
-    const delta = (after[key] ?? 0) - (before[key] ?? 0);
-    return delta === 0 ? [] : [{ group, key, label: labels[key]?.label ?? key, delta }];
+function getDisplayChanges(delta, group, labels = {}) {
+  return Object.entries(delta ?? {}).flatMap(([key, value]) => (
+    value === 0 ? [] : [{ group, key, label: labels[key]?.label ?? key, delta: value }]
+  ));
+}
+
+function applyDisplayDelta(target, delta = {}, lower = -Infinity, upper = Infinity) {
+  const next = { ...target };
+  Object.entries(delta).forEach(([key, value]) => {
+    const current = Number(next[key]) || 0;
+    next[key] = Math.min(Math.max(current + (Number(value) || 0), lower), upper);
   });
+  return next;
 }
 
 export function applyActionEffects(state, action, {
@@ -307,12 +341,13 @@ export function applyActionEffects(state, action, {
   const estate = clampMap(state.estate, resolved.estateDelta, -99, 100);
   const traits = clampMap(state.traits, resolved.traitDelta, -99, 99);
   const stats = clampMap(state.stats, resolved.statDelta, -99, 999);
+  const displayStats = applyDisplayDelta(state.displayStats ?? state.stats, resolved.displayDeltas.stats, -99, 999);
   const affinities = clampMap(state.affinities, resolved.affinityDelta, -99, 99);
   const changes = [
-    ...getChanges(state.stats, stats, "능력치", STAT_META),
-    ...getChanges(state.resources, resources, "자원"),
-    ...getChanges(state.estate, estate, "영지"),
-    ...getChanges(state.traits, traits, "성향", TRAIT_META),
+    ...getDisplayChanges(resolved.displayDeltas.stats, "능력치", STAT_META),
+    ...getDisplayChanges(resolved.displayDeltas.resources, "자원"),
+    ...getDisplayChanges(resolved.displayDeltas.estate, "영지"),
+    ...getDisplayChanges(resolved.displayDeltas.traits, "성향", TRAIT_META),
   ];
   const historyEntry = {
     day: state.day,
@@ -333,6 +368,7 @@ export function applyActionEffects(state, action, {
     estate,
     traits,
     stats,
+    displayStats,
     affinities,
     nextTurn: resolved.nextTurn,
     ruleTrace: resolved.traceLabels,
@@ -454,6 +490,10 @@ export function getCurrentExplorationEvent(state) {
   return EXPLORATION_EVENTS.find((event) => event.id === id);
 }
 
+export function getExplorationOptions(event) {
+  return [...event.options, UNDERGROUND_REST_OPTION];
+}
+
 export function isCompanionOperational(state) {
   if (!state.selectedCompanionId || state.selectedCompanionId === "alone") return false;
   return state.companionStates[state.selectedCompanionId]?.status === "alive";
@@ -468,7 +508,7 @@ function actionFromOutcome(option, prefix) {
     id: `${prefix}-${option.id}`,
     label: option.label,
     title: option.label,
-    tone: option.lossRisk ? "danger" : "neutral",
+    tone: option.tone ?? (option.lossRisk ? "danger" : "neutral"),
     successChance: option.chance,
     stats: option.success?.stats,
     resources: option.success?.resources,
@@ -480,6 +520,8 @@ function actionFromOutcome(option, prefix) {
       estate: option.failure?.estate,
       traits: option.failure?.traits,
     },
+    lossRisk: option.lossRisk,
+    intentionalLoss: option.intentionalLoss,
   };
 }
 
@@ -593,20 +635,33 @@ function assignFirstNightBuild(state) {
 
 export function retreatExpedition(state) {
   const general = state.forfeitCounters.general + 1;
-  return {
+  const next = applyActionEffects({
     ...state,
-    phase: "result",
-    resumePhase: "daybreak",
     majorEndingsLocked: true,
     deathAtDaybreak: general >= 3 || state.deathAtDaybreak,
     forfeitCounters: { ...state.forfeitCounters, general },
+  }, {
+    id: `retreat-${state.day}-${state.expedition?.stepIndex ?? 0}`,
+    title: "포기하고 귀환한다",
+    category: "other",
+    tone: "danger",
+    isRetreat: true,
+    effects: { estate: { stability: -1 }, resources: { fear: 1 } },
+    result: "길을 되짚어 지상으로 돌아왔다. 계단 수는 내려올 때와 달랐다.",
+  }, {
+    phaseKind: "night",
+    resumePhase: "daybreak",
+    resultText: "길을 되짚어 지상으로 돌아왔다. 계단 수는 내려올 때와 달랐다.",
+  });
+  return {
+    ...next,
     pendingResult: {
-      title: "포기하고 귀환한다",
-      tone: "danger",
-      success: true,
-      result: "길을 되짚어 지상으로 돌아왔다. 계단 수는 내려올 때와 달랐다.",
-      changes: [],
-      notices: ["큰 축의 엔딩 봉쇄", general >= 3 ? "다음 아침까지 남은 시간이 줄어든다." : "귀환을 미룬 흔적이 남는다."],
+      ...next.pendingResult,
+      notices: [
+        ...(next.pendingResult?.notices ?? []),
+        "큰 축의 엔딩 봉쇄",
+        general >= 3 ? "다음 아침까지 남은 시간이 줄어든다." : "귀환을 미룬 흔적이 남는다.",
+      ],
     },
   };
 }
@@ -625,6 +680,7 @@ export function forfeitDay(state) {
     title: "포기한다",
     category: "other",
     tone: "danger",
+    isForfeit: true,
     effects: { estate: { stability: -3, trust: -2 }, resources: { fear: 2 }, stats: { stamina: -1 } },
     result: "결정을 미루는 동안 다른 사람들이 대신 정했다.",
   }, {
@@ -833,12 +889,19 @@ export function getNpcSpeaker(state, npcId) {
 export function refreshSeedState(state) {
   if (state?.specialSeedId === undefined || state?.specialSeedId === null) return state;
   const seed = getSaintSeed(state.specialSeedId);
+  const phase = state.phase === "daybreak-transition"
+    ? state.transitionTargetPhase ?? "day"
+    : state.phase;
   return {
     ...state,
+    phase,
+    transitionTargetPhase: state.phase === "daybreak-transition" ? null : state.transitionTargetPhase,
     specialSeedName: seed.name,
     specialSeedRule: seed.ruleText,
     specialSeedStatsApplied: true,
     specialSeedGrowthMultipliers: getSeedGrowthMultipliers(seed),
+    specialSeedTrait: getSeedTrait(seed),
+    displayStats: state.displayStats ?? { ...state.stats },
   };
 }
 
@@ -870,48 +933,65 @@ export function continueAfterResult(state) {
 }
 
 export function completeTransition(state) {
-  if (!["nightfall-transition", "daybreak-transition"].includes(state.phase)) return state;
+  if (state.phase !== "nightfall-transition") return state;
   return {
     ...state,
-    phase: state.transitionTargetPhase ?? (state.phase === "nightfall-transition" ? "night-companion" : "day"),
+    phase: state.transitionTargetPhase ?? "night-companion",
     transitionTargetPhase: null,
   };
 }
 
 export function finishNight(state) {
   if (state.day === 7 && state.forfeitCounters.nightEntry === 7) {
-    return { ...state, phase: "daybreak-transition", transitionTargetPhase: "ending", endingId: "accepted-lord", pendingResult: null };
+    return { ...state, phase: "ending", transitionTargetPhase: null, endingId: "accepted-lord", pendingResult: null };
   }
   if (state.deathAtDaybreak) {
-    return { ...state, phase: "daybreak-transition", transitionTargetPhase: "ending", endingId: "forfeit-death", pendingResult: null };
+    return { ...state, phase: "ending", transitionTargetPhase: null, endingId: "forfeit-death", pendingResult: null };
   }
   if (state.day >= 7) {
     const route = state.sacrificeCount >= 3 ? "altered" : "normal";
+    const displayInsight = state.stats.insight < 0
+      ? 0
+      : (state.displayStats?.insight ?? state.stats.insight);
     return {
       ...state,
       day: 8,
       route,
-      phase: "daybreak-transition",
-      transitionTargetPhase: "day-eight",
+      stats: { ...state.stats, insight: Math.max(state.stats.insight, 0) },
+      displayStats: { ...(state.displayStats ?? state.stats), insight: displayInsight },
+      phase: "day-eight",
+      transitionTargetPhase: null,
       pendingResult: null,
       expedition: null,
       selectedCompanionId: null,
       escapeTransformationResolvedId: null,
     };
   }
+  const displayInsight = state.stats.insight < 0
+    ? 0
+    : (state.displayStats?.insight ?? state.stats.insight);
   const next = {
     ...state,
     day: state.day + 1,
     dayTurn: 0,
     usedDayCategories: [],
-    phase: "daybreak-transition",
-    transitionTargetPhase: "day",
+    phase: "day",
+    transitionTargetPhase: null,
     pendingResult: null,
     resumePhase: null,
     expedition: null,
     selectedCompanionId: null,
     escapeTransformationResolvedId: null,
-    stats: { ...state.stats, stamina: 10 },
+    stats: {
+      ...state.stats,
+      insight: Math.max(state.stats.insight, 0),
+      stamina: 10,
+    },
+    displayStats: {
+      ...(state.displayStats ?? state.stats),
+      insight: displayInsight,
+      stamina: 10,
+    },
   };
   return next;
 }
@@ -928,7 +1008,7 @@ export function canManualSave(state) {
   return state.day >= 1
     && state.day <= 8
     && state.dayTurn === 0
-    && ["day", "special-event", "day-eight", "daybreak-transition"].includes(state.phase);
+    && ["day", "special-event", "day-eight"].includes(state.phase);
 }
 
 export function getEnding(state) {
