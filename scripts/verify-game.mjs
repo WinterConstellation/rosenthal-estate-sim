@@ -31,7 +31,7 @@ import {
   refreshSeedState,
   startExpedition,
 } from "../src/engine/rosenthalEngine.js";
-import { resolveChoice } from "../src/engine/rulesEngine.js";
+import { getEffectiveChoiceChance, resolveChoice } from "../src/engine/rulesEngine.js";
 
 assert.equal(SAINT_SEEDS.length, 60);
 assert.equal(new Set(SAINT_SEEDS.map((seed) => seed.name)).size, 60);
@@ -42,6 +42,7 @@ assert.ok(SAINT_SEEDS.every((seed) => !seed.name.includes("聖")));
 assert.ok(SAINT_SEEDS.every((seed) => !["김대건", "정하상", "고순이", "권진이", "김효임", "김효주"].some((name) => seed.name.includes(name))));
 assert.ok(SAINT_SEEDS.every((seed) => seed.boon.group === "stats" && seed.burden.group === "stats"));
 assert.ok(SAINT_SEEDS.every((seed) => seed.boon.amount > 0 && seed.burden.amount < 0));
+assert.ok(SAINT_SEEDS.every((seed) => Object.values(seed.growthMultipliers ?? {}).every((value) => value >= 0.1 && value <= 2)));
 assert.ok(SAINT_SEEDS.every((seed) => !seed.ruleText.includes("일차") && !seed.ruleText.includes("행동")));
 
 assert.equal(DAY_ACTIONS.length, 30);
@@ -84,8 +85,8 @@ assert.equal(deterministicA.specialSeedId, 37);
 assert.equal(deterministicA.eventGroupId, Math.floor(37 / 5));
 assert.equal(deterministicA.specialSeedName, seed37.name);
 assert.equal(deterministicA.specialSeedRule, seed37.ruleText);
-assert.equal(deterministicA.stats[seed37.boon.key], baseStats[seed37.boon.key] + seed37.boon.amount);
-assert.equal(deterministicA.stats[seed37.burden.key], baseStats[seed37.burden.key] + seed37.burden.amount);
+assert.deepEqual(deterministicA.stats, baseStats);
+assert.deepEqual(deterministicA.specialSeedGrowthMultipliers, seed37.growthMultipliers);
 assert.equal(deterministicA.ownedPassiveIds.length, 5);
 assert.equal(deterministicA.passiveIds.length, 3);
 assert.deepEqual(getDayOffers({ ...deterministicA, phase: "day" }), getDayOffers({ ...deterministicB, phase: "day" }));
@@ -106,8 +107,9 @@ const refreshedLegacy = refreshSeedState({
 });
 assert.equal(refreshedLegacy.specialSeedName, seed37.name);
 assert.equal(refreshedLegacy.specialSeedRule, seed37.ruleText);
-assert.equal(refreshedLegacy.stats[seed37.boon.key], baseStats[seed37.boon.key] + seed37.boon.amount);
-assert.equal(refreshSeedState(refreshedLegacy).stats[seed37.boon.key], refreshedLegacy.stats[seed37.boon.key]);
+assert.deepEqual(refreshedLegacy.stats, baseStats);
+assert.deepEqual(refreshedLegacy.specialSeedGrowthMultipliers, seed37.growthMultipliers);
+assert.deepEqual(refreshSeedState(refreshedLegacy).stats, refreshedLegacy.stats);
 assert.equal(getNpcSpeaker(deterministicA, "maid"), "메이드");
 const maidInteraction = DAY_ACTIONS.find((action) => action.id === "maid-tea");
 const afterMaidInteraction = chooseDayAction({ ...deterministicA, phase: "day" }, maidInteraction);
@@ -196,6 +198,34 @@ assert.equal(resolveChoice({
   stats: secureOption.success.stats,
   failure: secureOption.failure,
 }).effectiveChance, 0.5);
+assert.equal(getEffectiveChoiceChance({
+  ...operationalExpedition,
+  phase: "night",
+  resources: { ...operationalExpedition.resources, fear: 5 },
+  estate: { ...operationalExpedition.estate, corruption: 2 },
+}, 1), 0.89);
+assert.equal(getEffectiveChoiceChance({
+  ...operationalExpedition,
+  phase: "day",
+  resources: { ...operationalExpedition.resources, fear: 5 },
+  estate: { ...operationalExpedition.estate, corruption: 2 },
+}, 1), 1);
+assert.equal(getEffectiveChoiceChance({
+  ...operationalExpedition,
+  phase: "event",
+  resources: { ...operationalExpedition.resources, fear: 120 },
+  estate: { ...operationalExpedition.estate, corruption: 20 },
+}, 0.4), 0);
+const seedGrowth = resolveChoice({
+  ...deterministicA,
+  phase: "day",
+  runSeed: deterministicA.runRngSeed,
+}, {
+  id: "seed-growth-check",
+  stats: { [seed37.boon.key]: 1, [seed37.burden.key]: 1 },
+});
+assert.equal(seedGrowth.statDelta[seed37.boon.key], seed37.growthMultipliers[seed37.boon.key]);
+assert.equal(seedGrowth.statDelta[seed37.burden.key], seed37.growthMultipliers[seed37.burden.key]);
 
 let sacrificeRun = createNewRun({ second: 0, runRngSeed: "sacrifice-run" });
 sacrificeRun = applyPermanentLoss(sacrificeRun, "guard-father", "dead", "test");

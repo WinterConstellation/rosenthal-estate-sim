@@ -41,7 +41,7 @@ import {
   saveAuto,
   saveManual,
 } from "./engine/saveManager.js";
-import { getJob, getPassive, getStigmaName } from "./engine/rulesEngine.js";
+import { getEffectiveChoiceChance, getJob, getPassive, getStigmaName } from "./engine/rulesEngine.js";
 import {
   PASSIVES,
   RESOURCE_META,
@@ -184,6 +184,20 @@ const HORROR_STATIC_ROWS = [
 
 function clamp01(value) {
   return Math.min(1, Math.max(0, value));
+}
+
+function displayInteger(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.trunc(numeric) : 0;
+}
+
+function displaySignedInteger(value) {
+  const integer = displayInteger(value);
+  return `${integer > 0 ? "+" : ""}${integer}`;
+}
+
+function displayChancePercent(chance) {
+  return displayInteger((Number(chance) || 0) * 100);
 }
 
 function getHorrorIntensity(game, isNight) {
@@ -350,7 +364,7 @@ function CharacterPanel({ game }) {
         {Object.entries(game.stats ?? {}).map(([key, value]) => (
           <div className={value < 0 ? "is-negative" : ""} key={key} title={STAT_DETAILS[key]}>
             <span>{LABELS[key] ?? key}</span>
-            <strong>{revealed ? value : "?"}</strong>
+            <strong>{revealed ? displayInteger(value) : "?"}</strong>
           </div>
         ))}
       </div>
@@ -358,7 +372,7 @@ function CharacterPanel({ game }) {
       <div className="rule-block">
         <span className="eyebrow">성향</span>
         <div className="rule-chip-list">
-          {rankedTraits.map(([key, value]) => <span key={key} title={TRAIT_DETAILS[key]}>{TRAIT_META[key]?.label ?? key} {revealed ? value : "?"}</span>)}
+          {rankedTraits.map(([key, value]) => <span key={key} title={TRAIT_DETAILS[key]}>{TRAIT_META[key]?.label ?? key} {revealed ? displayInteger(value) : "?"}</span>)}
         </div>
       </div>
       <div className="rule-block">
@@ -596,7 +610,7 @@ function ResultOverlay({ game, result, onContinue }) {
               <div className="change-list">
                 {result.changes.map((change, index) => (
                   <span className={change.delta < 0 ? "change--negative" : "change--positive"} key={`${change.group}-${change.key}-${index}`}>
-                    {LABELS[change.key] ?? change.label} {change.delta > 0 ? "+" : ""}{change.delta}
+                    {LABELS[change.key] ?? change.label} {displaySignedInteger(change.delta)}
                   </span>
                 ))}
               </div>
@@ -893,7 +907,12 @@ function App() {
           eyebrow={`특수 사건 · ${group.name}`}
           title={stage.title}
           text={stage.text}
-          choices={stage.options}
+          choices={stage.options.map((choice) => {
+            const effectiveChance = getEffectiveChoiceChance({ ...game, phase: "event" }, choice.chance);
+            return effectiveChance == null
+              ? choice
+              : { ...choice, detail: `\uc131\uacf5\ub960 ${displayChancePercent(effectiveChance)}%` };
+          })}
           selectedId={selectedId}
           onChoose={(choice) => animate(choice.id, (current) => chooseSpecialEvent(current, choice))}
         />
@@ -960,12 +979,12 @@ function App() {
       const event = getCurrentExplorationEvent(game);
       const choices = event.options.map((choice) => {
         const available = isExplorationOptionAvailable(game, choice);
-        const effectiveChance = game.stats.resolve < 0 ? choice.chance / 2 : choice.chance;
+        const effectiveChance = getEffectiveChoiceChance({ ...game, phase: "night" }, choice.chance);
         return {
           ...choice,
           available,
           unavailableReason: choice.requiresHealthyCompanion ? "정상 상태의 동행자가 필요하다" : undefined,
-          detail: `성공률 ${Math.round(effectiveChance * 100)}%`,
+          detail: `\uc131\uacf5\ub960 ${displayChancePercent(effectiveChance)}%`,
           tone: effectiveChance < 0.7 ? "danger" : "neutral",
         };
       });
@@ -984,11 +1003,14 @@ function App() {
     }
     if (game.phase === "finale") {
       const currentFinale = getCurrentFinale(game);
-      const choices = getFinaleOptions(game, currentFinale).map((choice) => ({
-        ...choice,
-        preview: exactOptionPreview(game, choice),
-        tone: choice.intentionalLoss ? "lethal" : choice.chance < 0.7 ? "danger" : "extreme",
-      }));
+      const choices = getFinaleOptions(game, currentFinale).map((choice) => {
+        const effectiveChance = getEffectiveChoiceChance({ ...game, phase: "night" }, choice.chance);
+        return {
+          ...choice,
+          preview: exactOptionPreview(game, choice),
+          tone: choice.intentionalLoss ? "lethal" : (effectiveChance ?? 1) < 0.7 ? "danger" : "extreme",
+        };
+      });
       return (
         <ChoicePanel
           game={game}
@@ -1190,11 +1212,11 @@ function App() {
 export default App;
 
 function exactOptionPreview(game, choice) {
-  const chance = game.stats.resolve < 0 ? choice.chance / 2 : choice.chance;
+  const chance = getEffectiveChoiceChance({ ...game, phase: "night" }, choice.chance);
   const effects = choice.success ?? {};
   const deltas = Object.entries(effects).flatMap(([group, values]) =>
-    Object.entries(values ?? {}).map(([key, value]) => `${LABELS[key] ?? key} ${value > 0 ? "+" : ""}${value}`),
+    Object.entries(values ?? {}).map(([key, value]) => `${LABELS[key] ?? key} ${displaySignedInteger(value)}`),
   );
-  if (choice.intentionalLoss) deltas.push("동행자 영구 실종");
-  return [`성공률 ${Math.round(chance * 100)}%`, ...deltas].join(" · ");
+  if (choice.intentionalLoss) deltas.push("\ub3d9\ud589\uc790 \uc601\uad6c \uc2e4\uc885");
+  return [chance == null ? null : `\uc131\uacf5\ub960 ${displayChancePercent(chance)}%`, ...deltas].filter(Boolean).join(" \u00b7 " );
 }

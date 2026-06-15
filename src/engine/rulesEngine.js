@@ -14,6 +14,63 @@ import { createRunSeed, seededPick, seededRank, seededValue } from "./seed.js";
 
 const EMPTY_TRAITS = Object.fromEntries(Object.keys(TRAIT_META).map((key) => [key, 0]));
 
+const CHANCE_PENALTY_PHASES = new Set(["night", "event"]);
+const MIN_SEED_GROWTH_MULTIPLIER = 0.1;
+const MAX_SEED_GROWTH_MULTIPLIER = 2;
+
+function asNumber(value, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+export function roundToTenth(value) {
+  return Math.round(asNumber(value) * 10) / 10;
+}
+
+function clampNumber(value, lower, upper) {
+  return Math.min(Math.max(value, lower), upper);
+}
+
+function positiveNumber(value) {
+  return Math.max(asNumber(value), 0);
+}
+
+function getChoiceChancePressure(game) {
+  return roundToTenth(positiveNumber(game?.resources?.fear) + positiveNumber(game?.estate?.corruption) * 3);
+}
+
+function shouldApplyChancePressure(game) {
+  return CHANCE_PENALTY_PHASES.has(game?.phase);
+}
+
+export function getEffectiveChoiceChance(game, baseChance) {
+  if (baseChance == null) return null;
+  let chancePercent = clampNumber(asNumber(baseChance) * 100, 0, 100);
+  if ((game?.stats?.resolve ?? 0) < 0) chancePercent *= 0.5;
+  if (shouldApplyChancePressure(game)) chancePercent -= getChoiceChancePressure(game);
+  return clampNumber(roundToTenth(chancePercent), 0, 100) / 100;
+}
+
+function getSeedGrowthMultiplier(game, statKey) {
+  const multiplier = asNumber(game?.specialSeedGrowthMultipliers?.[statKey], 1);
+  return clampNumber(roundToTenth(multiplier), MIN_SEED_GROWTH_MULTIPLIER, MAX_SEED_GROWTH_MULTIPLIER);
+}
+
+function applySeedGrowthMultipliers(game, statDelta, trace) {
+  Object.entries(statDelta).forEach(([key, value]) => {
+    const amount = asNumber(value);
+    if (amount > 0) {
+      const multiplier = getSeedGrowthMultiplier(game, key);
+      statDelta[key] = roundToTenth(amount * multiplier);
+      if (multiplier !== 1) {
+        trace.push(`\uc2dc\ub4dc \u00b7 ${STAT_META[key]?.label ?? key} \uc131\uc7a5 x${multiplier.toFixed(1)}`);
+      }
+      return;
+    }
+    statDelta[key] = roundToTenth(amount);
+  });
+}
+
 export function createInitialGame(seed = createRunSeed()) {
   const abundance = seededPick(HIDDEN_RUN_RULES.abundance, `${seed}:abundance`);
   const scarcityPool = HIDDEN_RUN_RULES.scarcity.filter((key) => key !== abundance);
@@ -82,7 +139,9 @@ export function createInitialGame(seed = createRunSeed()) {
 export function clampMap(target, delta = {}, lower = 0, upper = 999) {
   const next = { ...target };
   Object.entries(delta).forEach(([key, value]) => {
-    next[key] = Math.min(Math.max((next[key] ?? 0) + value, lower), upper);
+    const current = asNumber(next[key]);
+    const amount = asNumber(value);
+    next[key] = roundToTenth(clampNumber(current + amount, lower, upper));
   });
   return next;
 }
@@ -300,11 +359,11 @@ function applyPassive(passiveId, context, trace, slot) {
 
 export function resolveChoice(game, choice) {
   const baseChance = choice.successChance;
-  const effectiveChance = baseChance == null
-    ? null
-    : Math.max(Math.min(game.stats.resolve < 0 ? baseChance / 2 : baseChance, 1), 0);
+  const effectiveChance = getEffectiveChoiceChance(game, baseChance);
+  const outcomeSeed = game.runSeed ?? game.runRngSeed ?? "run";
+  const historyLength = game.history?.length ?? 0;
   const success = effectiveChance == null
-    || seededValue(`${game.runSeed}:outcome:${game.history.length}:${choice.id}`) < effectiveChance;
+    || seededValue(`${outcomeSeed}:outcome:${historyLength}:${choice.id}`) < effectiveChance;
   const outcome = success ? choice : { ...choice, ...(choice.failure ?? {}) };
   const resourceDelta = { ...(outcome.resources ?? {}) };
   const estateDelta = { ...(outcome.estate ?? {}) };
@@ -315,7 +374,10 @@ export function resolveChoice(game, choice) {
 
   if (baseChance != null) {
     trace.push(success ? "판정 · 성공" : "판정 · 실패");
-    if (game.stats.resolve < 0) trace.push("결단 저하 · 성공 가능성 절반");
+    if ((game.stats?.resolve ?? 0) < 0) trace.push("결단 저하 · 성공 가능성 절반");
+    const pressure = shouldApplyChancePressure(game) ? getChoiceChancePressure(game) : 0;
+    const displayedPressure = Math.trunc(pressure);
+    if (displayedPressure > 0) trace.push(`\uacf5\ud3ec/\uc774\uc0c1\ud604\uc0c1 \u00b7 \uc131\uacf5\ub960 -${displayedPressure}%`);
   }
 
   Object.entries(game.nextTurn).forEach(([key, value]) => {
@@ -362,7 +424,9 @@ export function resolveChoice(game, choice) {
     applyPassive(passiveId, { resourceDelta, estateDelta, choice: outcome }, trace, `패시브 ${index + 1}`);
   });
 
-  if (game.stats.insight < 0) {
+  applySeedGrowthMultipliers(game, statDelta, trace);
+
+  if ((game.stats?.insight ?? 0) < 0) {
     [resourceDelta, estateDelta, traitDelta, statDelta, affinityDelta].forEach((delta) => {
       Object.entries(delta).forEach(([key, value]) => {
         if (value > 0) delta[key] = -value;

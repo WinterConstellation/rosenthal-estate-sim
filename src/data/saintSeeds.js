@@ -61,6 +61,25 @@ const RAW_SEEDS = [
   ["성녀 카타리나 드렉셀의 달", "교육과 봉사", "interaction"],
 ];
 
+const MIN_SEED_GROWTH_MULTIPLIER = 0.1;
+const MAX_SEED_GROWTH_MULTIPLIER = 2;
+
+function getBoonGrowthMultiplier(amount) {
+  return Math.min(MAX_SEED_GROWTH_MULTIPLIER, 1 + Math.max(Number(amount) || 0, 0) * 0.5);
+}
+
+function getBurdenGrowthMultiplier() {
+  return MIN_SEED_GROWTH_MULTIPLIER;
+}
+
+export function getSeedGrowthMultipliers(seed) {
+  if (seed?.growthMultipliers) return { ...seed.growthMultipliers };
+  const multipliers = {};
+  if (seed?.boon?.key) multipliers[seed.boon.key] = getBoonGrowthMultiplier(seed.boon.amount);
+  if (seed?.burden?.key) multipliers[seed.burden.key] = getBurdenGrowthMultiplier(seed.burden.amount);
+  return multipliers;
+}
+
 export const SAINT_SEEDS = RAW_SEEDS.map(([name, symbol, category], index) => {
   const statBenefits = [
     ["stats", "health", "체력"],
@@ -76,6 +95,8 @@ export const SAINT_SEEDS = RAW_SEEDS.map(([name, symbol, category], index) => {
   const burden = statBenefits[(benefitIndex + burdenOffset) % statBenefits.length];
   const boonAmount = 1 + Math.floor(index / 30);
   const burdenAmount = 1;
+  const boonMultiplier = getBoonGrowthMultiplier(boonAmount);
+  const burdenMultiplier = getBurdenGrowthMultiplier(-burdenAmount);
   return {
     id: index,
     name,
@@ -84,7 +105,11 @@ export const SAINT_SEEDS = RAW_SEEDS.map(([name, symbol, category], index) => {
     eventGroupId: Math.floor(index / 5),
     boon: { group: benefit[0], key: benefit[1], amount: boonAmount },
     burden: { group: burden[0], key: burden[1], amount: -burdenAmount },
-    ruleText: `${benefit[2]} +${boonAmount} · ${burden[2]} -${burdenAmount}`,
+    growthMultipliers: {
+      [benefit[1]]: boonMultiplier,
+      [burden[1]]: burdenMultiplier,
+    },
+    ruleText: `${benefit[2]} \uc131\uc7a5 x${boonMultiplier.toFixed(1)} \u00b7 ${burden[2]} \uc131\uc7a5 x${burdenMultiplier.toFixed(1)}`,
   };
 });
 

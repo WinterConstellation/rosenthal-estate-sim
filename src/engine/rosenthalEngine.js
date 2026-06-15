@@ -9,7 +9,7 @@ import {
   SPECIAL_EVENT_GROUPS,
   UNNAMED_COMPANIONS,
 } from "../data/rosenthalContent.js";
-import { getSaintSeed } from "../data/saintSeeds.js";
+import { getSaintSeed, getSeedGrowthMultipliers } from "../data/saintSeeds.js";
 import {
   PASSIVES,
   STAT_META,
@@ -74,10 +74,8 @@ export function createNewRun({ second = new Date().getSeconds(), runRngSeed = cr
   const ownedPassiveIds = seededRank(PASSIVES, `${runRngSeed}:passives`).slice(0, 5).map((item) => item.id);
   const emptyTraits = Object.fromEntries(Object.keys(TRAIT_META).map((key) => [key, 0]));
   const baseStats = deriveStats(emptyTraits);
-  const stats = clampMap(baseStats, {
-    [specialSeed.boon.key]: specialSeed.boon.amount,
-    [specialSeed.burden.key]: specialSeed.burden.amount,
-  }, -99, 999);
+  const stats = { ...baseStats };
+  const specialSeedGrowthMultipliers = getSeedGrowthMultipliers(specialSeed);
   const companionStates = {};
   CORE_NPCS.forEach((npc) => {
     companionStates[npc.id] = {
@@ -109,6 +107,7 @@ export function createNewRun({ second = new Date().getSeconds(), runRngSeed = cr
     specialSeedId: specialSeed.id,
     specialSeedName: specialSeed.name,
     specialSeedRule: specialSeed.ruleText,
+    specialSeedGrowthMultipliers,
     specialSeedStatsApplied: true,
     eventGroupId: specialSeed.eventGroupId,
     route: null,
@@ -301,7 +300,8 @@ export function applyActionEffects(state, action, {
   resumePhase = state.phase,
 } = {}) {
   const { choice } = normalizeActionChoice(state, action, phaseKind);
-  const resolvingState = { ...state, phase: phaseKind === "night" ? "night" : "day" };
+  const resolvingPhase = ["night", "event"].includes(phaseKind) ? phaseKind : "day";
+  const resolvingState = { ...state, phase: resolvingPhase };
   const resolved = resolveChoice(resolvingState, choice);
   const resources = clampMap(state.resources, resolved.resourceDelta, -99, 999);
   const estate = clampMap(state.estate, resolved.estateDelta, -99, 100);
@@ -384,9 +384,12 @@ export function chooseSpecialEvent(state, option) {
     id: `${group.id}-${stageIndex}-${option.id}`,
     title: option.label,
     category: "investigation",
-    effects: option.effects,
+    effects: option.success ?? option.effects,
+    successChance: option.chance,
+    failure: option.failure,
     tone: "extreme",
   }, {
+    phaseKind: option.chance == null ? "day" : "event",
     resumePhase: "day",
     resultText: "로젠탈은 선택을 기록했다. 무엇이 달라졌는지는 아직 알 수 없다.",
   });
@@ -830,18 +833,12 @@ export function getNpcSpeaker(state, npcId) {
 export function refreshSeedState(state) {
   if (state?.specialSeedId === undefined || state?.specialSeedId === null) return state;
   const seed = getSaintSeed(state.specialSeedId);
-  const stats = state.specialSeedStatsApplied || !state.stats
-    ? state.stats
-    : clampMap(state.stats, {
-        [seed.boon.key]: seed.boon.amount,
-        [seed.burden.key]: seed.burden.amount,
-      }, -99, 999);
   return {
     ...state,
     specialSeedName: seed.name,
     specialSeedRule: seed.ruleText,
     specialSeedStatsApplied: true,
-    stats,
+    specialSeedGrowthMultipliers: getSeedGrowthMultipliers(seed),
   };
 }
 
