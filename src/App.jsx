@@ -282,8 +282,7 @@ function DialogueCard({ game, eyebrow, title, paragraphs, button, onContinue, da
           <span>{currentIndex + 1} / {script.length}</span>
           {hasNextParagraph && (
             <button className="dialogue-card__skip" type="button" onClick={() => setParagraphIndex(script.length - 1)}>
-              <span>건너뛰기</span>
-              <b aria-hidden="true">»</b>
+              <span>스킵</span>
             </button>
           )}
         </div>
