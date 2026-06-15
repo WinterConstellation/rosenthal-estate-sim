@@ -120,6 +120,153 @@ function getMoonPhaseStyle(day) {
   };
 }
 
+
+const HORROR_FRAGMENTS = [
+  "??? ?? ??",
+  "??? ?? ???",
+  "?? ?? ?? ???? ???",
+  "??? ?? ??",
+  "?? ??? ???",
+  "? ???? ??? ??",
+  "??? ???? ???",
+  "?? ??? ???",
+  "??? ??? ????",
+  "?? ?? ??",
+  "??? ?????",
+  "??? ????",
+];
+
+const HORROR_FRAGMENT_LAYOUTS = [
+  { x: 7, y: 14, s: 0.78, r: -8, d: -2 },
+  { x: 68, y: 9, s: 0.64, r: 6, d: -5 },
+  { x: 34, y: 23, s: 0.56, r: -3, d: -9 },
+  { x: 78, y: 32, s: 0.72, r: 10, d: -1 },
+  { x: 12, y: 49, s: 0.58, r: 4, d: -7 },
+  { x: 51, y: 58, s: 0.82, r: -6, d: -4 },
+  { x: 82, y: 68, s: 0.52, r: 5, d: -11 },
+  { x: 23, y: 74, s: 0.68, r: -11, d: -3 },
+  { x: 41, y: 83, s: 0.5, r: 2, d: -8 },
+  { x: 61, y: 43, s: 0.6, r: -2, d: -13 },
+  { x: 6, y: 87, s: 0.46, r: 7, d: -10 },
+  { x: 70, y: 88, s: 0.7, r: -5, d: -6 },
+];
+
+const HORROR_RAIN_COLUMNS = [
+  "?\n?\n?\n?\n?\n?",
+  "?\n?\n?\n?\n?",
+  "?\n?\n?\n?\n?\n?",
+  "?\n?\n?\n?\n?\n?",
+  "?\n?\n?\n?\n?",
+  "?\n?\n?\n?\n?\n?",
+  "?\n?\n?\n?\n?\n?",
+  "?\n?\n?\n?\n?",
+  "?\n?\n?\n?\n?",
+];
+
+const HORROR_RAIN_LAYOUTS = [
+  { x: 9, d: -1, t: 8.4 },
+  { x: 18, d: -5, t: 7.2 },
+  { x: 31, d: -2, t: 9.1 },
+  { x: 47, d: -7, t: 6.8 },
+  { x: 59, d: -3, t: 8.8 },
+  { x: 72, d: -9, t: 7.5 },
+  { x: 84, d: -4, t: 9.6 },
+  { x: 93, d: -6, t: 7.9 },
+  { x: 39, d: -10, t: 8.1 },
+];
+
+const HORROR_STATIC_ROWS = [
+  ". .-.*..--*.-..*...-..*.-.*..--..*.-",
+  "-*..*...--..-.*..*.-..--*...*..-..",
+  "..--*.-..*...*..---..*.-.*..--*..",
+  "*..-..*.-..--..*...-.*..*..--..*.",
+];
+
+function clamp01(value) {
+  return Math.min(1, Math.max(0, value));
+}
+
+function getHorrorIntensity(game, isNight) {
+  const fear = Number(game.resources?.fear ?? 0) / 100;
+  const corruption = Number(game.estate?.corruption ?? 0) / 100;
+  const transformedCount = Object.values(game.companionStates ?? {}).filter((person) => person.status === "transformed").length;
+  const nightPhase = ["night-companion", "night-direction", "expedition", "finale", "escape-transformed-choice", "nightfall-transition", "daybreak-transition"].includes(game.phase);
+  const nightResult = game.phase === "result" && ["night-companion", "night-direction", "expedition", "finale", "daybreak"].includes(game.resumePhase);
+  const phasePressure = nightPhase || nightResult ? 0.18 : 0;
+  const routePressure = game.route === "altered" ? 0.14 : 0;
+  const transformedPressure = Math.min(0.16, transformedCount * 0.04);
+  return clamp01(fear * 0.42 + corruption * 0.42 + (isNight ? 0.18 : 0) + phasePressure + routePressure + transformedPressure);
+}
+
+function HorrorTextOverlay({ game, isNight }) {
+  const intensity = getHorrorIntensity(game, isNight);
+  if (intensity < 0.12) return null;
+
+  const fragmentCount = Math.min(HORROR_FRAGMENTS.length, Math.max(3, Math.round(4 + intensity * 8)));
+  const rainCount = Math.min(HORROR_RAIN_COLUMNS.length, Math.max(3, Math.round(3 + intensity * 6)));
+
+  return (
+    <div
+      className="horror-text-overlay"
+      style={{ "--horror-strength": intensity.toFixed(2) }}
+      aria-hidden="true"
+    >
+      <div className="horror-text-overlay__mist">
+        {HORROR_FRAGMENTS.slice(0, fragmentCount).map((text, index) => {
+          const layout = HORROR_FRAGMENT_LAYOUTS[index % HORROR_FRAGMENT_LAYOUTS.length];
+          return (
+            <span
+              className={"horror-fragment " + (index % 3 !== 0 ? "horror-fragment--eaten" : "")}
+              data-text={text}
+              key={text + "-" + index}
+              style={{
+                "--x": layout.x + "%",
+                "--y": layout.y + "%",
+                "--scale": layout.s,
+                "--rotate": layout.r + "deg",
+                "--delay": layout.d + "s",
+              }}
+            >
+              {text}
+            </span>
+          );
+        })}
+      </div>
+      <div className="horror-text-overlay__rain">
+        {HORROR_RAIN_COLUMNS.slice(0, rainCount).map((text, index) => {
+          const layout = HORROR_RAIN_LAYOUTS[index % HORROR_RAIN_LAYOUTS.length];
+          return (
+            <span
+              key={text + "-" + index}
+              style={{
+                "--x": layout.x + "%",
+                "--delay": layout.d + "s",
+                "--duration": layout.t - intensity * 2 + "s",
+              }}
+            >
+              {text}
+            </span>
+          );
+        })}
+      </div>
+      <div className="horror-text-overlay__static">
+        {HORROR_STATIC_ROWS.map((row, index) => (
+          <span
+            key={row + "-" + index}
+            style={{
+              "--y": 18 + index * 18 + "%",
+              "--delay": index * -0.9 + "s",
+              "--duration": 2.7 + index * 0.35 + "s",
+            }}
+          >
+            {row}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function resourceStage(key, value) {
   const amount = Math.max(0, Math.min(value ?? 0, 100));
   if (key === "fear") {
@@ -966,6 +1113,7 @@ function App() {
 
   return (
     <main className={`app-shell ${isNight ? "theme-night" : "theme-day"}`}>
+      <HorrorTextOverlay game={game} isNight={isNight} />
       <header className="topbar">
         <div className="brand">
           <span className="brand__crest">{isNight ? "夜" : "R"}</span>

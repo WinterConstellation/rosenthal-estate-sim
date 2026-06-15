@@ -802,6 +802,121 @@ button:focus-visible {
   color: var(--ink);
 }
 
+
+.horror-text-overlay {
+  position: fixed;
+  z-index: 52;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  color: rgba(154, 24, 32, 0.72);
+  font-family: "Gowun Batang", serif;
+  opacity: calc(0.18 + var(--horror-strength) * 0.64);
+  mix-blend-mode: multiply;
+  text-shadow: 0 0 8px rgba(135, 14, 22, 0.34), 0 0 18px rgba(80, 0, 8, 0.18);
+}
+
+.theme-night .horror-text-overlay {
+  color: rgba(234, 65, 76, 0.58);
+  mix-blend-mode: screen;
+  text-shadow: 0 0 10px rgba(222, 37, 50, 0.42), 0 0 24px rgba(180, 9, 24, 0.22);
+}
+
+.horror-text-overlay__mist,
+.horror-text-overlay__rain,
+.horror-text-overlay__static {
+  position: absolute;
+  inset: 0;
+}
+
+.horror-text-overlay__mist {
+  filter: blur(calc(0.2px + var(--horror-strength) * 1.2px));
+}
+
+.horror-fragment {
+  position: absolute;
+  top: var(--y);
+  left: var(--x);
+  display: inline-block;
+  max-width: 32ch;
+  font-size: clamp(12px, calc(0.52rem + var(--horror-strength) * 0.46rem), 28px);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.35;
+  opacity: calc(0.2 + var(--horror-strength) * 0.52);
+  transform: rotate(var(--rotate)) scale(var(--scale));
+  animation: horror-fragment-drift 9.5s ease-in-out infinite both;
+  animation-delay: var(--delay);
+  will-change: opacity, transform;
+}
+
+.horror-fragment--eaten {
+  -webkit-mask-image:
+    repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px, #000 10px 22px),
+    linear-gradient(#000, #000);
+  mask-image:
+    repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px, #000 10px 22px),
+    linear-gradient(#000, #000);
+}
+
+.horror-fragment--eaten::after {
+  position: absolute;
+  inset: 0;
+  color: rgba(255, 220, 220, 0.28);
+  content: attr(data-text);
+  clip-path: polygon(0 0, 100% 0, 100% 32%, 72% 30%, 70% 54%, 41% 47%, 39% 70%, 0 62%);
+  opacity: calc(0.14 + var(--horror-strength) * 0.28);
+  transform: translate(1px, 1px);
+}
+
+.horror-text-overlay__rain span {
+  position: absolute;
+  top: -48vh;
+  left: var(--x);
+  white-space: pre-line;
+  color: rgba(170, 18, 30, 0.62);
+  font-family: "Gowun Batang", serif;
+  font-size: clamp(12px, calc(0.52rem + var(--horror-strength) * 0.36rem), 23px);
+  font-weight: 700;
+  line-height: 1.12;
+  opacity: calc(0.18 + var(--horror-strength) * 0.52);
+  transform: translateY(-100%);
+  animation: horror-text-rain var(--duration) linear infinite;
+  animation-delay: var(--delay);
+  will-change: transform, opacity;
+}
+
+.theme-night .horror-text-overlay__rain span {
+  color: rgba(255, 78, 88, 0.52);
+}
+
+.horror-text-overlay__static {
+  opacity: calc(0.1 + var(--horror-strength) * 0.36);
+  filter: blur(0.2px);
+}
+
+.horror-text-overlay__static span {
+  position: absolute;
+  top: var(--y);
+  left: -45vw;
+  width: 150vw;
+  color: rgba(132, 0, 14, 0.72);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: clamp(7px, calc(0.3rem + var(--horror-strength) * 0.18rem), 13px);
+  font-weight: 700;
+  letter-spacing: 0.38em;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translateX(-20vw);
+  animation: horror-static-run var(--duration) linear infinite;
+  animation-delay: var(--delay);
+  will-change: transform;
+}
+
+.theme-night .horror-text-overlay__static span {
+  color: rgba(255, 70, 82, 0.45);
+}
+
 .dialogue-card {
   position: fixed;
   z-index: 58;
@@ -1457,6 +1572,24 @@ button:focus-visible {
   background: rgba(20, 20, 20, 0.12);
 }
 
+@keyframes horror-fragment-drift {
+  0%, 100% { opacity: calc(0.16 + var(--horror-strength) * 0.42); transform: translate3d(0, 0, 0) rotate(var(--rotate)) scale(var(--scale)); }
+  38% { opacity: calc(0.07 + var(--horror-strength) * 0.22); transform: translate3d(16px, -10px, 0) rotate(calc(var(--rotate) * -0.5)) scale(calc(var(--scale) * 0.98)); }
+  64% { opacity: calc(0.2 + var(--horror-strength) * 0.58); transform: translate3d(-12px, 8px, 0) rotate(calc(var(--rotate) * 0.7)) scale(calc(var(--scale) * 1.03)); }
+}
+
+@keyframes horror-text-rain {
+  0% { opacity: 0; transform: translateY(-100%); }
+  10% { opacity: calc(0.14 + var(--horror-strength) * 0.46); }
+  88% { opacity: calc(0.12 + var(--horror-strength) * 0.4); }
+  100% { opacity: 0; transform: translateY(148vh); }
+}
+
+@keyframes horror-static-run {
+  0% { transform: translateX(-32vw); }
+  100% { transform: translateX(32vw); }
+}
+
 @keyframes enter-card {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1612,5 +1745,14 @@ button:focus-visible {
   *::after {
     animation-duration: 1ms !important;
     transition-duration: 1ms !important;
+  }
+
+  .horror-text-overlay__rain,
+  .horror-text-overlay__static {
+    display: none;
+  }
+
+  .horror-fragment {
+    animation: none !important;
   }
 }
