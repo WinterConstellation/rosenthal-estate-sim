@@ -777,7 +777,7 @@ button:focus-visible {
   left: var(--x);
   display: inline-block;
   max-width: 32ch;
-  font-size: clamp(12px, calc(0.52rem + var(--horror-strength) * 0.46rem), 28px);
+  font-size: clamp(36px, calc(1.56rem + var(--horror-strength) * 1.38rem), 84px);
   font-weight: 700;
   letter-spacing: 0.12em;
   line-height: 1.35;
