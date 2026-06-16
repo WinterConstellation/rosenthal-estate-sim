@@ -56,8 +56,8 @@ export function createDefaultMeta() {
   return {
     cycle: 1,
     traitProgress: createEmptyTraitProgress(),
-    ownedStigmaPrefixIds: [...progressMeta.ownedStigmaPrefixIds],
-    ownedStigmaSuffixIds: [...progressMeta.ownedStigmaSuffixIds],
+    ownedStigmaPrefixIds: [],
+    ownedStigmaSuffixIds: [],
     equippedStigma: { prefixId: null, suffixId: null },
     endingRecords: {},
   };

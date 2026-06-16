@@ -30,6 +30,7 @@ import {
   chooseExplorationOption,
   completeTransition,
   continueAfterResult,
+  createDefaultMeta,
   createNewRun,
   normalizeProgressMeta,
   finishNight,
@@ -132,6 +133,8 @@ assert.deepEqual(deterministicA.specialSeedTrait, seed0.trait);
 assert.equal(deterministicA.meta.cycle, 1);
 assert.equal(Object.keys(deterministicA.meta.traitProgress).length, 10);
 assert.deepEqual(deterministicA.meta.equippedStigma, { prefixId: null, suffixId: null });
+assert.deepEqual(createDefaultMeta().ownedStigmaPrefixIds, []);
+assert.deepEqual(createDefaultMeta().ownedStigmaSuffixIds, []);
 const traitProgressResult = applyTraitExperience(normalizeProgressMeta({
   traitProgress: {
     record: { level: 2, xp: 9 },
