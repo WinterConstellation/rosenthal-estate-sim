@@ -32,6 +32,7 @@ import {
   continueAfterResult,
   createDefaultMeta,
   createNewRun,
+  deriveHorrorState,
   normalizeProgressMeta,
   finishNight,
   getDayOffers,
@@ -46,6 +47,7 @@ import {
   startExpedition,
 } from "../src/engine/rosenthalEngine.js";
 import { getEffectiveChoiceChance, resolveChoice, roundToTenth, truncateToTenth } from "../src/engine/rulesEngine.js";
+import { HORROR_DERIVED_META, HORROR_TRAIT_META } from "../src/rules/systemRules.js";
 
 assert.equal(SAINT_SEEDS.length, 60);
 assert.equal(new Set(SAINT_SEEDS.map((seed) => seed.name)).size, 60);
@@ -56,6 +58,8 @@ assert.ok(SAINT_SEEDS.every((seed) => !seed.name.includes("聖")));
 assert.ok(SAINT_SEEDS.every((seed) => !["김대건", "정하상", "고순이", "권진이", "김효임", "김효주"].some((name) => seed.name.includes(name))));
 assert.equal(SEED_BENEFIT_RULES.length, 10);
 assert.equal(SEED_BURDEN_RULES.length, 6);
+assert.equal(Object.keys(HORROR_TRAIT_META).length, 8);
+assert.equal(Object.keys(HORROR_DERIVED_META).length, 6);
 assert.equal(new Set(SAINT_SEEDS.map((seed) => `${seed.trait.benefit.id}:${seed.trait.burden.id}`)).size, 60);
 assert.ok(SAINT_SEEDS.every((seed) => [seed.trait.benefit, seed.trait.burden]
   .every((rule) => rule.modifier.multiplier >= 0.9 && rule.modifier.multiplier <= 1.1)));
@@ -131,10 +135,40 @@ assert.deepEqual(deterministicA.displayStats, baseStats);
 assert.deepEqual(deterministicA.specialSeedGrowthMultipliers, seed0.growthMultipliers);
 assert.deepEqual(deterministicA.specialSeedTrait, seed0.trait);
 assert.equal(deterministicA.meta.cycle, 1);
+assert.deepEqual(deterministicA.horrorTraits, Object.fromEntries(Object.keys(HORROR_TRAIT_META).map((key) => [key, 0])));
+assert.deepEqual(deterministicA.derivedHorror, deriveHorrorState(deterministicA));
+assert.deepEqual(deterministicA.revealedHorrorTraits, []);
+assert.deepEqual(deterministicA.revealedHorrorStates, []);
 assert.equal(Object.keys(deterministicA.meta.traitProgress).length, 10);
 assert.deepEqual(deterministicA.meta.equippedStigma, { prefixId: null, suffixId: null });
 assert.deepEqual(createDefaultMeta().ownedStigmaPrefixIds, []);
 assert.deepEqual(createDefaultMeta().ownedStigmaSuffixIds, []);
+const horrorTraitAction = DAY_ACTIONS.find((action) => action.id === "count-rooms");
+const horrorTraitResult = chooseDayAction({ ...deterministicA, phase: "day" }, horrorTraitAction);
+assert.equal(horrorTraitResult.horrorTraits.intrusion, 1);
+assert.equal(horrorTraitResult.horrorTraits.madness, 1);
+assert.ok(horrorTraitResult.revealedHorrorTraits.includes("intrusion"));
+assert.ok(horrorTraitResult.revealedHorrorTraits.includes("madness"));
+assert.ok(horrorTraitResult.revealedHorrorStates.includes("effectiveFear"));
+assert.equal(
+  horrorTraitResult.derivedHorror.effectiveFear,
+  Math.round(horrorTraitResult.resources.fear + horrorTraitResult.horrorTraits.intrusion + horrorTraitResult.horrorTraits.madness),
+);
+assert.ok(horrorTraitResult.pendingResult.changes.some((change) => change.group === "공포 특성" && change.key === "intrusion"));
+assert.equal(getEffectiveChoiceChance({
+  ...deterministicA,
+  phase: "night",
+  horrorTraits: { ...deterministicA.horrorTraits, madness: 2, erosion: 3 },
+}, 1), 0.95);
+const refreshedHorrorSave = refreshSeedState({
+  ...deterministicA,
+  horrorTraits: { madness: 2 },
+  revealedHorrorTraits: [],
+  revealedHorrorStates: [],
+});
+assert.equal(refreshedHorrorSave.derivedHorror.effectiveFear, 2);
+assert.deepEqual(refreshedHorrorSave.revealedHorrorTraits, ["madness"]);
+assert.ok(refreshedHorrorSave.revealedHorrorStates.includes("effectiveFear"));
 const traitProgressResult = applyTraitExperience(normalizeProgressMeta({
   traitProgress: {
     record: { level: 2, xp: 9 },
@@ -262,6 +296,7 @@ assert.ok(EXPLORATION_EVENTS.every((event) => getExplorationOptions(event).some(
 assert.deepEqual(undergroundRest.success.stats, { health: 1, stamina: 3, resolve: -1, insight: -1 });
 assert.deepEqual(undergroundRest.success.resources, { fear: 3 });
 assert.deepEqual(undergroundRest.success.estate, { corruption: 5 });
+assert.deepEqual(undergroundRest.success.horrorTraits, { mentalTaint: 1, erosion: 1 });
 assert.equal(secureOption.chance, 1);
 assert.equal(secureOption.success.stats.stamina, -1);
 assert.equal(secureOption.failure.stats.stamina, -2);
@@ -279,6 +314,10 @@ assert.equal(afterUndergroundRest.stats.resolve, operationalExpedition.stats.res
 assert.equal(afterUndergroundRest.stats.insight, operationalExpedition.stats.insight - 1);
 assert.equal(afterUndergroundRest.resources.fear, operationalExpedition.resources.fear + 3);
 assert.equal(afterUndergroundRest.estate.corruption, operationalExpedition.estate.corruption + 5);
+assert.equal(afterUndergroundRest.horrorTraits.mentalTaint, 1);
+assert.equal(afterUndergroundRest.horrorTraits.erosion, 1);
+assert.ok(afterUndergroundRest.revealedHorrorTraits.includes("mentalTaint"));
+assert.ok(afterUndergroundRest.revealedHorrorStates.includes("monsterization"));
 const transformedExpedition = {
   ...operationalExpedition,
   companionStates: {

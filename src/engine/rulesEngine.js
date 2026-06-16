@@ -39,8 +39,13 @@ function positiveNumber(value) {
   return Math.max(asNumber(value), 0);
 }
 
+function getEffectiveFearValue(game) {
+  const horrorTraitTotal = Object.values(game?.horrorTraits ?? {}).reduce((sum, value) => sum + positiveNumber(value), 0);
+  return positiveNumber(game?.resources?.fear) + horrorTraitTotal;
+}
+
 function getChoiceChancePressure(game) {
-  return roundToTenth(positiveNumber(game?.resources?.fear) + positiveNumber(game?.estate?.corruption) * 3);
+  return roundToTenth(getEffectiveFearValue(game) + positiveNumber(game?.estate?.corruption) * 3);
 }
 
 function shouldApplyChancePressure(game) {
@@ -492,6 +497,7 @@ export function resolveChoice(game, choice) {
   const resourceDelta = { ...(outcome.resources ?? {}) };
   const estateDelta = { ...(outcome.estate ?? {}) };
   const traitDelta = { ...(outcome.traits ?? {}) };
+  const horrorTraitDelta = { ...(outcome.horrorTraits ?? {}) };
   const statDelta = { ...(outcome.stats ?? {}) };
   const affinityDelta = { ...(outcome.affinities ?? {}) };
   const trace = [];
@@ -571,6 +577,7 @@ export function resolveChoice(game, choice) {
     resources: resourceDelta,
     estate: estateDelta,
     traits: traitDelta,
+    horrorTraits: horrorTraitDelta,
     stats: statDelta,
     affinities: affinityDelta,
   });
@@ -578,6 +585,7 @@ export function resolveChoice(game, choice) {
     resources: resourceDelta,
     estate: estateDelta,
     traits: traitDelta,
+    horrorTraits: horrorTraitDelta,
     stats: statDelta,
     affinities: affinityDelta,
   });
@@ -586,6 +594,7 @@ export function resolveChoice(game, choice) {
     resourceDelta,
     estateDelta,
     traitDelta,
+    horrorTraitDelta,
     statDelta,
     affinityDelta,
     displayDeltas,

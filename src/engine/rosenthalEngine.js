@@ -11,6 +11,8 @@ import {
 } from "../data/rosenthalContent.js";
 import { getSaintSeed, getSeedGrowthMultipliers, getSeedTrait } from "../data/saintSeeds.js";
 import {
+  HORROR_DERIVED_META,
+  HORROR_TRAIT_META,
   PASSIVES,
   STAT_META,
   TRAIT_META,
@@ -36,6 +38,16 @@ const CATEGORY_TRAITS = {
   other: { mansion: 1, shortcut: 1 },
 };
 
+const ACTION_HORROR_TRAITS = {
+  "welcome-portraits": { nameDamage: 1 },
+  "summoning-trace": { intrusion: 2 },
+  "sealed-room": { erosion: 2 },
+  "night-spar": { haunting: 1 },
+  "chapel-rest": { blasphemy: 1 },
+  "count-rooms": { intrusion: 1, madness: 1 },
+  "burn-ledger": { nameDamage: 2 },
+};
+
 const TRAIT_LEVEL_XP = 10;
 const MAX_TRAIT_LEVEL = 10;
 
@@ -46,6 +58,69 @@ function clampProgressNumber(value, lower, upper) {
 
 function createEmptyTraitProgress() {
   return Object.fromEntries(Object.keys(TRAIT_META).map((key) => [key, { level: 0, xp: 0 }]));
+}
+
+function createEmptyHorrorTraits() {
+  return Object.fromEntries(Object.keys(HORROR_TRAIT_META).map((key) => [key, 0]));
+}
+
+export function normalizeHorrorTraits(horrorTraits = {}) {
+  const empty = createEmptyHorrorTraits();
+  Object.entries(horrorTraits ?? {}).forEach(([key, value]) => {
+    if (!(key in empty)) return;
+    empty[key] = Math.min(Math.max(Number(value) || 0, 0), 999);
+  });
+  return empty;
+}
+
+function clampDerivedValue(value) {
+  return Math.min(Math.max(Math.round(Number(value) || 0), 0), 999);
+}
+
+export function deriveHorrorState(state = {}) {
+  const horrorTraits = normalizeHorrorTraits(state.horrorTraits);
+  const baseFear = Math.max(Number(state.resources?.fear) || 0, 0);
+  const corruption = Math.max(Number(state.estate?.corruption) || 0, 0);
+  const recordDamage = Math.max(50 - (Number(state.estate?.recordIntegrity) || 50), 0);
+  const negativeFaith = Math.max(-(Number(state.stats?.faith) || 0), 0);
+  const traitTotal = Object.values(horrorTraits).reduce((sum, value) => sum + value, 0);
+
+  return {
+    effectiveFear: clampDerivedValue(baseFear + traitTotal),
+    horrorPressure: clampDerivedValue(baseFear + traitTotal + corruption * 0.6),
+    monsterization: clampDerivedValue(horrorTraits.erosion * 1.2 + horrorTraits.mentalTaint * 0.8 + corruption * 0.5 + horrorTraits.intrusion * 0.4),
+    nameInstability: clampDerivedValue(horrorTraits.nameDamage * 1.5 + recordDamage * 0.4 + horrorTraits.haunting * 0.3),
+    intrusionPressure: clampDerivedValue(horrorTraits.intrusion * 1.4 + corruption * 0.35 + horrorTraits.omen * 0.4),
+    blasphemyPressure: clampDerivedValue(horrorTraits.blasphemy * 1.3 + negativeFaith * 4 + horrorTraits.mentalTaint * 0.25),
+  };
+}
+
+function revealHorrorTraits(previous = [], horrorTraits = {}) {
+  return uniqueIds([
+    ...previous,
+    ...Object.entries(horrorTraits).filter(([, value]) => Number(value) > 0).map(([key]) => key),
+  ]);
+}
+
+function revealHorrorStates(previous = [], derivedHorror = {}) {
+  return uniqueIds([
+    ...previous,
+    ...Object.entries(derivedHorror)
+      .filter(([key, value]) => Number(value) > 0 && key in HORROR_DERIVED_META)
+      .map(([key]) => key),
+  ]);
+}
+
+function syncHorrorState(state = {}) {
+  const horrorTraits = normalizeHorrorTraits(state.horrorTraits);
+  const derivedHorror = deriveHorrorState({ ...state, horrorTraits });
+  return {
+    ...state,
+    horrorTraits,
+    derivedHorror,
+    revealedHorrorTraits: revealHorrorTraits(state.revealedHorrorTraits, horrorTraits),
+    revealedHorrorStates: revealHorrorStates(state.revealedHorrorStates, derivedHorror),
+  };
 }
 
 function uniqueIds(values = []) {
@@ -223,6 +298,7 @@ export const UNDERGROUND_REST_OPTION = {
     stats: { health: 1, stamina: 3, resolve: -1, insight: -1 },
     resources: { fear: 3 },
     estate: { corruption: 5 },
+    horrorTraits: { mentalTaint: 1, erosion: 1 },
   },
 };
 
@@ -243,6 +319,24 @@ export function createNewRun({ second = new Date().getSeconds(), runRngSeed = cr
   const emptyTraits = Object.fromEntries(Object.keys(TRAIT_META).map((key) => [key, 0]));
   const baseStats = deriveStats(emptyTraits);
   const stats = { ...baseStats };
+  const resources = {
+    food: 70,
+    timber: 45,
+    silver: 35,
+    salt: 10,
+    population: 51,
+    faith: 22,
+    fear: 0,
+  };
+  const estate = {
+    stability: 50,
+    trust: 50,
+    recordIntegrity: 50,
+    corruption: 0,
+    missing: 0,
+  };
+  const horrorTraits = createEmptyHorrorTraits();
+  const derivedHorror = deriveHorrorState({ resources, estate, stats, horrorTraits });
   const specialSeedGrowthMultipliers = getSeedGrowthMultipliers(specialSeed);
   const specialSeedTrait = getSeedTrait(specialSeed);
   const companionStates = {};
@@ -286,23 +380,13 @@ export function createNewRun({ second = new Date().getSeconds(), runRngSeed = cr
     day: 1,
     dayTurn: 0,
     usedDayCategories: [],
-    resources: {
-      food: 70,
-      timber: 45,
-      silver: 35,
-      salt: 10,
-      population: 51,
-      faith: 22,
-      fear: 0,
-    },
-    estate: {
-      stability: 50,
-      trust: 50,
-      recordIntegrity: 50,
-      corruption: 0,
-      missing: 0,
-    },
+    resources,
+    estate,
     traits: emptyTraits,
+    horrorTraits,
+    derivedHorror,
+    revealedHorrorTraits: [],
+    revealedHorrorStates: [],
     stats,
     displayStats: { ...stats },
     affinities: {},
@@ -455,6 +539,7 @@ function normalizeActionChoice(state, action, phaseKind = "day") {
     category: action.category,
     npcId: action.npcId,
     traits: mergeDelta(CATEGORY_TRAITS[action.category], effects.traits),
+    horrorTraits: mergeDelta(ACTION_HORROR_TRAITS[action.id], effects.horrorTraits),
     stats,
     resources: mergeDelta(effects.resources, effects.resourcesExtra),
     estate: { ...(effects.estate ?? {}) },
@@ -499,7 +584,11 @@ export function applyActionEffects(state, action, {
   const resources = clampMap(state.resources, resolved.resourceDelta, -99, 999);
   const estate = clampMap(state.estate, resolved.estateDelta, -99, 100);
   const traits = clampMap(state.traits, resolved.traitDelta, -99, 99);
+  const horrorTraits = clampMap(normalizeHorrorTraits(state.horrorTraits), resolved.horrorTraitDelta, 0, 999);
   const stats = clampMap(state.stats, resolved.statDelta, -99, 999);
+  const derivedHorror = deriveHorrorState({ ...state, resources, estate, stats, horrorTraits });
+  const revealedHorrorTraits = revealHorrorTraits(state.revealedHorrorTraits, horrorTraits);
+  const revealedHorrorStates = revealHorrorStates(state.revealedHorrorStates, derivedHorror);
   const displayStats = applyDisplayDelta(state.displayStats ?? state.stats, resolved.displayDeltas.stats, -99, 999);
   const affinities = clampMap(state.affinities, resolved.affinityDelta, -99, 99);
   const changes = [
@@ -507,6 +596,7 @@ export function applyActionEffects(state, action, {
     ...getDisplayChanges(resolved.displayDeltas.resources, "자원"),
     ...getDisplayChanges(resolved.displayDeltas.estate, "영지"),
     ...getDisplayChanges(resolved.displayDeltas.traits, "성향", TRAIT_META),
+    ...getDisplayChanges(resolved.displayDeltas.horrorTraits, "공포 특성", HORROR_TRAIT_META),
   ];
   const historyEntry = {
     day: state.day,
@@ -527,6 +617,10 @@ export function applyActionEffects(state, action, {
     resources,
     estate,
     traits,
+    horrorTraits,
+    derivedHorror,
+    revealedHorrorTraits,
+    revealedHorrorStates,
     stats,
     displayStats,
     affinities,
@@ -675,11 +769,13 @@ function actionFromOutcome(option, prefix) {
     resources: option.success?.resources,
     estate: option.success?.estate,
     traits: option.success?.traits,
+    horrorTraits: option.success?.horrorTraits,
     failure: {
       stats: option.failure?.stats,
       resources: option.failure?.resources,
       estate: option.failure?.estate,
       traits: option.failure?.traits,
+      horrorTraits: option.failure?.horrorTraits,
     },
     lossRisk: option.lossRisk,
     intentionalLoss: option.intentionalLoss,
@@ -696,6 +792,7 @@ export function chooseExplorationOption(state, event, option) {
       resources: option.success?.resources,
       estate: option.success?.estate,
       traits: option.success?.traits,
+      horrorTraits: option.success?.horrorTraits,
     },
     successChance: option.chance,
     failure: option.failure,
@@ -744,6 +841,7 @@ export function chooseFinaleOption(state, currentFinale, option) {
       resources: option.success?.resources,
       estate: option.success?.estate,
       traits: option.success?.traits,
+      horrorTraits: option.success?.horrorTraits,
     },
     successChance: option.chance,
     failure: option.failure,
@@ -1054,6 +1152,8 @@ export function refreshSeedState(state) {
   const phase = state.phase === "daybreak-transition"
     ? state.transitionTargetPhase ?? "day"
     : state.phase;
+  const horrorTraits = normalizeHorrorTraits(state.horrorTraits);
+  const derivedHorror = deriveHorrorState({ ...state, horrorTraits });
   return {
     ...state,
     meta: normalizeProgressMeta(state.meta),
@@ -1065,6 +1165,10 @@ export function refreshSeedState(state) {
     specialSeedGrowthMultipliers: getSeedGrowthMultipliers(seed),
     specialSeedTrait: getSeedTrait(seed),
     displayStats: state.displayStats ?? { ...state.stats },
+    horrorTraits,
+    derivedHorror,
+    revealedHorrorTraits: revealHorrorTraits(state.revealedHorrorTraits, horrorTraits),
+    revealedHorrorStates: revealHorrorStates(state.revealedHorrorStates, derivedHorror),
   };
 }
 
@@ -1116,7 +1220,7 @@ export function finishNight(state) {
     const displayInsight = state.stats.insight < 0
       ? 0
       : (state.displayStats?.insight ?? state.stats.insight);
-    return {
+    const next = {
       ...state,
       day: 8,
       route,
@@ -1129,6 +1233,7 @@ export function finishNight(state) {
       selectedCompanionId: null,
       escapeTransformationResolvedId: null,
     };
+    return syncHorrorState(next);
   }
   const displayInsight = state.stats.insight < 0
     ? 0
@@ -1156,7 +1261,7 @@ export function finishNight(state) {
       stamina: 10,
     },
   };
-  return next;
+  return syncHorrorState(next);
 }
 
 export function getDayEightScript(state) {
