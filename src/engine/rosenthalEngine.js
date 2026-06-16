@@ -25,7 +25,7 @@ import {
 } from "./rulesEngine.js";
 import { createRunSeed, seededPick, seededRank, seededValue } from "./seed.js";
 
-export const GAME_VERSION = 10;
+export const GAME_VERSION = 11;
 
 const CATEGORY_TRAITS = {
   gathering: { life: 2, trade: 1 },
@@ -35,6 +35,160 @@ const CATEGORY_TRAITS = {
   rest: { life: 1 },
   other: { mansion: 1, shortcut: 1 },
 };
+
+const TRAIT_LEVEL_XP = 10;
+const MAX_TRAIT_LEVEL = 10;
+
+function clampProgressNumber(value, lower, upper) {
+  const numeric = Math.floor(Number(value) || 0);
+  return Math.min(Math.max(numeric, lower), upper);
+}
+
+function createEmptyTraitProgress() {
+  return Object.fromEntries(Object.keys(TRAIT_META).map((key) => [key, { level: 0, xp: 0 }]));
+}
+
+function uniqueIds(values = []) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+export function createDefaultMeta() {
+  return {
+    cycle: 1,
+    traitProgress: createEmptyTraitProgress(),
+    ownedStigmaPrefixIds: [...progressMeta.ownedStigmaPrefixIds],
+    ownedStigmaSuffixIds: [...progressMeta.ownedStigmaSuffixIds],
+    equippedStigma: { prefixId: null, suffixId: null },
+    endingRecords: {},
+  };
+}
+
+export function normalizeProgressMeta(meta = {}) {
+  const traitProgress = createEmptyTraitProgress();
+  Object.entries(meta?.traitProgress ?? {}).forEach(([key, value]) => {
+    if (!traitProgress[key]) return;
+    const level = clampProgressNumber(value?.level, 0, MAX_TRAIT_LEVEL);
+    traitProgress[key] = {
+      level,
+      xp: level >= MAX_TRAIT_LEVEL ? 0 : clampProgressNumber(value?.xp, 0, TRAIT_LEVEL_XP - 1),
+    };
+  });
+
+  const ownedStigmaPrefixIds = uniqueIds([
+    ...(meta?.ownedStigmaPrefixIds ?? []),
+    meta?.equippedStigma?.prefixId,
+  ]);
+  const ownedStigmaSuffixIds = uniqueIds([
+    ...(meta?.ownedStigmaSuffixIds ?? []),
+    meta?.equippedStigma?.suffixId,
+  ]);
+  const endingRecords = {};
+  Object.entries(meta?.endingRecords ?? {}).forEach(([key, record]) => {
+    if (!record) return;
+    endingRecords[key] = {
+      key,
+      endingId: record.endingId ?? "unknown",
+      route: record.route ?? "none",
+      truthDiscovered: Boolean(record.truthDiscovered),
+      count: Math.max(1, Math.floor(Number(record.count) || 1)),
+      firstCycle: Math.max(1, Math.floor(Number(record.firstCycle) || 1)),
+      lastCycle: Math.max(1, Math.floor(Number(record.lastCycle) || record.firstCycle || 1)),
+    };
+  });
+
+  return {
+    cycle: Math.max(1, Math.floor(Number(meta?.cycle) || 1)),
+    traitProgress,
+    ownedStigmaPrefixIds,
+    ownedStigmaSuffixIds,
+    equippedStigma: {
+      prefixId: ownedStigmaPrefixIds.includes(meta?.equippedStigma?.prefixId) ? meta.equippedStigma.prefixId : null,
+      suffixId: ownedStigmaSuffixIds.includes(meta?.equippedStigma?.suffixId) ? meta.equippedStigma.suffixId : null,
+    },
+    endingRecords,
+  };
+}
+
+export function syncMetaFromRun(state = {}) {
+  const meta = normalizeProgressMeta(state.meta);
+  const ownedStigmaPrefixIds = uniqueIds([
+    ...meta.ownedStigmaPrefixIds,
+    ...(state.ownedStigmaPrefixIds ?? []),
+    state.stigma?.prefixId,
+  ]);
+  const ownedStigmaSuffixIds = uniqueIds([
+    ...meta.ownedStigmaSuffixIds,
+    ...(state.ownedStigmaSuffixIds ?? []),
+    state.stigma?.suffixId,
+  ]);
+  const equippedStigma = {
+    prefixId: state.stigma?.prefixId ?? meta.equippedStigma.prefixId,
+    suffixId: state.stigma?.suffixId ?? meta.equippedStigma.suffixId,
+  };
+  return normalizeProgressMeta({ ...meta, ownedStigmaPrefixIds, ownedStigmaSuffixIds, equippedStigma });
+}
+
+export function applyTraitExperience(meta, traitDelta = {}) {
+  const next = normalizeProgressMeta(meta);
+  const notices = [];
+  Object.entries(traitDelta ?? {}).forEach(([key, value]) => {
+    const gain = Math.max(0, Number(value) || 0);
+    if (gain <= 0 || !next.traitProgress[key]) return;
+    const progress = next.traitProgress[key];
+    if (progress.level >= MAX_TRAIT_LEVEL) {
+      progress.xp = 0;
+      return;
+    }
+    const previousLevel = progress.level;
+    progress.xp += gain;
+    while (progress.xp >= TRAIT_LEVEL_XP && progress.level < MAX_TRAIT_LEVEL) {
+      progress.xp -= TRAIT_LEVEL_XP;
+      progress.level += 1;
+    }
+    if (progress.level >= MAX_TRAIT_LEVEL) progress.xp = 0;
+    const levelNotice = progress.level > previousLevel ? " · Lv." + progress.level : "";
+    notices.push("성향 경험치 · " + (TRAIT_META[key]?.label ?? key) + " +" + gain + "xp" + levelNotice);
+  });
+  return { meta: next, notices };
+}
+
+function getEndingRecordDescriptor(state = {}) {
+  const endingId = state.endingId ?? (state.phase === "record-stop" ? "record-stop" : "record-stop");
+  const route = state.route ?? "none";
+  const truthDiscovered = Boolean(state.truthFlags?.truthDiscovered);
+  return {
+    key: endingId + ":" + route + ":" + (truthDiscovered ? "truth" : "no-truth"),
+    endingId,
+    route,
+    truthDiscovered,
+  };
+}
+
+export function recordRunEnding(state = {}) {
+  const meta = syncMetaFromRun(state);
+  const descriptor = getEndingRecordDescriptor(state);
+  const previous = meta.endingRecords[descriptor.key];
+  return normalizeProgressMeta({
+    ...meta,
+    cycle: meta.cycle + 1,
+    endingRecords: {
+      ...meta.endingRecords,
+      [descriptor.key]: {
+        ...descriptor,
+        count: (previous?.count ?? 0) + 1,
+        firstCycle: previous?.firstCycle ?? meta.cycle,
+        lastCycle: meta.cycle,
+      },
+    },
+  });
+}
+
+export function advanceToNextCycle(state, options = {}) {
+  return createNewRun({
+    ...options,
+    meta: recordRunEnding(state),
+  });
+}
 
 const TRUTH_FINALE = {
   id: "summoning-room",
@@ -72,16 +226,18 @@ export const UNDERGROUND_REST_OPTION = {
   },
 };
 
-export function createStartState() {
+export function createStartState(meta) {
   return {
     version: GAME_VERSION,
     phase: "start",
     day: 0,
     history: [],
+    meta: normalizeProgressMeta(meta),
   };
 }
 
-export function createNewRun({ second = new Date().getSeconds(), runRngSeed = createRunSeed() } = {}) {
+export function createNewRun({ second = new Date().getSeconds(), runRngSeed = createRunSeed(), meta } = {}) {
+  const progressMeta = normalizeProgressMeta(meta);
   const specialSeed = getSaintSeed(second);
   const ownedPassiveIds = seededRank(PASSIVES, `${runRngSeed}:passives`).slice(0, 5).map((item) => item.id);
   const emptyTraits = Object.fromEntries(Object.keys(TRAIT_META).map((key) => [key, 0]));
@@ -117,6 +273,8 @@ export function createNewRun({ second = new Date().getSeconds(), runRngSeed = cr
     phase: "seed-reveal",
     runStartedAt: new Date().toISOString(),
     runRngSeed,
+    cycle: progressMeta.cycle,
+    meta: progressMeta,
     specialSeedId: specialSeed.id,
     specialSeedName: specialSeed.name,
     specialSeedRule: specialSeed.ruleText,
@@ -150,7 +308,7 @@ export function createNewRun({ second = new Date().getSeconds(), runRngSeed = cr
     affinities: {},
     jobId: null,
     titles: [],
-    stigma: { prefixId: null, suffixId: null },
+    stigma: { ...progressMeta.equippedStigma },
     ownedPassiveIds,
     passiveIds: ownedPassiveIds.slice(0, 3),
     ownedStigmaPrefixIds: [],
@@ -337,6 +495,7 @@ export function applyActionEffects(state, action, {
   const resolvingPhase = ["night", "event"].includes(phaseKind) ? phaseKind : "day";
   const resolvingState = { ...state, phase: resolvingPhase };
   const resolved = resolveChoice(resolvingState, choice);
+  const traitExperience = applyTraitExperience(state.meta, choice.traits);
   const resources = clampMap(state.resources, resolved.resourceDelta, -99, 999);
   const estate = clampMap(state.estate, resolved.estateDelta, -99, 100);
   const traits = clampMap(state.traits, resolved.traitDelta, -99, 99);
@@ -363,6 +522,7 @@ export function applyActionEffects(state, action, {
   return {
     ...state,
     phase: "result",
+    meta: traitExperience.meta,
     resumePhase: forcedResumePhase,
     resources,
     estate,
@@ -381,6 +541,7 @@ export function applyActionEffects(state, action, {
       changes,
       notices: [
         ...resolved.traceLabels,
+        ...traitExperience.notices,
         ...(staminaForcedReturn ? ["스태미나 고갈 · 강제 귀환"] : []),
       ],
     },
@@ -616,7 +777,7 @@ function assignFirstNightBuild(state) {
     : state.ownedStigmaSuffixIds ?? [];
   const newPrefix = stigma.prefixId && !(state.ownedStigmaPrefixIds ?? []).includes(stigma.prefixId);
   const newSuffix = stigma.suffixId && !(state.ownedStigmaSuffixIds ?? []).includes(stigma.suffixId);
-  return {
+  const nextState = {
     ...state,
     jobId: state.jobId ?? job.id,
     stigma: state.stigma?.prefixId ? state.stigma : stigma,
@@ -626,11 +787,12 @@ function assignFirstNightBuild(state) {
       ...state.pendingResult,
       notices: [
         ...(state.pendingResult?.notices ?? []),
-        ...(isFirstJob ? [`직업 · ${job.name}`] : []),
-        ...(newPrefix || newSuffix ? [`성흔 · ${getStigmaName({ ...state, stigma })}`] : []),
+        ...(isFirstJob ? ["직업 · " + job.name] : []),
+        ...(newPrefix || newSuffix ? ["성흔 · " + getStigmaName({ ...state, stigma })] : []),
       ],
     },
   };
+  return { ...nextState, meta: syncMetaFromRun(nextState) };
 }
 
 export function retreatExpedition(state) {
@@ -894,6 +1056,7 @@ export function refreshSeedState(state) {
     : state.phase;
   return {
     ...state,
+    meta: normalizeProgressMeta(state.meta),
     phase,
     transitionTargetPhase: state.phase === "daybreak-transition" ? null : state.transitionTargetPhase,
     specialSeedName: seed.name,

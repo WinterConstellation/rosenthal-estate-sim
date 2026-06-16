@@ -1646,3 +1646,35 @@ button:focus-visible {
     animation: none !important;
   }
 }
+
+
+.trait-progress-list,
+.ending-record-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.trait-progress-item,
+.ending-record-item {
+  border: 1px solid rgba(116, 87, 61, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 252, 245, 0.72);
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.trait-progress-item strong,
+.ending-record-item strong {
+  color: #39291f;
+  font-size: 0.9rem;
+}
+
+.trait-progress-item span,
+.ending-record-item span,
+.trait-progress-item small,
+.ending-record-item small {
+  color: #715f51;
+  font-size: 0.78rem;
+}

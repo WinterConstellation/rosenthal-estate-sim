@@ -99,6 +99,34 @@ function applySeedGrowthMultipliers(game, statDelta, trace) {
   });
 }
 
+
+function getTraitProgressLevel(meta, traitKey) {
+  const level = Math.floor(asNumber(meta?.traitProgress?.[traitKey]?.level));
+  return clampNumber(level, 0, 10);
+}
+
+function getStatTraitLevel(meta, statKey) {
+  const statLabel = STAT_META[statKey]?.label;
+  if (!statLabel) return 0;
+  return Object.entries(TRAIT_META).reduce((sum, [traitKey, trait]) => (
+    trait.stat === statLabel ? sum + getTraitProgressLevel(meta, traitKey) : sum
+  ), 0);
+}
+
+function applyTraitLevelStatModifiers(game, statDelta, trace) {
+  Object.entries(statDelta).forEach(([key, value]) => {
+    const amount = asNumber(value);
+    const level = getStatTraitLevel(game?.meta, key);
+    if (amount === 0 || level <= 0) {
+      statDelta[key] = amount;
+      return;
+    }
+    const multiplier = roundToTenth(1 + level * 0.1);
+    statDelta[key] = amount * multiplier;
+    trace.push("성향 레벨 · " + (STAT_META[key]?.label ?? key) + " x" + multiplier.toFixed(1));
+  });
+}
+
 const INVERTED_DELTA_KEYS = {
   resources: new Set(["fear"]),
   estate: new Set(["corruption", "missing"]),
@@ -467,6 +495,8 @@ export function resolveChoice(game, choice) {
   const statDelta = { ...(outcome.stats ?? {}) };
   const affinityDelta = { ...(outcome.affinities ?? {}) };
   const trace = [];
+
+  applyTraitLevelStatModifiers(game, statDelta, trace);
 
   if (baseChance != null) {
     trace.push(success ? "판정 · 성공" : "판정 · 실패");

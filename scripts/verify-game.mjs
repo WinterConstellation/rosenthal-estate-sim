@@ -22,13 +22,16 @@ import {
   WORKER_NAME_CHOICES,
 } from "../src/rules/tutorialRules.js";
 import {
+  advanceToNextCycle,
   applyPermanentLoss,
+  applyTraitExperience,
   chooseDayAction,
   chooseEscapeTransformedFate,
   chooseExplorationOption,
   completeTransition,
   continueAfterResult,
   createNewRun,
+  normalizeProgressMeta,
   finishNight,
   getDayOffers,
   getExplorationOptions,
@@ -126,6 +129,47 @@ assert.deepEqual(deterministicA.stats, baseStats);
 assert.deepEqual(deterministicA.displayStats, baseStats);
 assert.deepEqual(deterministicA.specialSeedGrowthMultipliers, seed0.growthMultipliers);
 assert.deepEqual(deterministicA.specialSeedTrait, seed0.trait);
+assert.equal(deterministicA.meta.cycle, 1);
+assert.equal(Object.keys(deterministicA.meta.traitProgress).length, 10);
+assert.deepEqual(deterministicA.meta.equippedStigma, { prefixId: null, suffixId: null });
+const traitProgressResult = applyTraitExperience(normalizeProgressMeta({
+  traitProgress: {
+    record: { level: 2, xp: 9 },
+    suspicion: { level: 3, xp: 0 },
+  },
+}), { record: 2, suspicion: 1, life: -3 });
+assert.equal(traitProgressResult.meta.traitProgress.record.level, 3);
+assert.equal(traitProgressResult.meta.traitProgress.record.xp, 1);
+assert.equal(traitProgressResult.meta.traitProgress.suspicion.level, 3);
+assert.equal(traitProgressResult.meta.traitProgress.suspicion.xp, 1);
+assert.ok(traitProgressResult.notices.some((notice) => notice.includes("기록 +2xp")));
+const leveledStatResult = resolveChoice({
+  ...deterministicA,
+  meta: traitProgressResult.meta,
+  specialSeedTrait: null,
+}, {
+  id: "trait-level-stat-check",
+  stats: { insight: 2, health: -2 },
+});
+assert.equal(leveledStatResult.statDelta.insight, 3.2);
+assert.equal(leveledStatResult.statDelta.health, -2);
+assert.ok(leveledStatResult.traceLabels.includes("성향 레벨 · 통찰 x1.6"));
+const nextCycleRun = advanceToNextCycle({
+  ...deterministicA,
+  phase: "record-stop",
+  route: "altered",
+  truthFlags: { ...deterministicA.truthFlags, truthDiscovered: true },
+  meta: traitProgressResult.meta,
+  ownedStigmaPrefixIds: ["rose-thorn"],
+  ownedStigmaSuffixIds: ["rosary"],
+  stigma: { prefixId: "rose-thorn", suffixId: "rosary" },
+}, { second: 1, runRngSeed: "next-cycle-check" });
+assert.equal(nextCycleRun.meta.cycle, 2);
+assert.deepEqual(nextCycleRun.stigma, { prefixId: "rose-thorn", suffixId: "rosary" });
+assert.ok(nextCycleRun.meta.ownedStigmaPrefixIds.includes("rose-thorn"));
+assert.ok(nextCycleRun.meta.ownedStigmaSuffixIds.includes("rosary"));
+assert.equal(nextCycleRun.meta.endingRecords["record-stop:altered:truth"].count, 1);
+assert.equal(nextCycleRun.meta.endingRecords["record-stop:altered:truth"].lastCycle, 1);
 assert.equal(deterministicA.ownedPassiveIds.length, 5);
 assert.equal(deterministicA.passiveIds.length, 3);
 assert.deepEqual(getDayOffers({ ...deterministicA, phase: "day" }), getDayOffers({ ...deterministicB, phase: "day" }));

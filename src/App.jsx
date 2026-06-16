@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  advanceToNextCycle,
   beginPrologue,
   canManualSave,
   chooseDayAction,
@@ -83,6 +84,19 @@ const STATUS_LABELS = {
   dead: "사망",
   missing: "실종",
   transformed: "변질",
+};
+
+const ENDING_LABELS = {
+  "accepted-lord": "정식 영주",
+  "forfeit-death": "다음 날의 아침",
+  "health-death": "돌아오지 못한 영주",
+  "record-stop": "기록 중단",
+};
+
+const ROUTE_LABELS = {
+  normal: "정상 축",
+  altered: "변질 축",
+  none: "분기 없음",
 };
 
 const STAT_DETAILS = {
@@ -736,8 +750,11 @@ function SaveModal({ game, onClose, onLoad }) {
 
 function RulesModal({ game, tutorial, onClose, onTogglePassive, onEquipStigma }) {
   const ownedPassives = game.ownedPassiveIds ?? game.passiveIds ?? [];
-  const ownedPrefixes = game.ownedStigmaPrefixIds ?? (game.stigma?.prefixId ? [game.stigma.prefixId] : []);
-  const ownedSuffixes = game.ownedStigmaSuffixIds ?? (game.stigma?.suffixId ? [game.stigma.suffixId] : []);
+  const ownedPrefixes = game.meta?.ownedStigmaPrefixIds ?? game.ownedStigmaPrefixIds ?? (game.stigma?.prefixId ? [game.stigma.prefixId] : []);
+  const ownedSuffixes = game.meta?.ownedStigmaSuffixIds ?? game.ownedStigmaSuffixIds ?? (game.stigma?.suffixId ? [game.stigma.suffixId] : []);
+  const traitProgress = game.meta?.traitProgress ?? {};
+  const totalTraitLevel = Object.values(traitProgress).reduce((sum, item) => sum + (item.level ?? 0), 0);
+  const endingRecords = Object.values(game.meta?.endingRecords ?? {}).sort((left, right) => right.lastCycle - left.lastCycle);
   return (
     <div className="overlay overlay--top">
       <section className="rules-modal">
@@ -763,6 +780,47 @@ function RulesModal({ game, tutorial, onClose, onTogglePassive, onEquipStigma })
             <p>성향은 선택의 누적 기록이다. 높은 성향은 관련 선택을 끌어오고 직업·성흔·사건의 조건을 바꾸지만, 숫자가 높다는 사실만으로 정답이 되지는 않는다.</p>
           </article>
         </div>
+
+        <section className="loadout-section">
+          <div>
+            <span className="eyebrow">성향 성장</span>
+            <strong>{totalTraitLevel} Lv</strong>
+          </div>
+          <p>관련 성향 선택으로 경험치를 얻고, 레벨은 같은 능력치의 양수·음수 스탯 변화를 10%씩 같은 방향으로 키운다.</p>
+          <div className="trait-progress-list">
+            {Object.entries(TRAIT_META).map(([key, trait]) => {
+              const progress = traitProgress[key] ?? { level: 0, xp: 0 };
+              const multiplier = 1 + (progress.level ?? 0) * 0.1;
+              return (
+                <article className="trait-progress-item" key={key}>
+                  <strong>{trait.label} Lv.{progress.level ?? 0}</strong>
+                  <span>{trait.stat} 변화 x{multiplier.toFixed(1)}</span>
+                  <small>{progress.level >= 10 ? "최대 레벨" : displayTenth(progress.xp ?? 0) + " / 10 xp"}</small>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="loadout-section">
+          <div>
+            <span className="eyebrow">엔딩 기록</span>
+            <strong>{endingRecords.length}</strong>
+          </div>
+          {endingRecords.length === 0 ? (
+            <p>아직 기록된 분기 엔딩이 없다.</p>
+          ) : (
+            <div className="ending-record-list">
+              {endingRecords.map((record) => (
+                <article className="ending-record-item" key={record.key}>
+                  <strong>{ENDING_LABELS[record.endingId] ?? record.endingId}</strong>
+                  <span>{ROUTE_LABELS[record.route] ?? record.route} · {record.truthDiscovered ? "진실 확인" : "진실 미확인"}</span>
+                  <small>{record.count}회 · 최초 {record.firstCycle}회차 · 최근 {record.lastCycle}회차</small>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
 
         <section className="loadout-section">
           <div>
@@ -884,9 +942,17 @@ function App() {
   };
 
   const newGame = () => {
+    const meta = game.meta;
     clearAutoSave();
-    setGame(createNewRun({ second: new Date().getSeconds() }));
+    setGame(createNewRun({ second: new Date().getSeconds(), meta }));
     setShowStart(false);
+    setRulesOpen(false);
+    setTutorialPrompt(false);
+  };
+  const nextCycle = () => {
+    setGame((current) => advanceToNextCycle(current, { second: new Date().getSeconds() }));
+    setShowStart(false);
+    setSaveOpen(false);
     setRulesOpen(false);
     setTutorialPrompt(false);
   };
@@ -921,7 +987,21 @@ function App() {
   };
 
   const equipStigma = (slot, stigmaId) => {
-    setGame((current) => ({ ...current, stigma: { ...current.stigma, [slot]: stigmaId } }));
+    setGame((current) => {
+      const owned = slot === "prefixId"
+        ? current.meta?.ownedStigmaPrefixIds ?? current.ownedStigmaPrefixIds ?? []
+        : current.meta?.ownedStigmaSuffixIds ?? current.ownedStigmaSuffixIds ?? [];
+      if (!owned.includes(stigmaId)) return current;
+      const stigma = { ...current.stigma, [slot]: stigmaId };
+      return {
+        ...current,
+        stigma,
+        meta: {
+          ...current.meta,
+          equippedStigma: { ...(current.meta?.equippedStigma ?? {}), ...stigma },
+        },
+      };
+    });
   };
 
   if (showStart) {
@@ -1149,8 +1229,8 @@ function App() {
             `진실 단서 · ${game.truthFlags.truthDiscovered ? "확인함" : "확인하지 못함"}`,
             `선택 기록 · ${game.history.length}개`,
           ]}
-          button="새 기록을 시작한다"
-          onContinue={newGame}
+          button="다음 회차로"
+          onContinue={nextCycle}
         />
       );
     }
@@ -1162,8 +1242,8 @@ function App() {
           eyebrow="엔딩"
           title={ending.title}
           paragraphs={ending.text}
-          button={game.endingId === "health-death" ? "다시 시작" : "꿈을 되돌린다"}
-          onContinue={newGame}
+          button="다음 회차로"
+          onContinue={nextCycle}
           danger
         />
       );

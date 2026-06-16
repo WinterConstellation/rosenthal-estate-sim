@@ -1,22 +1,60 @@
-import { createStartState, GAME_VERSION, refreshSeedState } from "./rosenthalEngine.js";
+import {
+  createStartState,
+  GAME_VERSION,
+  normalizeProgressMeta,
+  refreshSeedState,
+  syncMetaFromRun,
+} from "./rosenthalEngine.js";
 
 export const STORAGE_KEY = "rosenthal-estate-save-v1";
 const SLOT_COUNT = 10;
 
-function blankContainer() {
-  return { version: GAME_VERSION, auto: null, manual: Array.from({ length: SLOT_COUNT }, () => null) };
+function blankContainer(meta) {
+  return {
+    version: GAME_VERSION,
+    meta: normalizeProgressMeta(meta),
+    auto: null,
+    manual: Array.from({ length: SLOT_COUNT }, () => null),
+  };
+}
+
+function stripMeta(state) {
+  if (!state) return state;
+  const { meta: _meta, ...rest } = state;
+  return rest;
+}
+
+function attachMeta(state, meta) {
+  if (!state) return null;
+  return refreshSeedState({ ...state, meta: normalizeProgressMeta(meta) });
+}
+
+function serializeContainer(container) {
+  const meta = normalizeProgressMeta(container.meta);
+  return {
+    version: GAME_VERSION,
+    meta,
+    auto: stripMeta(container.auto),
+    manual: Array.from({ length: SLOT_COUNT }, (_, index) => {
+      const slot = container.manual?.[index];
+      return slot ? { ...slot, state: stripMeta(slot.state) } : null;
+    }),
+  };
 }
 
 function readContainer() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (parsed?.version === GAME_VERSION && Array.isArray(parsed.manual)) {
+    if (parsed && Array.isArray(parsed.manual)) {
+      const meta = normalizeProgressMeta(parsed.meta);
       return {
-        ...parsed,
-        auto: parsed.auto ? refreshSeedState(parsed.auto) : null,
-        manual: parsed.manual.map((slot) => slot
-          ? { ...slot, state: refreshSeedState(slot.state) }
-          : null),
+        version: GAME_VERSION,
+        meta,
+        auto: attachMeta(parsed.auto, meta),
+        manual: Array.from({ length: SLOT_COUNT }, (_, index) => {
+          const slot = parsed.manual[index];
+          return slot ? { ...slot, state: attachMeta(slot.state, meta) } : null;
+        }),
       };
     }
   } catch {
@@ -26,16 +64,18 @@ function readContainer() {
 }
 
 function writeContainer(container) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(container));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeContainer(container)));
 }
 
 export function loadAutoSave() {
-  return readContainer().auto ?? createStartState();
+  const container = readContainer();
+  return container.auto ?? createStartState(container.meta);
 }
 
 export function saveAuto(state) {
   const container = readContainer();
-  writeContainer({ ...container, auto: state });
+  const meta = syncMetaFromRun({ ...state, meta: state.meta ?? container.meta });
+  writeContainer({ ...container, meta, auto: { ...state, meta } });
 }
 
 export function getSaveSlots() {
@@ -44,12 +84,13 @@ export function getSaveSlots() {
 
 export function saveManual(slotIndex, state) {
   const container = readContainer();
+  const meta = syncMetaFromRun({ ...state, meta: state.meta ?? container.meta });
   const manual = [...container.manual];
   manual[slotIndex] = {
     savedAt: new Date().toISOString(),
-    state,
+    state: { ...state, meta },
   };
-  writeContainer({ ...container, manual });
+  writeContainer({ ...container, meta, manual });
 }
 
 export function loadManual(slotIndex) {
