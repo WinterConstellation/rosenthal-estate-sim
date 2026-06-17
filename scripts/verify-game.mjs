@@ -59,9 +59,17 @@ assert.equal(SEED_BENEFIT_RULES.length, 10);
 assert.equal(SEED_BURDEN_RULES.length, 6);
 assert.equal(Object.keys(HORROR_TRAIT_META).length, 8);
 assert.equal(Object.keys(HORROR_DERIVED_META).length, 6);
+assert.ok(SAINT_SEEDS.every((seed) => (
+  seed.trait.benefit && seed.trait.burden
+  && seed.trait.benefit.modifier.multiplier >= 0.9
+  && seed.trait.benefit.modifier.multiplier <= 1.1
+  && seed.trait.burden.modifier.multiplier === 0.9
+)));
 assert.equal(new Set(SAINT_SEEDS.map((seed) => `${seed.trait.benefit.id}:${seed.trait.burden.id}`)).size, 60);
-assert.ok(SAINT_SEEDS.every((seed) => [seed.trait.benefit, seed.trait.burden]
-  .every((rule) => rule.modifier.multiplier >= 0.9 && rule.modifier.multiplier <= 1.1)));
+assert.ok(SEED_BENEFIT_RULES.every((rule) => (
+  rule.modifier.kind === "beneficial" ? rule.modifier.multiplier === 1.1 : rule.modifier.multiplier === 0.9
+)));
+assert.ok(SEED_BURDEN_RULES.every((rule) => rule.modifier.multiplier === 0.9));
 assert.ok(SAINT_SEEDS.every((seed) => seed.boon && seed.burden && seed.growthMultipliers));
 assert.ok(SAINT_SEEDS.every((seed) => !seed.ruleText.includes("일차")));
 
@@ -425,14 +433,14 @@ const dayFailureBurden = resolveChoice(seedRuleGame(seedTrait("night-success-boo
   successChance: 0,
   failure: { stats: { stamina: -1 }, resources: { fear: 1 } },
 });
-assert.equal(dayFailureBurden.statDelta.stamina, -1.1);
-assert.equal(dayFailureBurden.resourceDelta.fear, 1.1);
+assert.equal(dayFailureBurden.statDelta.stamina, -0.9);
+assert.equal(dayFailureBurden.resourceDelta.fear, 0.9);
 const nightFailureBurden = resolveChoice(seedRuleGame(seedTrait("day-success-boon", "night-failure-burden"), "night"), {
   id: "night-failure-burden",
   successChance: 0,
   failure: { stats: { health: -1 } },
 });
-assert.equal(nightFailureBurden.statDelta.health, -1.1);
+assert.equal(nightFailureBurden.statDelta.health, -0.9);
 assert.equal(
   getEffectiveChoiceChance(seedRuleGame(seedTrait("day-success-boon", "danger-chance-burden"), "night"), 1, { id: "danger-chance", tone: "danger" }),
   0.9,
@@ -441,13 +449,13 @@ const staminaLossBurden = resolveChoice(seedRuleGame(seedTrait("night-success-bo
   id: "stamina-loss-burden",
   stats: { stamina: -2, health: -2 },
 });
-assert.equal(staminaLossBurden.statDelta.stamina, -2.2);
+assert.equal(staminaLossBurden.statDelta.stamina, -1.8);
 assert.equal(staminaLossBurden.statDelta.health, -2);
 const healthLossBurden = resolveChoice(seedRuleGame(seedTrait("night-success-boon", "health-loss-burden")), {
   id: "health-loss-burden",
   stats: { stamina: -2, health: -2 },
 });
-assert.equal(healthLossBurden.statDelta.health, -2.2);
+assert.equal(healthLossBurden.statDelta.health, -1.8);
 assert.equal(healthLossBurden.statDelta.stamina, -2);
 const forfeitBurden = resolveChoice(seedRuleGame(seedTrait("night-success-boon", "forfeit-burden")), {
   id: "forfeit-burden",
@@ -455,14 +463,14 @@ const forfeitBurden = resolveChoice(seedRuleGame(seedTrait("night-success-boon",
   estate: { stability: -1 },
   resources: { fear: 1 },
 });
-assert.equal(forfeitBurden.estateDelta.stability, -1.1);
-assert.equal(forfeitBurden.resourceDelta.fear, 1.1);
+assert.equal(forfeitBurden.estateDelta.stability, -0.9);
+assert.equal(forfeitBurden.resourceDelta.fear, 0.9);
 const retreatBurden = retreatExpedition({
   ...seedRuleGame(seedTrait("day-success-boon", "forfeit-burden"), "expedition"),
   expedition: { directionId: "stairs", totalSteps: 3, stepIndex: 1, eventIds: [] },
 });
-assert.equal(retreatBurden.estate.stability, deterministicA.estate.stability - 1.1);
-assert.equal(retreatBurden.resources.fear, deterministicA.resources.fear + 1.1);
+assert.equal(retreatBurden.estate.stability, deterministicA.estate.stability - 0.9);
+assert.equal(retreatBurden.resources.fear, deterministicA.resources.fear + 0.9);
 assert.ok(retreatBurden.pendingResult.notices.some((notice) => notice.startsWith("성인의 달 ·")));
 
 assert.equal(roundToTenth(1.1999999), 1.2);

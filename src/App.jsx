@@ -14,6 +14,7 @@ import {
   createNewRun,
   createStartState,
   deliverKeepsake,
+  deriveHorrorState,
   displayCompanion,
   finishVerticalSlice,
   forfeitDay,
@@ -30,6 +31,7 @@ import {
   getSpecialGroup,
   isExplorationOptionAvailable,
   isNightDisplayPhase,
+  normalizeHorrorTraits,
   openFirstDay,
   retreatExpedition,
   selectCompanion,
@@ -124,44 +126,19 @@ const TRAIT_DETAILS = {
 };
 
 const HORROR_FRAGMENTS = [
-  // Source KR: 가로되 의인은 없나니 하나도 없으며 지상에 너희들 모두 죄인이다
-  "Ait: Non est iustus, non est usque ad unum; omnes vos super terram peccatores estis.",
-
-  // Source KR: 나, 그대, 그리고 우리. 한데 모여 더러운 자가 되고 밟는 땅도 더럽혀지리라
-  "Ego, tu, et nos; congregati immundi facti sumus, et terra quam calcamus polluetur.",
-
-  // Source KR: 이제 알겠다. 우리는 모두, 죄인이었구나.
-  "Nunc intellexi. Omnes peccatores fuimus.",
-
-  // Source KR: 우리는 죄를 저지르며, 우리는 다 부정한 자 같아서, 우리의 의로움은 전부 더러운 옷을 입었으며, 우리의 죄악이 바람처럼 퍼지리라
-  "Peccavimus; facti sumus omnes quasi immundi, et omnes iustitiae nostrae quasi vestimentum sordidum; iniquitates nostrae sicut ventus dispergentur.",
-
-  // Source KR: 너의 손이 피에, 너의 손가락이 죄악에 더러워졌으니 우리의 죄가 우리를 고발하며 증언하오니
-  "Manus tuae sanguine pollutae sunt, et digiti tui iniquitate; peccata nostra adversum nos clamant et testimonium dicunt.",
-
-  // Source KR: 만물보다 거짓되고 심히 부패한 것은 마음이라 그 마음에 따라 택한 것은 그 무게에 따라 기울어지리니
-  "Pravum est cor super omnia et inscrutabile; quod ex illo eligitur, pondere suo inclinabitur.",
-
-  // Source KR: 우리의 육신이 다하여 어디로 오라 하셨으나 나는 그 말을 귀담아 듣지 아니 하였으니 이 땅에 마지막 남은 죄가 되리라
-  "Cum caro nostra deficeret, vocavit nos ut veniremus; ego autem verbum eius non audivi. Ideo ultimum peccatum in hac terra manebo.",
-
-  // Source KR: 너의 육신이 다하면 나에게 오라 하였으나 너는 그 말을 귀담아 듣지 아니 하였으니 그 땅에 마지막 남은 가엾음이라
-  "Cum caro tua defecerit, veni ad me, dixi; tu autem verbum meum non audisti. Ideo ultima misericordia in illa terra relicta es.",
-
-  // Source KR: 불타는 별이 나와 가까워지고 너와 가까워지고 가장 멀리 서 있는 자에게도 곧 다다르리라
-  "Stella ardens appropinquat mihi, appropinquat tibi, et etiam ad eum qui longissime stat cito perveniet.",
-
-  // Source KR: 검은 별이 검은 별이 검은 별이 검은 별이 검은 별이 검은 별이 검은 별이 다가오리라
-  "Stella nigra. Stella nigra. Stella nigra. Stella nigra. Stella nigra. Stella nigra. Stella nigra appropinquabit.",
-
-  // Source KR: 아름답게, 덧 없이 흩어져라
-  "Pulchre et vane dispergimini.",
-
-  // Source KR: 악의 꽃은 가련히지네, 슬픈 듯한 색채로
-  "Flos mali miserabiliter marcescit, colore quasi maerente.",
-
-  // Source KR: 그대, 신성의 모독자여.
-  "O tu, profanator sanctitatis.",
+  "가로되 의인은 없나니 하나도 없으며 지상에 너희들 모두 죄인이다",
+  "나, 그대, 그리고 우리. 한데 모여 더러운 자가 되고 밟는 땅도 더럽혀지리라",
+  "이제 알겠다. 우리는 모두, 죄인이었구나.",
+  "우리는 죄를 저지르며, 우리는 다 부정한 자 같아서, 우리의 의로움은 전부 더러운 옷을 입었으며, 우리의 죄악이 바람처럼 퍼지리라",
+  "너의 손이 피에, 너의 손가락이 죄악에 더러워졌으니 우리의 죄가 우리를 고발하며 증언하오니",
+  "만물보다 거짓되고 심히 부패한 것은 마음이라 그 마음에 따라 택한 것은 그 무게에 따라 기울어지리니",
+  "우리의 육신이 다하여 어디로 오라 하셨으나 나는 그 말을 귀담아 듣지 아니 하였으니 이 땅에 마지막 남은 죄가 되리라",
+  "너의 육신이 다하면 나에게 오라 하였으나 너는 그 말을 귀담아 듣지 아니 하였으니 그 땅에 마지막 남은 가엾음이라",
+  "불타는 별이 나와 가까워지고 너와 가까워지고 가장 멀리 서 있는 자에게도 곧 다다르리라",
+  "검은 별이 검은 별이 검은 별이 검은 별이 검은 별이 검은 별이 검은 별이 다가오리라",
+  "아름답게, 덧 없이 흩어져라",
+  "악의 꽃은 가련히 지네, 슬픈 듯한 색채로",
+  "그대, 신성의 모독자여.",
 ];
 
 const HORROR_FRAGMENT_LAYOUTS = [
@@ -186,21 +163,71 @@ const HORROR_STATIC_ROWS = [
   "*..-..*.-..--..*...-.*..*..--..*.",
 ];
 
+const HORROR_FLOATING_TEXT_ENABLED = false;
+const HORROR_TEXT_RAIN_SEED = "cached-eye-reference:seed-1:night:altered";
+const HORROR_TEXT_RAIN_GLYPHS = [".", "-", "*", "+", "x", "X", ":", "'", "`"];
+
 const HORROR_NIGHT_PHASES = new Set(["night-companion", "night-direction", "expedition", "finale", "escape-transformed-choice", "nightfall-transition"]);
 const HORROR_NIGHT_RESULT_PHASES = new Set(["night-companion", "night-direction", "expedition", "finale", "daybreak"]);
 const HORROR_EYE_GLYPHS = [".", "-", "*", "+", "x", ":", "'", "`"];
 const HORROR_EYE_IRIS_GLYPHS = ["*", "+", "x", "X", "#", "%"];
 const HORROR_EYE_EDGE_GLYPHS = ["/", "\\", "|", "_", "-", "."];
+const HORROR_EYE_LID_GLYPHS = ["-", "_", ".", "'", "`", "x", "+", ":"];
+const HORROR_EYE_SINGLE_LAYOUT = { x: 0.5, y: 0.51, rx: 0.37, ry: 0.19, s: 1, r: 0 };
 const HORROR_EYE_LAYOUTS = [
-  { x: 0.18, y: 0.3, rx: 0.13, ry: 0.052, s: 0.86, r: -7 },
-  { x: 0.72, y: 0.23, rx: 0.15, ry: 0.058, s: 0.74, r: 5 },
-  { x: 0.47, y: 0.48, rx: 0.19, ry: 0.07, s: 1, r: -1 },
-  { x: 0.84, y: 0.66, rx: 0.12, ry: 0.046, s: 0.7, r: 9 },
-  { x: 0.27, y: 0.78, rx: 0.16, ry: 0.06, s: 0.78, r: -10 },
+  HORROR_EYE_SINGLE_LAYOUT,
+  { x: 0.22, y: 0.32, rx: 0.28, ry: 0.14, s: 0.84, r: -7 },
+  { x: 0.25, y: 0.76, rx: 0.25, ry: 0.125, s: 0.78, r: 6 },
+  { x: 0.76, y: 0.29, rx: 0.28, ry: 0.14, s: 0.82, r: 5 },
+  { x: 0.74, y: 0.72, rx: 0.24, ry: 0.12, s: 0.76, r: -8 },
 ];
+const DEV_STAT_KEYS = ["health", "insight", "resolve", "charm", "faith", "stamina"];
+const DEV_RESOURCE_KEYS = Object.keys(RESOURCE_META);
+const DEV_ESTATE_KEYS = ["stability", "trust", "recordIntegrity", "corruption", "missing"];
+const DEV_TRAIT_KEYS = Object.keys(TRAIT_META);
+const DEV_HORROR_TRAIT_KEYS = Object.keys(HORROR_TRAIT_META);
 
 function clamp01(value) {
   return Math.min(1, Math.max(0, value));
+}
+
+function clampRange(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function uniqueValues(values = []) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function getDeveloperNumber(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function getDeveloperLabel(key, map = {}) {
+  return LABELS[key] ?? map[key]?.label ?? key;
+}
+
+function syncDeveloperHorrorState(state) {
+  const horrorTraits = normalizeHorrorTraits(state.horrorTraits);
+  const derivedHorror = deriveHorrorState({ ...state, horrorTraits });
+  return {
+    ...state,
+    horrorTraits,
+    derivedHorror,
+    revealedHorrorTraits: uniqueValues([
+      ...(state.revealedHorrorTraits ?? []),
+      ...Object.entries(horrorTraits).filter(([, value]) => Number(value) > 0).map(([key]) => key),
+    ]),
+    revealedHorrorStates: uniqueValues([
+      ...(state.revealedHorrorStates ?? []),
+      ...Object.entries(derivedHorror).filter(([, value]) => Number(value) > 0).map(([key]) => key),
+    ]),
+  };
+}
+
+function shouldOpenDeveloperMode() {
+  return new URLSearchParams(window.location.search).get("dev") === "1";
 }
 
 function displayInteger(value) {
@@ -263,9 +290,14 @@ function resolveHorrorDirector(game, isNight) {
   return {
     intensity,
     textMist: {
-      enabled: isNight && intensity >= 0.12,
+      enabled: HORROR_FLOATING_TEXT_ENABLED && isNight && intensity >= 0.12,
       intensity,
       fragmentCount: Math.min(8, Math.max(3, Math.round(3 + intensity * 5))),
+    },
+    textRain: {
+      enabled: isNight ? intensity >= 0.12 : true,
+      intensity: isNight ? intensity : Math.max(0.22, intensity),
+      tone: isNight ? "night" : "day",
     },
     staticRows: {
       enabled: isNight && intensity >= 0.58,
@@ -276,7 +308,7 @@ function resolveHorrorDirector(game, isNight) {
       intensity: eyeIntensity,
       count: Math.min(5, Math.max(1, Math.round(1 + eyeIntensity * 4))),
       burst: eyeIntensity >= 0.68 || game.phase === "escape-transformed-choice" || game.phase === "record-stop",
-      variant: game.route === "altered" || transformedCount > 0 ? "wide" : "sleepy",
+      variant: game.route === "altered" || transformedCount > 0 ? "eye1" : "sleepy1",
     },
   };
 }
@@ -286,26 +318,195 @@ function pseudoNoise(value) {
   return n - Math.floor(n);
 }
 
+function hashString(input) {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function hash01(...parts) {
+  const base = hashString(parts.join("|"));
+  let h = base + 0x6d2b79f5;
+  h = Math.imul(h ^ (h >>> 15), h | 1);
+  h ^= h + Math.imul(h ^ (h >>> 7), h | 61);
+  return ((h ^ (h >>> 14)) >>> 0) / 4294967296;
+}
+
 function pickGlyph(list, seed) {
   return list[Math.floor(pseudoNoise(seed) * list.length) % list.length];
 }
 
-function drawTextEye(ctx, layout, width, height, time, pointer, effect, index, reduceMotion) {
-  const strength = effect.intensity;
-  const cx = width * layout.x;
-  const cy = height * layout.y;
-  const rx = Math.min(width * layout.rx, 310) * layout.s * (0.82 + strength * 0.32);
-  const ry = Math.min(height * layout.ry, 118) * layout.s * (0.86 + strength * 0.3);
-  const cell = Math.max(9, Math.min(14, Math.min(width, height) / 88));
-  const fontSize = cell * 1.28;
-  const pointerX = (pointer.x * width - cx) / Math.max(1, rx);
-  const pointerY = (pointer.y * height - cy) / Math.max(1, ry);
-  const lookX = Math.max(-1, Math.min(1, pointerX)) * rx * 0.12;
-  const lookY = Math.max(-1, Math.min(1, pointerY)) * ry * 0.16;
+function pickHashed(list, ...parts) {
+  return list[Math.floor(hash01(...parts) * list.length) % list.length];
+}
+
+function getTextEyeVariantId(variant) {
+  return variant === "wide" || variant === "eye1" ? "eye1" : "sleepy1";
+}
+
+function getMarenolEyeMaskLines(variantId, nx, ax, ry, lidScale) {
+  if (variantId === "eye1") {
+    const almond = ry * Math.pow(1 - Math.pow(ax, 1.52), 0.53) * lidScale;
+    const upperBias = 1 + 0.1 * Math.sin((nx + 0.2) * Math.PI);
+    const lowerBias = 0.85 + 0.11 * Math.cos((nx - 0.1) * Math.PI);
+    return {
+      upper: -almond * upperBias,
+      lower: almond * lowerBias,
+    };
+  }
+
+  const almond = ry * Math.pow(1 - Math.pow(ax, 1.34), 0.62) * lidScale;
+  const sleepyDrop = ry * (0.1 + 0.025 * Math.sin((nx - 0.2) * Math.PI));
+  return {
+    upper: -almond * (0.4 + 0.05 * Math.sin((nx + 0.15) * Math.PI)) + sleepyDrop,
+    lower: almond * (0.72 + 0.04 * Math.cos((nx - 0.1) * Math.PI)) + sleepyDrop * 0.1,
+  };
+}
+
+function getMarenolEyeLidBandY(variantId, ry, shape, lidScale, side) {
+  if (variantId === "eye1") {
+    return side < 0
+      ? -ry * shape * lidScale
+      : ry * 0.88 * shape * lidScale;
+  }
+
+  return side < 0
+    ? -ry * 0.42 * shape * lidScale + ry * 0.1
+    : ry * 0.72 * shape * lidScale + ry * 0.02;
+}
+
+function pickRuntimeGlyph(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function getMarenolBlink(blinkState, time, reduceMotion) {
+  if (reduceMotion) return 0;
+  if (!blinkState.nextBlink) {
+    blinkState.nextBlink = time + 5000 + Math.random() * 7000;
+  }
+  if (time >= blinkState.nextBlink) {
+    blinkState.startedAt = time;
+    blinkState.duration = 135 + Math.random() * 100;
+    blinkState.until = time + blinkState.duration;
+    blinkState.nextBlink = blinkState.until + 5000 + Math.random() * 7000;
+  }
+  if (!blinkState.until || time > blinkState.until) return 0;
+  const phase = (time - blinkState.startedAt) / Math.max(1, blinkState.duration);
+  return Math.sin(clampRange(phase, 0, 1) * Math.PI);
+}
+
+function getMarenolEyeMetrics(layout, width, height) {
+  const rx = Math.min(width * layout.rx, 360) * layout.s;
+  const ry = Math.min(height * layout.ry, 142) * layout.s;
+  return {
+    cx: width * layout.x,
+    cy: height * layout.y,
+    rx,
+    ry,
+    cell: clampRange((Math.min(width, height) / 98) * Math.max(0.82, layout.s), 5, 7),
+  };
+}
+
+function stampMarenolEyeFromBuffer(ctx, sourceCanvas, width, height, dpr, layout) {
+  const source = getMarenolEyeMetrics(HORROR_EYE_SINGLE_LAYOUT, width, height);
+  const dest = getMarenolEyeMetrics(layout, width, height);
+  const sourcePad = Math.max(source.rx * 0.18, 36);
+  const destPad = Math.max(dest.rx * 0.18, 36);
+  const sourceW = (source.rx + sourcePad) * 2;
+  const sourceH = source.ry * 4.1;
+  const destW = (dest.rx + destPad) * 2;
+  const destH = dest.ry * 4.1;
+
+  ctx.save();
+  ctx.translate(dest.cx, dest.cy);
+  ctx.rotate((layout.r * Math.PI) / 180);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, dest.rx + destPad, dest.ry * 1.62, 0, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.drawImage(
+    sourceCanvas,
+    Math.max(0, (source.cx - sourceW / 2) * dpr),
+    Math.max(0, (source.cy - sourceH / 2) * dpr),
+    Math.min(sourceW * dpr, sourceCanvas.width),
+    Math.min(sourceH * dpr, sourceCanvas.height),
+    -destW / 2,
+    -destH / 2,
+    destW,
+    destH
+  );
+  ctx.restore();
+}
+
+function drawMarenolLidGlyphBand(ctx, variantId, rx, ry, lidScale, blink, time, side, reduceMotion) {
+  const localTime = reduceMotion ? 0 : time * 0.001;
+  const sampleCount = 112;
+  const band = variantId === "eye1" ? (side < 0 ? 7 : 5) : (side < 0 ? 9 : 4);
+  const baseSize = clampRange(Math.min(rx, ry) / 18, 5, 8);
+
+  for (let i = 0; i <= sampleCount; i += 1) {
+    const p = i / sampleCount;
+    const nx = -1 + p * 2;
+    const endFade = Math.pow(1 - Math.abs(nx), 0.28);
+    const shape = Math.pow(
+      1 - Math.abs(nx),
+      variantId === "eye1" ? (side < 0 ? 0.52 : 0.55) : (side < 0 ? 0.58 : 0.64)
+    );
+    const x = nx * rx;
+    const curveY = getMarenolEyeLidBandY(variantId, ry, shape, lidScale, side);
+    const skip = pseudoNoise(i * 8.31 + side * 19.7) < 0.18 + blink * 0.18;
+    if (skip || endFade < 0.22) continue;
+
+    for (let layer = 0; layer < band; layer += 1) {
+      const seed = i * 17.13 + layer * 23.9 + side * 41.7;
+      const n1 = pseudoNoise(seed + Math.floor(localTime * 9));
+      const n2 = pseudoNoise(seed + 5.2);
+      const n3 = pseudoNoise(seed + 9.9);
+      const inward = variantId === "eye1"
+        ? (side < 0 ? layer * 3.5 : -layer * 3.3)
+        : (side < 0 ? layer * 2.7 : -layer * 2.2);
+      const torn = Math.sin(nx * 9.2 + layer * 1.7 + localTime * 1.8) *
+        (variantId === "eye1" ? 3.2 : (side < 0 ? 2.6 : 1.8));
+      const y = curveY + inward + (n1 - 0.5) * 13 + torn;
+      const xJitter = (n2 - 0.5) * 12 + Math.sin(localTime * 2.4 + seed) * 1.8;
+      const alpha = variantId === "eye1"
+        ? (0.06 + (band - layer) / band * 0.21 + n3 * 0.15) * endFade
+        : (0.05 + (band - layer) / band * (side < 0 ? 0.19 : 0.12) + n3 * 0.1) * endFade;
+      const red = Math.floor((variantId === "eye1" ? 126 : 98) + n1 * (variantId === "eye1" ? 114 : 86));
+      const size = baseSize + n2 * 5 + (layer === 0 ? 1.5 : 0);
+
+      ctx.font = `${layer < 2 ? 700 : 400} ${size}px Consolas, "Courier New", monospace`;
+      ctx.fillStyle = `rgba(${red}, 0, ${Math.floor(n3 * 18)}, ${alpha})`;
+      ctx.fillText(pickRuntimeGlyph(HORROR_EYE_LID_GLYPHS), x + xJitter, y);
+    }
+  }
+}
+
+function drawMarenolLids(ctx, variantId, rx, ry, lidScale, blink, time, reduceMotion) {
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  drawMarenolLidGlyphBand(ctx, variantId, rx, ry, lidScale, blink, time, -1, reduceMotion);
+  drawMarenolLidGlyphBand(ctx, variantId, rx, ry, lidScale, blink, time, 1, reduceMotion);
+  ctx.restore();
+}
+
+function drawTextEye(ctx, layout, width, height, time, pointer, effect, index, reduceMotion, blinkState) {
+  const variantId = getTextEyeVariantId(effect.variant);
+  const { cx, cy, rx, ry, cell } = getMarenolEyeMetrics(layout, width, height);
+  const fontSize = cell * 1.24;
+  const lookX = pointer.x * rx * 0.045 + (reduceMotion ? 0 : Math.sin(time * 0.0011 + index * 0.41) * 7 * layout.s);
+  const lookY = pointer.y * ry * 0.06 + (reduceMotion ? 0 : Math.cos(time * 0.0014 + index * 0.37) * 4 * layout.s);
   const irisR = Math.min(rx, ry) * 0.56;
-  const pupilR = irisR * 0.36;
-  const timeStep = reduceMotion ? 0 : Math.floor(time / 220);
-  const burst = effect.burst && !reduceMotion ? Math.sin(time * 0.018) * (0.9 + strength * 1.6) : 0;
+  const pupilR = irisR * 0.39;
+  const blink = getMarenolBlink(blinkState, time, reduceMotion);
+  const lidScale = 1 - blink * 0.93;
+  const burstJitter = effect.burst && !reduceMotion
+    ? Math.sin(time * 0.026 + index * 0.43) * (2.2 + effect.intensity * 4.2) * layout.s
+    : 0;
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -313,60 +514,77 @@ function drawTextEye(ctx, layout, width, height, time, pointer, effect, index, r
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.font = `${fontSize}px Consolas, "Courier New", monospace`;
-  ctx.globalCompositeOperation = "source-over";
+  ctx.globalCompositeOperation = "screen";
 
+  const jitterAmp = reduceMotion ? 0 : 1.15;
   for (let y = -ry; y <= ry; y += cell * 1.12) {
     for (let x = -rx; x <= rx; x += cell) {
       const nx = x / rx;
       const ax = Math.abs(nx);
       if (ax > 1) continue;
-      const shape = Math.pow(1 - Math.pow(ax, effect.variant === "wide" ? 1.52 : 1.34), effect.variant === "wide" ? 0.53 : 0.62);
-      const upper = effect.variant === "wide" ? -ry * shape : -ry * shape * 0.42 + ry * 0.1;
-      const lower = effect.variant === "wide" ? ry * shape * 0.86 : ry * shape * 0.72 + ry * 0.02;
-      if (y < upper || y > lower) continue;
+
+      const lines = getMarenolEyeMaskLines(variantId, nx, ax, ry, lidScale);
+      const upperLine = lines.upper;
+      const lowerLine = lines.lower;
+      if (y < upperLine || y > lowerLine) continue;
 
       const px = x - lookX;
       const py = y - lookY;
       const dist = Math.hypot(px, py);
-      const edge = Math.min(y - upper, lower - y);
-      const seed = index * 1009 + Math.round(x * 3.1) + Math.round(y * 5.7) + timeStep;
-      const noise = pseudoNoise(seed);
-      let char = pickGlyph(HORROR_EYE_GLYPHS, seed);
-      let color = `rgba(136, 12, 18, ${0.18 + strength * 0.28 + noise * 0.16})`;
+      const edge = Math.min(y - upperLine, lowerLine - y);
+      const scar = Math.sin(x * 0.073 + y * 0.031 + time * 0.003);
+      if (scar > 0.88 && edge < cell * 8) continue;
 
-      if (edge < cell * 2.8) {
-        char = pickGlyph(HORROR_EYE_EDGE_GLYPHS, seed + 7.3);
-        color = `rgba(212, 0, 18, ${0.2 + strength * 0.34 + noise * 0.16})`;
+      const noise = Math.sin(x * 0.11 + y * 0.17 + time * 0.004) * 0.5 + 0.5;
+      let char = pickRuntimeGlyph(HORROR_EYE_GLYPHS);
+      let color = "rgba(118, 16, 16, 0.44)";
+
+      if (edge < cell * 3.2) {
+        char = pickRuntimeGlyph(HORROR_EYE_EDGE_GLYPHS);
+        color = `rgba(202, 0, 0, ${0.27 + noise * 0.34})`;
       }
 
       if (dist < irisR) {
         const ring = dist / irisR;
-        char = pickGlyph(HORROR_EYE_IRIS_GLYPHS, seed + 19.2);
-        color = `rgba(${Math.floor(155 + 70 * (1 - ring))}, ${Math.floor(4 + 18 * (1 - ring))}, ${Math.floor(16 + noise * 24)}, ${0.34 + strength * 0.42 + noise * 0.18})`;
+        char = pickRuntimeGlyph(HORROR_EYE_IRIS_GLYPHS);
+        const red = Math.floor(160 + 70 * (1 - ring));
+        const green = Math.floor(8 + 20 * (1 - ring));
+        color = `rgba(${red}, ${green}, ${Math.floor(18 + noise * 26)}, ${0.52 + noise * 0.38})`;
+
+        const spoke = Math.abs(Math.sin(Math.atan2(py, px) * 18 + time * 0.0013));
+        if (spoke > 0.86 && ring > 0.34) {
+          char = pickRuntimeGlyph(["/", "\\", "|"]);
+          color = `rgba(255, 34, 46, ${0.58 + noise * 0.3})`;
+        }
       }
 
       if (dist < pupilR) {
-        char = pickGlyph([" ", ".", "`"], seed + 31.8);
-        color = `rgba(${Math.floor(4 + noise * 16)}, 0, 0, ${0.74 + strength * 0.18})`;
+        const inner = dist / pupilR;
+        char = pickRuntimeGlyph([" ", ".", "`"]);
+        color = `rgba(${Math.floor(12 + noise * 15)}, 0, 0, ${0.86 - inner * 0.25})`;
       }
 
-      if (Math.hypot(px + irisR * 0.32, py + irisR * 0.36) < irisR * 0.12) {
-        char = pickGlyph(["*", "+", "."], seed + 41.5);
-        color = `rgba(255, 214, 222, ${0.58 + strength * 0.28})`;
+      const highlightOne = Math.hypot(px + irisR * 0.32, py + irisR * 0.38);
+      const highlightTwo = Math.hypot(px - irisR * 0.18, py + irisR * 0.2);
+      if (highlightOne < irisR * 0.13 || highlightTwo < irisR * 0.07) {
+        char = pickRuntimeGlyph(["*", "+", "."]);
+        color = `rgba(255, 214, 222, ${0.8 + noise * 0.18})`;
       }
 
-      const jitterX = reduceMotion ? 0 : Math.sin(time * 0.013 + x * 0.23 + y * 0.11) * (0.18 + strength * 0.48) + burst;
-      const jitterY = reduceMotion ? 0 : Math.cos(time * 0.012 + x * 0.08 - y * 0.19) * (0.18 + strength * 0.48) - burst * 0.22;
+      const jitterX = jitterAmp * Math.sin(time * 0.012 + x * 0.23 + y * 0.11) + burstJitter;
+      const jitterY = jitterAmp * Math.cos(time * 0.011 + x * 0.08 - y * 0.19) - burstJitter * 0.35;
       ctx.fillStyle = color;
       ctx.fillText(char, x + jitterX, y + jitterY);
     }
   }
 
+  drawMarenolLids(ctx, variantId, rx, ry, lidScale, blink, time, reduceMotion);
   ctx.restore();
 }
 
 function HorrorTextEyes({ effect }) {
   const canvasRef = useRef(null);
+  const blinkStatesRef = useRef([]);
 
   useEffect(() => {
     if (!effect.enabled) return undefined;
@@ -374,50 +592,76 @@ function HorrorTextEyes({ effect }) {
     if (!canvas) return undefined;
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return undefined;
+    const eyeBuffer = document.createElement("canvas");
+    const eyeBufferCtx = eyeBuffer.getContext("2d", { alpha: true });
+    if (!eyeBufferCtx) return undefined;
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const pointer = { x: 0.5, y: 0.5 };
+    const pointer = { x: 0, y: 0 };
     let width = 0;
     let height = 0;
+    let dpr = 1;
     let frameId = 0;
     let lastDraw = 0;
+    let visible = !document.hidden;
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       width = Math.floor(window.innerWidth);
       height = Math.floor(window.innerHeight);
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
+      eyeBuffer.width = canvas.width;
+      eyeBuffer.height = canvas.height;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      eyeBufferCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = false;
+      eyeBufferCtx.imageSmoothingEnabled = false;
     };
     const move = (event) => {
-      pointer.x = Math.max(0, Math.min(1, event.clientX / Math.max(1, width)));
-      pointer.y = Math.max(0, Math.min(1, event.clientY / Math.max(1, height)));
+      pointer.x = clampRange((event.clientX / Math.max(1, width) - 0.5) * 2, -1, 1);
+      pointer.y = clampRange((event.clientY / Math.max(1, height) - 0.5) * 2, -1, 1);
     };
-    const frameInterval = effect.burst ? 72 : 110;
+    const visibility = () => {
+      visible = !document.hidden;
+    };
+    const frameInterval = effect.burst ? 72 : (effect.count > 1 ? 110 : 82);
     const draw = (time) => {
+      if (!visible) {
+        frameId = requestAnimationFrame(draw);
+        return;
+      }
       if (!reduceMotion && time - lastDraw < frameInterval) {
         frameId = requestAnimationFrame(draw);
         return;
       }
       lastDraw = time;
       ctx.clearRect(0, 0, width, height);
-      HORROR_EYE_LAYOUTS.slice(0, effect.count).forEach((layout, index) => {
-        drawTextEye(ctx, layout, width, height, time, pointer, effect, index, reduceMotion);
-      });
+      const eyeCount = clampRange(effect.count, 1, HORROR_EYE_LAYOUTS.length);
+      if (!blinkStatesRef.current[0]) blinkStatesRef.current[0] = {};
+      if (eyeCount > 1) {
+        eyeBufferCtx.clearRect(0, 0, width, height);
+        drawTextEye(eyeBufferCtx, HORROR_EYE_SINGLE_LAYOUT, width, height, time, pointer, effect, 0, reduceMotion, blinkStatesRef.current[0]);
+        HORROR_EYE_LAYOUTS.slice(0, eyeCount).forEach((layout) => {
+          stampMarenolEyeFromBuffer(ctx, eyeBuffer, width, height, dpr, layout);
+        });
+      } else {
+        drawTextEye(ctx, HORROR_EYE_SINGLE_LAYOUT, width, height, time, pointer, effect, 0, reduceMotion, blinkStatesRef.current[0]);
+      }
       if (!reduceMotion) frameId = requestAnimationFrame(draw);
     };
 
     resize();
     window.addEventListener("resize", resize);
     window.addEventListener("pointermove", move);
+    document.addEventListener("visibilitychange", visibility);
     draw(performance.now());
 
     return () => {
       cancelAnimationFrame(frameId);
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", move);
+      document.removeEventListener("visibilitychange", visibility);
     };
   }, [effect.burst, effect.count, effect.enabled, effect.intensity, effect.variant]);
 
@@ -425,9 +669,107 @@ function HorrorTextEyes({ effect }) {
   return <canvas className="horror-text-eyes" ref={canvasRef} style={{ "--horror-eye-strength": effect.intensity.toFixed(2) }} aria-hidden="true" />;
 }
 
-function HorrorTextOverlay({ game, isNight }) {
-  const director = resolveHorrorDirector(game, isNight);
-  if (!director.textMist.enabled && !director.staticRows.enabled && !director.textEyes.enabled) return null;
+function HorrorTextRainCanvas({ effect }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (!effect.enabled) return undefined;
+    const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (reduceMotionQuery.matches) return undefined;
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return undefined;
+
+    let rainGlyphs = [];
+    let width = 0;
+    let height = 0;
+    let frameId = 0;
+    let visible = !document.hidden;
+
+    const generateRain = () => {
+      const rainCount = Math.round(clampRange((width * height) / 4200, 120, 310));
+      rainGlyphs = Array.from({ length: rainCount }, (_, index) => ({
+        x: hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "x") * width,
+        y: hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "y") * height,
+        size: 7 + hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "size") * 8,
+        speed: 8.4 + hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "speed") * 40.6,
+        sway: (hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "sway") - 0.5) * 24,
+        phase: hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "phase") * Math.PI * 2,
+        glyph: pickHashed(HORROR_TEXT_RAIN_GLYPHS, HORROR_TEXT_RAIN_SEED, "rain", index, "glyph"),
+        alpha: 0.08 + hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "alpha") * 0.22,
+        light: 0.45 + hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "light") * 0.55,
+      }));
+    };
+
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      width = Math.max(1, Math.floor(window.innerWidth));
+      height = Math.max(1, Math.floor(window.innerHeight));
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      generateRain();
+    };
+
+    const visibility = () => {
+      visible = !document.hidden;
+    };
+
+    const draw = (time) => {
+      if (!visible) {
+        frameId = requestAnimationFrame(draw);
+        return;
+      }
+      ctx.clearRect(0, 0, width, height);
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      const t = time / 1000;
+      const dayTone = effect.tone === "day";
+      for (const item of rainGlyphs) {
+        const y = (item.y + t * item.speed) % (height + 60) - 30;
+        const x = item.x + Math.sin(t * 1.8 + item.phase) * item.sway;
+        ctx.font = `700 ${item.size}px Consolas, "Courier New", monospace`;
+        if (dayTone) {
+          const glowAlpha = Math.min(0.32, item.alpha * 1.25);
+          const coreAlpha = Math.min(0.5, item.alpha * 1.7);
+          ctx.fillStyle = `rgba(255, 255, 236, ${coreAlpha})`;
+          ctx.fillRect(x - 1, y - 1, 2 + item.light * 2, 2 + item.light * 2);
+          ctx.fillStyle = `rgba(255, 245, 190, ${glowAlpha * 0.8})`;
+          ctx.fillText(item.glyph, x + item.light * 2.2, y + item.light * 1.5);
+        } else {
+          ctx.fillStyle = `rgba(225, 24, 42, ${item.alpha})`;
+          ctx.fillText(item.glyph, x, y);
+        }
+      }
+
+      ctx.restore();
+      frameId = requestAnimationFrame(draw);
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+    document.addEventListener("visibilitychange", visibility);
+    draw(performance.now());
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", visibility);
+    };
+  }, [effect.enabled, effect.tone]);
+
+  if (!effect.enabled) return null;
+  return <canvas className="horror-text-rain-canvas" ref={canvasRef} aria-hidden="true" />;
+}
+
+function HorrorTextOverlay({ game, isNight, director: directorOverride }) {
+  const director = directorOverride ?? resolveHorrorDirector(game, isNight);
+  if (!director.textMist.enabled && !director.textRain.enabled && !director.staticRows.enabled && !director.textEyes.enabled) return null;
 
   const intensity = director.intensity;
 
@@ -437,6 +779,7 @@ function HorrorTextOverlay({ game, isNight }) {
       style={{ "--horror-strength": intensity.toFixed(2) }}
       aria-hidden="true"
     >
+      <HorrorTextRainCanvas effect={director.textRain} />
       <HorrorTextEyes effect={director.textEyes} />
       {director.textMist.enabled && (
         <div className="horror-text-overlay__mist">
@@ -1161,7 +1504,7 @@ function TransitionOverlay({ onContinue }) {
   );
 }
 
-function StartScreen({ hasContinue, onContinue, onNew }) {
+function StartScreen({ hasContinue, developerMode, onContinue, onNew, onToggleDeveloper }) {
   return (
     <div className="start-screen">
       <img className="start-screen__image" src="./assets/eldroa-estate-day.jpg" alt="" />
@@ -1171,9 +1514,248 @@ function StartScreen({ hasContinue, onContinue, onNew }) {
         <div>
           {hasContinue && <button type="button" onClick={onContinue}>지난 꿈을 이어간다</button>}
           <button type="button" onClick={onNew}>잠에서 깨어난다</button>
+          <button className={developerMode ? "is-active" : ""} type="button" onClick={onToggleDeveloper}>DEV</button>
         </div>
       </section>
     </div>
+  );
+}
+
+function DeveloperNumberSection({ title, keys, values, labelMap, onChange }) {
+  return (
+    <section className="developer-section">
+      <h3>{title}</h3>
+      <div className="developer-number-grid">
+        {keys.map((key) => (
+          <label key={key}>
+            <span>{getDeveloperLabel(key, labelMap)}</span>
+            <input
+              type="number"
+              step="1"
+              value={getDeveloperNumber(values?.[key])}
+              onChange={(event) => onChange(key, event.target.value)}
+            />
+          </label>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DeveloperTraitSection({ game, onSetTraitValue, onSetTraitProgress }) {
+  const traitProgress = game.meta?.traitProgress ?? {};
+  return (
+    <section className="developer-section">
+      <h3>traits</h3>
+      <div className="developer-trait-list">
+        {DEV_TRAIT_KEYS.map((key) => {
+          const progress = traitProgress[key] ?? { level: 0, xp: 0 };
+          return (
+            <article className="developer-trait-row" key={key}>
+              <strong>{getDeveloperLabel(key, TRAIT_META)}</strong>
+              <label>
+                <span>value</span>
+                <input
+                  type="number"
+                  step="1"
+                  value={getDeveloperNumber(game.traits?.[key])}
+                  onChange={(event) => onSetTraitValue(key, event.target.value)}
+                />
+              </label>
+              <label>
+                <span>level</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="1"
+                  value={getDeveloperNumber(progress.level)}
+                  onChange={(event) => onSetTraitProgress(key, "level", event.target.value)}
+                />
+              </label>
+              <label>
+                <span>xp</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="9"
+                  step="1"
+                  value={getDeveloperNumber(progress.xp)}
+                  onChange={(event) => onSetTraitProgress(key, "xp", event.target.value)}
+                />
+              </label>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function DeveloperPassiveSection({ game, onToggleOwned, onToggleActive }) {
+  const ownedPassiveIds = game.ownedPassiveIds ?? [];
+  const activePassiveIds = game.passiveIds ?? [];
+  return (
+    <section className="developer-section">
+      <h3>passives</h3>
+      <div className="developer-passive-list">
+        {PASSIVES.map((passive) => {
+          const owned = ownedPassiveIds.includes(passive.id);
+          const active = activePassiveIds.includes(passive.id);
+          return (
+            <article className="developer-passive-row" key={passive.id}>
+              <div>
+                <strong>{passive.name}</strong>
+                <small>{passive.description}</small>
+              </div>
+              <button className={owned ? "is-active" : ""} type="button" onClick={() => onToggleOwned(passive.id)}>
+                {owned ? "remove" : "gain"}
+              </button>
+              <button className={active ? "is-active" : ""} type="button" disabled={!owned && !active} onClick={() => onToggleActive(passive.id)}>
+                {active ? "unequip" : "equip"}
+              </button>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function DeveloperEyeSection({ eyeOverride, onChange }) {
+  return (
+    <section className="developer-section">
+      <h3>eyes</h3>
+      <label className="developer-toggle">
+        <input
+          type="checkbox"
+          checked={eyeOverride.forceEyes}
+          onChange={(event) => onChange({ forceEyes: event.target.checked })}
+        />
+        <span>force eye canvas</span>
+      </label>
+      <div className="developer-number-grid">
+        <label>
+          <span>intensity</span>
+          <input
+            type="number"
+            min="0.2"
+            max="1"
+            step="0.05"
+            value={eyeOverride.intensity}
+            onChange={(event) => onChange({ intensity: clampRange(getDeveloperNumber(event.target.value), 0.2, 1) })}
+          />
+        </label>
+        <label>
+          <span>count</span>
+          <input
+            type="number"
+            min="1"
+            max={HORROR_EYE_LAYOUTS.length}
+            step="1"
+            value={eyeOverride.count}
+            onChange={(event) => onChange({ count: Math.min(Math.max(Math.floor(getDeveloperNumber(event.target.value)), 1), HORROR_EYE_LAYOUTS.length) })}
+          />
+        </label>
+      </div>
+      <div className="developer-eye-row">
+        <label>
+          <span>variant</span>
+          <select value={getTextEyeVariantId(eyeOverride.variant)} onChange={(event) => onChange({ variant: event.target.value })}>
+            <option value="sleepy1">sleepy1</option>
+            <option value="eye1">eye1</option>
+          </select>
+        </label>
+        <label className="developer-toggle">
+          <input
+            type="checkbox"
+            checked={eyeOverride.burst}
+            onChange={(event) => onChange({ burst: event.target.checked })}
+          />
+          <span>burst blink</span>
+        </label>
+      </div>
+    </section>
+  );
+}
+
+function DeveloperPreviewSection({ nightPreview, onNightPreviewChange }) {
+  return (
+    <section className="developer-section">
+      <h3>preview</h3>
+      <label className="developer-toggle">
+        <input
+          type="checkbox"
+          checked={nightPreview}
+          onChange={(event) => onNightPreviewChange(event.target.checked)}
+        />
+        <span>force night preview</span>
+      </label>
+    </section>
+  );
+}
+
+function DeveloperPanel({
+  game,
+  eyeOverride,
+  nightPreview,
+  onClose,
+  onEyeOverrideChange,
+  onNightPreviewChange,
+  onSetMapValue,
+  onSetTraitProgress,
+  onTogglePassiveOwned,
+  onTogglePassiveActive,
+}) {
+  return (
+    <aside className="developer-panel" aria-label="developer mode">
+      <header>
+        <div>
+          <strong>DEV MODE</strong>
+          <small>direct state editor</small>
+        </div>
+        <button type="button" onClick={onClose}>close</button>
+      </header>
+
+      <DeveloperPreviewSection nightPreview={nightPreview} onNightPreviewChange={onNightPreviewChange} />
+      <DeveloperEyeSection eyeOverride={eyeOverride} onChange={onEyeOverrideChange} />
+      <DeveloperNumberSection
+        title="stats"
+        keys={DEV_STAT_KEYS}
+        values={game.stats}
+        onChange={(key, value) => onSetMapValue("stats", key, value)}
+      />
+      <DeveloperNumberSection
+        title="resources"
+        keys={DEV_RESOURCE_KEYS}
+        values={game.resources}
+        labelMap={RESOURCE_META}
+        onChange={(key, value) => onSetMapValue("resources", key, value)}
+      />
+      <DeveloperNumberSection
+        title="estate"
+        keys={DEV_ESTATE_KEYS}
+        values={game.estate}
+        onChange={(key, value) => onSetMapValue("estate", key, value)}
+      />
+      <DeveloperNumberSection
+        title="horror"
+        keys={DEV_HORROR_TRAIT_KEYS}
+        values={game.horrorTraits}
+        labelMap={HORROR_TRAIT_META}
+        onChange={(key, value) => onSetMapValue("horrorTraits", key, value)}
+      />
+      <DeveloperTraitSection
+        game={game}
+        onSetTraitValue={(key, value) => onSetMapValue("traits", key, value)}
+        onSetTraitProgress={onSetTraitProgress}
+      />
+      <DeveloperPassiveSection
+        game={game}
+        onToggleOwned={onTogglePassiveOwned}
+        onToggleActive={onTogglePassiveActive}
+      />
+    </aside>
   );
 }
 
@@ -1194,6 +1776,15 @@ function App() {
   const [rulesOpen, setRulesOpen] = useState(false);
   const [tutorialPrompt, setTutorialPrompt] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [developerMode, setDeveloperMode] = useState(shouldOpenDeveloperMode);
+  const [developerNightPreview, setDeveloperNightPreview] = useState(false);
+  const [eyeOverride, setEyeOverride] = useState({
+    forceEyes: false,
+    intensity: 0.72,
+    count: 1,
+    variant: "sleepy1",
+    burst: false,
+  });
 
   useEffect(() => {
     if (!showStart && game.phase !== "start") saveAuto(game);
@@ -1207,7 +1798,22 @@ function App() {
   }, [game.day, game.phase, game.tutorialSummarySeen, showStart]);
 
   const isNight = isNightDisplayPhase(game);
-  const estateState = getEstatePresentation(game, isNight);
+  const effectiveIsNight = isNight || (developerMode && developerNightPreview);
+  const horrorDirector = resolveHorrorDirector(game, effectiveIsNight);
+  const visibleHorrorDirector = developerMode && eyeOverride.forceEyes
+    ? {
+        ...horrorDirector,
+        intensity: Math.max(horrorDirector.intensity, eyeOverride.intensity),
+        textEyes: {
+          enabled: true,
+          intensity: eyeOverride.intensity,
+          count: eyeOverride.count,
+          burst: eyeOverride.burst,
+          variant: eyeOverride.variant,
+        },
+      }
+    : horrorDirector;
+  const estateState = getEstatePresentation(game, effectiveIsNight);
   const animate = (id, action) => {
     if (selectedId) return;
     setSelectedId(id);
@@ -1280,8 +1886,110 @@ function App() {
     });
   };
 
+  const setDeveloperMapValue = (group, key, rawValue) => {
+    setGame((current) => {
+      const value = getDeveloperNumber(rawValue);
+      const next = {
+        ...current,
+        [group]: {
+          ...(current[group] ?? {}),
+          [key]: value,
+        },
+      };
+      if (group === "stats") {
+        next.displayStats = {
+          ...(current.displayStats ?? current.stats ?? {}),
+          [key]: value,
+        };
+      }
+      if (["stats", "resources", "estate", "horrorTraits"].includes(group)) {
+        return syncDeveloperHorrorState(next);
+      }
+      return next;
+    });
+  };
+
+  const setDeveloperTraitProgress = (traitId, field, rawValue) => {
+    setGame((current) => {
+      const value = Math.floor(getDeveloperNumber(rawValue));
+      const currentProgress = current.meta?.traitProgress?.[traitId] ?? { level: 0, xp: 0 };
+      const nextProgress = {
+        ...currentProgress,
+        [field]: field === "level"
+          ? Math.min(Math.max(value, 0), 10)
+          : Math.min(Math.max(value, 0), 9),
+      };
+      if (nextProgress.level >= 10) nextProgress.xp = 0;
+      return {
+        ...current,
+        meta: {
+          ...(current.meta ?? {}),
+          traitProgress: {
+            ...(current.meta?.traitProgress ?? {}),
+            [traitId]: nextProgress,
+          },
+        },
+      };
+    });
+  };
+
+  const toggleDeveloperPassiveOwned = (passiveId) => {
+    setGame((current) => {
+      const ownedPassiveIds = current.ownedPassiveIds ?? [];
+      const owned = ownedPassiveIds.includes(passiveId);
+      return {
+        ...current,
+        ownedPassiveIds: owned
+          ? ownedPassiveIds.filter((id) => id !== passiveId)
+          : uniqueValues([...ownedPassiveIds, passiveId]),
+        passiveIds: owned
+          ? (current.passiveIds ?? []).filter((id) => id !== passiveId)
+          : current.passiveIds ?? [],
+      };
+    });
+  };
+
+  const toggleDeveloperPassiveActive = (passiveId) => {
+    setGame((current) => {
+      const activePassiveIds = current.passiveIds ?? [];
+      const active = activePassiveIds.includes(passiveId);
+      return {
+        ...current,
+        ownedPassiveIds: uniqueValues([...(current.ownedPassiveIds ?? []), passiveId]),
+        passiveIds: active
+          ? activePassiveIds.filter((id) => id !== passiveId)
+          : uniqueValues([...activePassiveIds, passiveId]),
+      };
+    });
+  };
+
   if (showStart) {
-    return <StartScreen hasContinue={game.phase !== "start"} onContinue={() => setShowStart(false)} onNew={newGame} />;
+    return (
+      <>
+        <StartScreen
+          hasContinue={game.phase !== "start"}
+          developerMode={developerMode}
+          onContinue={() => setShowStart(false)}
+          onNew={newGame}
+          onToggleDeveloper={() => setDeveloperMode((current) => !current)}
+        />
+        {developerMode && (developerNightPreview || eyeOverride.forceEyes) && <HorrorTextOverlay game={game} isNight={effectiveIsNight} director={visibleHorrorDirector} />}
+        {developerMode && (
+          <DeveloperPanel
+            game={game}
+            eyeOverride={eyeOverride}
+            nightPreview={developerNightPreview}
+            onClose={() => setDeveloperMode(false)}
+            onEyeOverrideChange={(patch) => setEyeOverride((current) => ({ ...current, ...patch }))}
+            onNightPreviewChange={setDeveloperNightPreview}
+            onSetMapValue={setDeveloperMapValue}
+            onSetTraitProgress={setDeveloperTraitProgress}
+            onTogglePassiveOwned={toggleDeveloperPassiveOwned}
+            onTogglePassiveActive={toggleDeveloperPassiveActive}
+          />
+        )}
+      </>
+    );
   }
 
   const mainContent = (() => {
@@ -1528,22 +2236,23 @@ function App() {
   })();
 
   const dayPeriod = game.dayTurn < 2 ? "오전" : game.dayTurn < 4 ? "오후" : "저녁";
-  const phaseLabel = isNight ? "밤" : game.phase === "day" ? dayPeriod : "기록";
+  const phaseLabel = effectiveIsNight ? "밤" : game.phase === "day" ? dayPeriod : "기록";
   const phaseProgress = game.phase === "day"
     ? `${Math.min(game.dayTurn + 1, 5)} / 5`
     : game.phase === "expedition"
       ? `${game.expedition.stepIndex + 1} / ${game.expedition.totalSteps}`
       : "—";
-  const headerTitle = isNight ? `${game.day}번째 밤` : `기록 ${game.day}일차`;
+  const headerTitle = effectiveIsNight ? `${game.day}번째 밤` : `기록 ${game.day}일차`;
 
   return (
-    <main className={`app-shell ${isNight ? "theme-night" : "theme-day"}`}>
-      <HorrorTextOverlay game={game} isNight={isNight} />
+    <main className={`app-shell ${effectiveIsNight ? "theme-night" : "theme-day"}`}>
+      <HorrorTextOverlay game={game} isNight={effectiveIsNight} director={visibleHorrorDirector} />
       <header className="topbar">
+        <div className="dream-mark" aria-hidden="true">{game.day}번째 꿈 - {game.day}번째 밤</div>
         <div className="brand">
-          <span className="brand__crest">{isNight ? "夜" : "R"}</span>
+          <span className="brand__crest">{effectiveIsNight ? "夜" : "R"}</span>
           <div>
-            <p>{isNight ? "THE HOUSE IS STILL KIND" : "A KIND WORLD AWAITS"}</p>
+            <p>{effectiveIsNight ? "THE HOUSE IS STILL KIND" : "A KIND WORLD AWAITS"}</p>
             <h1>{headerTitle}</h1>
           </div>
         </div>
@@ -1560,6 +2269,7 @@ function App() {
           <button type="button" onClick={() => setRulesOpen(true)}>규칙</button>
           <button type="button" onClick={() => setSaveOpen(true)}>저장 기록</button>
           <button type="button" onClick={() => setShowStart(true)}>첫 화면</button>
+          <button className={developerMode ? "is-active" : ""} type="button" onClick={() => setDeveloperMode((current) => !current)}>DEV</button>
         </div>
       </header>
 
@@ -1569,7 +2279,7 @@ function App() {
             key={key}
             statKey={key}
             value={game.resources?.[key] ?? 0}
-            isNight={isNight}
+            isNight={effectiveIsNight}
             revealed
           />
         ))}
@@ -1577,7 +2287,7 @@ function App() {
 
       <div className="dashboard">
         <div className="estate-column">
-          <SceneImage isNight={isNight} estateState={estateState} />
+          <SceneImage isNight={effectiveIsNight} estateState={estateState} />
           <section className={`estate-report estate-report--${estateState.tone}`}>
             <div>
               <span className="eyebrow">영지 상태</span>
@@ -1604,6 +2314,27 @@ function App() {
         />
       )}
       {saveOpen && <SaveModal game={game} onClose={() => setSaveOpen(false)} onLoad={loadSlot} />}
+      <button
+        className={"developer-launcher " + (developerMode ? "is-active" : "")}
+        type="button"
+        onClick={() => setDeveloperMode((current) => !current)}
+      >
+        DEV
+      </button>
+      {developerMode && (
+        <DeveloperPanel
+          game={game}
+          eyeOverride={eyeOverride}
+          nightPreview={developerNightPreview}
+          onClose={() => setDeveloperMode(false)}
+          onEyeOverrideChange={(patch) => setEyeOverride((current) => ({ ...current, ...patch }))}
+          onNightPreviewChange={setDeveloperNightPreview}
+          onSetMapValue={setDeveloperMapValue}
+          onSetTraitProgress={setDeveloperTraitProgress}
+          onTogglePassiveOwned={toggleDeveloperPassiveOwned}
+          onTogglePassiveActive={toggleDeveloperPassiveActive}
+        />
+      )}
     </main>
   );
 }

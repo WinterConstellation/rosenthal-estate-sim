@@ -134,11 +134,67 @@ button:focus-visible {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 22px;
+  gap: 12px 22px;
   max-width: 1780px;
   margin: 0 auto;
   padding: 0 0 18px;
   border-bottom: 1px solid var(--line);
+}
+
+.dream-mark {
+  position: relative;
+  grid-column: 1 / 2;
+  grid-row: 1;
+  justify-self: start;
+  color: rgba(97, 67, 47, 0.84);
+  font-family: "Gowun Batang", serif;
+  font-size: clamp(1.02rem, 2.4vw, 1.8rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-shadow: 0 2px 18px rgba(255, 250, 235, 0.72);
+  white-space: nowrap;
+}
+
+.dream-mark::before,
+.dream-mark::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: clamp(44px, 10vw, 150px);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 56%, transparent));
+}
+
+.dream-mark::before {
+  right: calc(100% + 16px);
+}
+
+.dream-mark::after {
+  left: calc(100% + 16px);
+  transform: scaleX(-1);
+}
+
+.brand {
+  grid-column: 1 / 2;
+  grid-row: 2;
+}
+
+.phase-clock {
+  grid-column: 2 / 3;
+  grid-row: 2;
+}
+
+.topbar__actions {
+  grid-column: 3 / 4;
+  grid-row: 2;
+}
+
+.theme-night .dream-mark {
+  color: rgba(255, 232, 222, 0.78);
+  text-shadow:
+    0 0 18px rgba(176, 43, 52, 0.42),
+    0 2px 22px rgba(0, 0, 0, 0.82);
 }
 
 .brand {
@@ -212,6 +268,185 @@ button:focus-visible {
   color: var(--ink);
   background: color-mix(in srgb, var(--panel) 86%, transparent);
   font-size: 0.72rem;
+}
+
+.topbar__actions button.is-active,
+.start-screen button.is-active {
+  border-color: rgba(213, 75, 83, 0.78);
+  color: #ffe8e8;
+  background: rgba(130, 20, 28, 0.72);
+}
+
+.developer-launcher {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 86;
+  border: 1px solid rgba(255, 111, 120, 0.72);
+  padding: 10px 12px;
+  color: #ffe8e8;
+  background: rgba(82, 11, 17, 0.88);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.developer-launcher.is-active {
+  background: rgba(151, 33, 39, 0.95);
+}
+
+.developer-panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 80;
+  display: grid;
+  width: min(430px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  gap: 10px;
+  overflow: auto;
+  border: 1px solid rgba(215, 77, 86, 0.42);
+  padding: 12px;
+  color: #f0e7d9;
+  background: rgba(14, 15, 17, 0.94);
+  box-shadow: 0 22px 80px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(10px);
+}
+
+.developer-panel header,
+.developer-passive-row,
+.developer-trait-row {
+  display: grid;
+  gap: 8px;
+}
+
+.developer-panel header {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 10px;
+}
+
+.developer-panel header strong,
+.developer-section h3 {
+  margin: 0;
+  color: #ff7b86;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.developer-panel header small,
+.developer-passive-row small,
+.developer-trait-row span,
+.developer-number-grid span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.56rem;
+}
+
+.developer-panel button,
+.developer-panel input,
+.developer-panel select {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: inherit;
+  background: rgba(255, 255, 255, 0.08);
+  font: inherit;
+}
+
+.developer-panel button {
+  padding: 6px 8px;
+  font-size: 0.58rem;
+}
+
+.developer-panel button.is-active {
+  border-color: rgba(255, 111, 120, 0.78);
+  background: rgba(151, 33, 39, 0.62);
+}
+
+.developer-panel button:disabled {
+  opacity: 0.38;
+}
+
+.developer-section {
+  display: grid;
+  gap: 7px;
+}
+
+.developer-number-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.developer-number-grid label,
+.developer-trait-row label,
+.developer-toggle,
+.developer-eye-row label {
+  display: grid;
+  gap: 3px;
+}
+
+.developer-number-grid input,
+.developer-trait-row input,
+.developer-eye-row select {
+  width: 100%;
+  min-width: 0;
+  padding: 6px;
+  font-size: 0.64rem;
+}
+
+.developer-toggle {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.developer-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #d9505c;
+}
+
+.developer-eye-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  align-items: end;
+}
+
+.developer-trait-list,
+.developer-passive-list {
+  display: grid;
+  gap: 6px;
+}
+
+.developer-trait-row {
+  grid-template-columns: minmax(72px, 1fr) repeat(3, 58px);
+  align-items: end;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 7px;
+}
+
+.developer-trait-row strong,
+.developer-passive-row strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.developer-passive-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 7px;
+}
+
+.developer-passive-row div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
 }
 
 .sacrifice-counter {
@@ -809,9 +1044,21 @@ button:focus-visible {
 }
 
 .horror-text-overlay__mist,
-.horror-text-overlay__static {
+.horror-text-overlay__static,
+.horror-text-rain-canvas {
   position: absolute;
   inset: 0;
+}
+
+.horror-text-rain-canvas {
+  width: 100%;
+  height: 100%;
+  opacity: 0.72;
+  mix-blend-mode: screen;
+}
+
+.theme-night .horror-text-rain-canvas {
+  opacity: 1;
 }
 
 .horror-text-eyes {
@@ -830,7 +1077,7 @@ button:focus-visible {
   left: var(--x);
   display: inline-block;
   max-width: none;
-  font-size: clamp(9px, calc(0.39rem + var(--horror-strength) * 0.345rem), 21px);
+  font-size: clamp(18px, calc(0.78rem + var(--horror-strength) * 0.69rem), 42px);
   font-weight: 700;
   letter-spacing: 0.12em;
   line-height: 1.35;
@@ -863,6 +1110,7 @@ button:focus-visible {
 
 .horror-text-overlay__static {
   opacity: calc(0.1 + var(--horror-strength) * 0.36);
+  filter: blur(0.2px);
 }
 
 .horror-text-overlay__static span {
@@ -1692,6 +1940,7 @@ button:focus-visible {
     transition-duration: 1ms !important;
   }
 
+  .horror-text-rain-canvas,
   .horror-text-overlay__static {
     display: none;
   }

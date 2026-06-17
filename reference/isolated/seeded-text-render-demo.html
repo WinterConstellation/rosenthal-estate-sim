@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seeded Text Render Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel: rgba(10, 12, 14, 0.72);
+      --line: rgba(255, 78, 90, 0.18);
+      --text: #f0d9d9;
+      --muted: #9a8080;
+      --red: #e44352;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 72% 18%, rgba(91, 10, 22, 0.26), transparent 27%),
+        radial-gradient(circle at 18% 78%, rgba(120, 8, 24, 0.18), transparent 30%),
+        linear-gradient(145deg, #06070a, #0a0708 48%, #020203);
+      color: var(--text);
+      font-family: "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .top-vignette,
+    .bottom-vignette {
+      position: fixed;
+      right: 0;
+      left: 0;
+      pointer-events: none;
+    }
+
+    .top-vignette {
+      top: 0;
+      height: 38vh;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.74), transparent);
+    }
+
+    .bottom-vignette {
+      bottom: 0;
+      height: 46vh;
+      background: linear-gradient(0deg, rgba(0, 0, 0, 0.8), transparent);
+    }
+
+    .debug {
+      position: fixed;
+      left: 18px;
+      bottom: 18px;
+      z-index: 8;
+      width: min(430px, calc(100vw - 36px));
+      border: 1px solid var(--line);
+      padding: 14px;
+      background: var(--panel);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.44);
+      backdrop-filter: blur(10px);
+    }
+
+    .debug.is-hidden {
+      display: none;
+    }
+
+    .debug h1 {
+      margin: 0 0 8px;
+      color: #ffd8d8;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .debug-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 12px;
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .debug-grid strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .controls {
+      display: grid;
+      gap: 9px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 11px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 28px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .control-row label {
+      min-width: 82px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--red);
+    }
+
+    button {
+      border: 1px solid rgba(255, 82, 94, 0.34);
+      padding: 6px 9px;
+      color: var(--text);
+      background: rgba(117, 14, 26, 0.25);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button.is-on {
+      border-color: rgba(255, 118, 128, 0.72);
+      color: #fff1f1;
+      background: rgba(166, 24, 38, 0.55);
+    }
+
+    .keys {
+      margin-top: 10px;
+      color: #856d6d;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .dom-stress {
+      position: fixed;
+      inset: 0;
+      z-index: 4;
+      overflow: hidden;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 180ms ease;
+    }
+
+    .dom-stress.is-on {
+      opacity: 1;
+    }
+
+    .dom-stress span {
+      position: absolute;
+      color: rgba(255, 48, 64, 0.42);
+      font: 700 12px/1 Consolas, "Courier New", monospace;
+      transform: translate3d(var(--x), var(--y), 0) rotate(var(--r));
+      animation: dom-float var(--dur) linear infinite;
+      animation-delay: var(--delay);
+      will-change: transform, opacity;
+    }
+
+    @keyframes dom-float {
+      0% {
+        opacity: 0.1;
+        transform: translate3d(var(--x), calc(var(--y) - 12vh), 0) rotate(var(--r));
+      }
+      50% {
+        opacity: 0.58;
+      }
+      100% {
+        opacity: 0.1;
+        transform: translate3d(calc(var(--x) + 5vw), calc(var(--y) + 18vh), 0) rotate(calc(var(--r) * -1));
+      }
+    }
+
+    .title-mark {
+      position: fixed;
+      top: 18px;
+      left: 20px;
+      z-index: 3;
+      color: rgba(255, 196, 196, 0.28);
+      font-family: "Times New Roman", serif;
+      font-size: clamp(18px, 3vw, 42px);
+      letter-spacing: 0.18em;
+      pointer-events: none;
+      text-transform: uppercase;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .dom-stress span {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene" aria-label="seeded text rendering demo"></canvas>
+  <div class="top-vignette" aria-hidden="true"></div>
+  <div class="bottom-vignette" aria-hidden="true"></div>
+  <div class="title-mark" aria-hidden="true">Seed 1 / Altered Night</div>
+  <div id="domStress" class="dom-stress" aria-hidden="true"></div>
+
+  <section id="debug" class="debug" aria-label="debug panel">
+    <h1>Seeded procedural text</h1>
+    <div class="debug-grid">
+      <span>seed <strong id="seedLabel">1</strong></span>
+      <span>phase <strong>night / altered</strong></span>
+      <span>stats <strong>18 · 17 · 17 · 18 · 14 · 20</strong></span>
+      <span>horror <strong>fear 62 / corruption 47</strong></span>
+      <span>glyphs <strong id="glyphLabel">700</strong></span>
+      <span>mode <strong id="modeLabel">canvas 2d</strong></span>
+      <span>fps <strong id="fpsLabel">--</strong></span>
+      <span>frame <strong id="frameLabel">-- ms</strong></span>
+    </div>
+    <div class="controls">
+      <div class="control-row">
+        <label for="glyphRange">density</label>
+        <input id="glyphRange" type="range" min="200" max="1400" step="50" value="700">
+      </div>
+      <div class="control-row">
+        <button id="motionButton" class="is-on" type="button">motion</button>
+        <button id="blurButton" type="button">blur</button>
+        <button id="domButton" type="button">DOM stress</button>
+      </div>
+      <div class="control-row">
+        <button id="regenButton" type="button">regenerate same seed</button>
+      </div>
+    </div>
+    <div class="keys">Keys: 1 low · 2 medium · 3 high · D debug · R regenerate</div>
+  </section>
+
+  <script>
+    "use strict";
+
+    const STATE = {
+      seedId: 1,
+      eventId: "seeded-render-demo-night-004",
+      day: 4,
+      cycle: 2,
+      phase: "night",
+      route: "altered",
+      stats: {
+        health: 18,
+        insight: 17,
+        resolve: 17,
+        charm: 18,
+        faith: 14,
+        stamina: 20,
+      },
+      fear: 62,
+      corruption: 47,
+      recordIntegrity: 36,
+      intrusionPressure: 58,
+      monsterization: 41,
+      truthDiscovered: true,
+      companionTransformedCount: 1,
+    };
+
+    const SENTENCES = [
+      "the house remembers the order of your choices",
+      "stella nigra appropinquabit",
+      "your hand writes before your mouth answers",
+      "the ledger is empty because it has already confessed",
+      "non est iustus non est usque ad unum",
+      "the seventh page waits under the eighth morning",
+      "the stair counts the living and forgets the rest",
+      "veni ad me dixi tu autem non audisti",
+      "record integrity failed at the edge of the name",
+      "the eye is only a sentence learning to look back",
+    ];
+
+    const GLYPHS = [".", "-", "*", "+", "x", "X", ":", "'", "`", "/", "\\", "|", "_", "#", "%"];
+    const canvas = document.getElementById("scene");
+    const ctx = canvas.getContext("2d", { alpha: true });
+    const debug = document.getElementById("debug");
+    const domStress = document.getElementById("domStress");
+    const glyphRange = document.getElementById("glyphRange");
+    const glyphLabel = document.getElementById("glyphLabel");
+    const fpsLabel = document.getElementById("fpsLabel");
+    const frameLabel = document.getElementById("frameLabel");
+    const modeLabel = document.getElementById("modeLabel");
+    const motionButton = document.getElementById("motionButton");
+    const blurButton = document.getElementById("blurButton");
+    const domButton = document.getElementById("domButton");
+    const regenButton = document.getElementById("regenButton");
+
+    const settings = {
+      glyphCount: 700,
+      motion: !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      blur: false,
+      dom: false,
+    };
+
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let glyphs = [];
+    let mist = [];
+    let raf = 0;
+    let lastFpsTime = performance.now();
+    let lastFrameTime = performance.now();
+    let frames = 0;
+
+    function hashString(input) {
+      let h = 2166136261;
+      for (let i = 0; i < input.length; i += 1) {
+        h ^= input.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return h >>> 0;
+    }
+
+    function hash01(...parts) {
+      const base = hashString(parts.join("|"));
+      let h = base + 0x6d2b79f5;
+      h = Math.imul(h ^ (h >>> 15), h | 1);
+      h ^= h + Math.imul(h ^ (h >>> 7), h | 61);
+      return ((h ^ (h >>> 14)) >>> 0) / 4294967296;
+    }
+
+    function pick(list, ...parts) {
+      return list[Math.floor(hash01(...parts) * list.length) % list.length];
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function stateSeed(extra = "") {
+      const s = STATE.stats;
+      return [
+        STATE.seedId,
+        STATE.eventId,
+        STATE.day,
+        STATE.cycle,
+        STATE.phase,
+        STATE.route,
+        s.health,
+        s.insight,
+        s.resolve,
+        s.charm,
+        s.faith,
+        s.stamina,
+        STATE.fear,
+        STATE.corruption,
+        STATE.recordIntegrity,
+        STATE.intrusionPressure,
+        STATE.monsterization,
+        STATE.truthDiscovered ? 1 : 0,
+        STATE.companionTransformedCount,
+        extra,
+      ].join(":");
+    }
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = Math.max(1, Math.floor(window.innerWidth));
+      height = Math.max(1, Math.floor(window.innerHeight));
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      generateAll();
+    }
+
+    function generateAll() {
+      const seed = stateSeed("glyphs");
+      const fearFactor = STATE.fear / 100;
+      const corruptionFactor = STATE.corruption / 100;
+      const recordDamage = (100 - STATE.recordIntegrity) / 100;
+      const count = settings.glyphCount;
+      glyphs = Array.from({ length: count }, (_, index) => {
+        const band = hash01(seed, index, "band");
+        const nearBottom = band > 0.76;
+        const x = hash01(seed, index, "x") * width;
+        const y = hash01(seed, index, "y") * height;
+        const size = 7 + hash01(seed, index, "size") * (8 + fearFactor * 5);
+        const speed = 12 + hash01(seed, index, "speed") * (45 + fearFactor * 36);
+        const phase = hash01(seed, index, "phase") * Math.PI * 2;
+        const sway = (hash01(seed, index, "sway") - 0.5) * (10 + STATE.intrusionPressure * 0.28);
+        const corrupt = hash01(seed, index, "corrupt") < recordDamage * 0.72;
+        const glyph = corrupt ? pick(GLYPHS, seed, index, "bad") : pick([".", "-", "*", "+", "x"], seed, index, "glyph");
+        const red = Math.floor(115 + hash01(seed, index, "red") * 120);
+        const green = Math.floor(8 + hash01(seed, index, "green") * 22);
+        const blue = Math.floor(17 + hash01(seed, index, "blue") * 38);
+        const alpha = 0.12 + hash01(seed, index, "alpha") * (0.26 + fearFactor * 0.25);
+        return { x, y, size, speed, phase, sway, glyph, red, green, blue, alpha, nearBottom, corrupt };
+      });
+
+      mist = SENTENCES.map((sentence, index) => {
+        const local = stateSeed("mist-" + index);
+        return {
+          text: sliceByIntegrity(sentence, index),
+          x: hash01(local, "x") * width * 0.92 + width * 0.02,
+          y: hash01(local, "y") * height * 0.88 + height * 0.04,
+          size: 10 + hash01(local, "size") * 16,
+          rotate: (hash01(local, "rot") - 0.5) * 16,
+          alpha: 0.08 + hash01(local, "alpha") * 0.18 + fearFactor * 0.08,
+          phase: hash01(local, "phase") * Math.PI * 2,
+        };
+      });
+
+      buildDomStress();
+      glyphLabel.textContent = String(settings.glyphCount);
+    }
+
+    function sliceByIntegrity(text, index) {
+      const damage = (100 - STATE.recordIntegrity) / 100;
+      const seed = stateSeed("slice-" + index);
+      return text.split("").map((char, charIndex) => {
+        if (char === " ") return char;
+        const eaten = hash01(seed, charIndex, "eat") < damage * 0.22;
+        const shifted = hash01(seed, charIndex, "shift") < damage * 0.08;
+        if (eaten) return "";
+        if (shifted) return pick(GLYPHS, seed, charIndex, "swap");
+        return char;
+      }).join("");
+    }
+
+    function buildDomStress() {
+      domStress.textContent = "";
+      const seed = stateSeed("dom-stress");
+      const count = Math.min(220, Math.max(60, Math.round(settings.glyphCount * 0.14)));
+      const fragment = document.createDocumentFragment();
+      for (let index = 0; index < count; index += 1) {
+        const span = document.createElement("span");
+        span.textContent = pick(GLYPHS, seed, index, "glyph");
+        span.style.setProperty("--x", (hash01(seed, index, "x") * 100).toFixed(2) + "vw");
+        span.style.setProperty("--y", (hash01(seed, index, "y") * 100).toFixed(2) + "vh");
+        span.style.setProperty("--r", ((hash01(seed, index, "r") - 0.5) * 80).toFixed(2) + "deg");
+        span.style.setProperty("--dur", (3.8 + hash01(seed, index, "dur") * 7.2).toFixed(2) + "s");
+        span.style.setProperty("--delay", (-hash01(seed, index, "delay") * 8).toFixed(2) + "s");
+        fragment.appendChild(span);
+      }
+      domStress.appendChild(fragment);
+    }
+
+    function draw(time) {
+      const start = performance.now();
+      const t = time / 1000;
+      ctx.clearRect(0, 0, width, height);
+      drawBackground(t);
+      drawMist(t);
+      drawGlyphRain(t);
+      if (settings.blur) drawBlurPass(t);
+      updateFps(start);
+      raf = requestAnimationFrame(draw);
+    }
+
+    function drawBackground(t) {
+      const pulse = settings.motion ? Math.sin(t * 0.22) * 0.04 : 0;
+      const gradient = ctx.createRadialGradient(width * 0.55, height * 0.5, 0, width * 0.55, height * 0.5, Math.max(width, height) * 0.78);
+      gradient.addColorStop(0, `rgba(62, 4, 12, ${0.22 + pulse})`);
+      gradient.addColorStop(0.46, "rgba(12, 5, 7, 0.62)");
+      gradient.addColorStop(1, "rgba(0, 0, 0, 0.96)");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    function drawMist(t) {
+      ctx.save();
+      ctx.font = "700 18px Georgia, 'Times New Roman', serif";
+      ctx.textBaseline = "middle";
+      ctx.globalCompositeOperation = "source-over";
+      for (const item of mist) {
+        const drift = settings.motion ? Math.sin(t * 0.32 + item.phase) * 10 : 0;
+        const fade = 0.72 + (settings.motion ? Math.sin(t * 0.48 + item.phase) * 0.22 : 0);
+        ctx.save();
+        ctx.translate(item.x + drift, item.y);
+        ctx.rotate(item.rotate * Math.PI / 180);
+        ctx.font = `700 ${item.size}px Georgia, 'Times New Roman', serif`;
+        ctx.fillStyle = `rgba(236, 45, 60, ${Math.max(0.02, item.alpha * fade)})`;
+        ctx.fillText(item.text, 0, 0);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    function drawGlyphRain(t) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (const item of glyphs) {
+        const speedTime = settings.motion ? t * item.speed : 0;
+        const y = (item.y + speedTime) % (height + 80) - 40;
+        const wave = settings.motion ? Math.sin(t * 1.8 + item.phase) * item.sway : 0;
+        const x = item.x + wave;
+        const wobbleAlpha = settings.motion ? 0.78 + Math.sin(t * 2.3 + item.phase) * 0.18 : 0.84;
+        ctx.font = `700 ${item.size}px Consolas, 'Courier New', monospace`;
+        ctx.fillStyle = `rgba(${item.red}, ${item.green}, ${item.blue}, ${Math.max(0.03, item.alpha * wobbleAlpha)})`;
+        ctx.fillText(item.glyph, x, y);
+        if (item.corrupt && hash01(item.x, item.y, "tail") > 0.72) {
+          ctx.fillStyle = `rgba(255, 62, 75, ${item.alpha * 0.25})`;
+          ctx.fillText(pick(GLYPHS, item.x, item.y, "ghost"), x + 1.5, y + 9);
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawBlurPass(t) {
+      const alpha = 0.06 + Math.sin(t * 0.7) * 0.015;
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.filter = "blur(1.5px)";
+      ctx.drawImage(canvas, -1, 0, width + 2, height);
+      ctx.filter = "none";
+      ctx.fillStyle = `rgba(90, 0, 8, ${alpha})`;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
+
+    function updateFps(frameStart) {
+      frames += 1;
+      const now = performance.now();
+      if (now - lastFpsTime >= 500) {
+        const fps = frames * 1000 / (now - lastFpsTime);
+        fpsLabel.textContent = fps.toFixed(0);
+        frameLabel.textContent = (now - frameStart).toFixed(2) + " ms";
+        lastFpsTime = now;
+        frames = 0;
+      }
+      lastFrameTime = now;
+    }
+
+    function toggleButton(button, value) {
+      button.classList.toggle("is-on", value);
+    }
+
+    function setGlyphCount(count) {
+      settings.glyphCount = Math.max(200, Math.min(1400, count));
+      glyphRange.value = String(settings.glyphCount);
+      generateAll();
+    }
+
+    function regenerate() {
+      generateAll();
+    }
+
+    function bindUi() {
+      glyphRange.addEventListener("input", () => setGlyphCount(Number(glyphRange.value)));
+      motionButton.addEventListener("click", () => {
+        settings.motion = !settings.motion;
+        toggleButton(motionButton, settings.motion);
+      });
+      blurButton.addEventListener("click", () => {
+        settings.blur = !settings.blur;
+        toggleButton(blurButton, settings.blur);
+      });
+      domButton.addEventListener("click", () => {
+        settings.dom = !settings.dom;
+        toggleButton(domButton, settings.dom);
+        domStress.classList.toggle("is-on", settings.dom);
+        modeLabel.textContent = settings.dom ? "canvas 2d + dom sample" : "canvas 2d";
+      });
+      regenButton.addEventListener("click", regenerate);
+      window.addEventListener("keydown", (event) => {
+        const key = event.key.toLowerCase();
+        if (key === "1") setGlyphCount(350);
+        if (key === "2") setGlyphCount(700);
+        if (key === "3") setGlyphCount(1400);
+        if (key === "d") debug.classList.toggle("is-hidden");
+        if (key === "r") regenerate();
+      });
+    }
+
+    bindUi();
+    window.addEventListener("resize", resize);
+    resize();
+    toggleButton(motionButton, settings.motion);
+    toggleButton(blurButton, settings.blur);
+    toggleButton(domButton, settings.dom);
+    raf = requestAnimationFrame(draw);
+  </script>
+</body>
+</html>

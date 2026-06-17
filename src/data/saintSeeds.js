@@ -75,12 +75,12 @@ export const SEED_BENEFIT_RULES = [
 ];
 
 export const SEED_BURDEN_RULES = [
-  { id: "day-failure-burden", trigger: { kind: "phase-result", phase: "day", success: false }, modifier: { kind: "harmful", multiplier: 1.1 }, text: "낮 행동 실패의 해로운 변화 x1.1" },
-  { id: "night-failure-burden", trigger: { kind: "night-result", success: false }, modifier: { kind: "harmful", multiplier: 1.1 }, text: "밤·특수 사건 실패의 해로운 변화 x1.1" },
+  { id: "day-failure-burden", trigger: { kind: "phase-result", phase: "day", success: false }, modifier: { kind: "harmful", multiplier: 0.9 }, text: "낮 행동 실패의 해로운 변화 x0.9" },
+  { id: "night-failure-burden", trigger: { kind: "night-result", success: false }, modifier: { kind: "harmful", multiplier: 0.9 }, text: "밤·특수 사건 실패의 해로운 변화 x0.9" },
   { id: "danger-chance-burden", trigger: { kind: "danger-choice" }, modifier: { kind: "final-chance", multiplier: 0.9 }, text: "위험·극단·치명 선택의 성공률 x0.9" },
-  { id: "stamina-loss-burden", trigger: { kind: "negative-delta", group: "stats", key: "stamina" }, modifier: { kind: "specific-harmful", group: "stats", key: "stamina", multiplier: 1.1 }, text: "스태미나 손실 x1.1" },
-  { id: "health-loss-burden", trigger: { kind: "negative-delta", group: "stats", key: "health" }, modifier: { kind: "specific-harmful", group: "stats", key: "health", multiplier: 1.1 }, text: "체력 손실 x1.1" },
-  { id: "forfeit-burden", trigger: { kind: "forfeit" }, modifier: { kind: "harmful", multiplier: 1.1 }, text: "포기·탐사 귀환의 해로운 변화 x1.1" },
+  { id: "stamina-loss-burden", trigger: { kind: "negative-delta", group: "stats", key: "stamina" }, modifier: { kind: "specific-harmful", group: "stats", key: "stamina", multiplier: 0.9 }, text: "스태미나 손실 x0.9" },
+  { id: "health-loss-burden", trigger: { kind: "negative-delta", group: "stats", key: "health" }, modifier: { kind: "specific-harmful", group: "stats", key: "health", multiplier: 0.9 }, text: "체력 손실 x0.9" },
+  { id: "forfeit-burden", trigger: { kind: "forfeit" }, modifier: { kind: "harmful", multiplier: 0.9 }, text: "포기·탐사 귀환의 해로운 변화 x0.9" },
 ];
 
 export function getSeedGrowthMultipliers(seed) {
@@ -88,10 +88,15 @@ export function getSeedGrowthMultipliers(seed) {
   return {};
 }
 
+function cloneSeedRule(rule) {
+  if (!rule) return null;
+  return { ...rule, trigger: { ...rule.trigger }, modifier: { ...rule.modifier } };
+}
+
 export function getSeedTrait(seed) {
   if (seed?.trait) return {
-    benefit: { ...seed.trait.benefit, trigger: { ...seed.trait.benefit.trigger }, modifier: { ...seed.trait.benefit.modifier } },
-    burden: { ...seed.trait.burden, trigger: { ...seed.trait.burden.trigger }, modifier: { ...seed.trait.burden.modifier } },
+    benefit: cloneSeedRule(seed.trait.benefit),
+    burden: cloneSeedRule(seed.trait.burden),
   };
   return null;
 }
