@@ -166,6 +166,8 @@
     const irisGlyphs = ["*", "+", "x", "X", "#", "%"];
     const edgeGlyphs = ["/", "\\", "|", "_", "-", "."];
     const lidGlyphs = ["-", "_", ".", "'", "`", "x", "+", ":"];
+    const gazeBucketsX = [-1, -0.5, 0, 0.5, 1];
+    const gazeBucketsY = [-1, 0, 1];
 
     const settings = {
       live: false,
@@ -177,7 +179,7 @@
     let height = 0;
     let dpr = 1;
     let cacheDpr = 1;
-    let cacheFrames = [];
+    let cacheFrames = { open: new Map(), blink: [], openCount: 0, blinkCount: 0, gazeCount: 0 };
     let rainGlyphs = [];
     let backgroundCuts = [];
     let frames = 0;
@@ -255,13 +257,12 @@
       const started = performance.now();
       const frameWidth = Math.ceil(Math.min(width * 0.82, 780));
       const frameHeight = Math.ceil(Math.min(height * 0.46, 360));
-      const openCount = 18;
-      const blinkCount = 8;
-      const total = openCount + blinkCount;
-      const next = [];
+      const openCount = 4;
+      const blinkCount = 6;
+      const nextOpen = new Map();
+      const nextBlink = [];
 
-      for (let i = 0; i < total; i += 1) {
-        const isBlink = i >= openCount;
+      const buildFrame = ({ index, kind, blink, gazeX, gazeY, textureKey }) => {
         const local = document.createElement("canvas");
         local.width = Math.ceil(frameWidth * cacheDpr);
         local.height = Math.ceil(frameHeight * cacheDpr);
@@ -269,9 +270,7 @@
         localCtx.setTransform(cacheDpr, 0, 0, cacheDpr, 0, 0);
         localCtx.clearRect(0, 0, frameWidth, frameHeight);
         localCtx.imageSmoothingEnabled = false;
-        const p = isBlink ? (i - openCount) / Math.max(1, blinkCount - 1) : 0;
-        const blink = isBlink ? Math.sin(p * Math.PI) : 0;
-        const time = i * 113;
+        const time = index * 113;
         drawDetailedEye(localCtx, {
           width: frameWidth,
           height: frameHeight,
@@ -283,25 +282,67 @@
           time,
           motion: true,
           cacheSeed: `${seedBase}:eye-base`,
-          textureSeed: `${seedBase}:frame:${i}`,
-          layerMode: "base",
+          textureSeed: textureKey,
+          gazeStrength: 0,
+          mouseGazeStrengthX: 0.045,
+          mouseGazeStrengthY: 0.06,
+          autoGazeStrength: 0.014,
+          gazeX,
+          gazeY,
         });
-        next.push({
+        return {
           canvas: local,
           sourceWidth: local.width,
           sourceHeight: local.height,
           width: frameWidth,
           height: frameHeight,
           blink,
-          kind: isBlink ? "blink" : "open",
-          index: i,
-        });
+          gazeX,
+          gazeY,
+          kind,
+          index,
+        };
+      };
+
+      for (const gx of gazeBucketsX) {
+        for (const gy of gazeBucketsY) {
+          const frames = [];
+          for (let i = 0; i < openCount; i += 1) {
+            frames.push(buildFrame({
+              index: i,
+              kind: "open",
+              blink: 0,
+              gazeX: gx,
+              gazeY: gy,
+              textureKey: `${seedBase}:gaze:${gx}:${gy}:frame:${i}`,
+            }));
+          }
+          nextOpen.set(gazeKey(gx, gy), frames);
+        }
       }
 
-      cacheFrames = next;
+      for (let i = 0; i < blinkCount; i += 1) {
+        const p = i / Math.max(1, blinkCount - 1);
+        nextBlink.push(buildFrame({
+          index: i,
+          kind: "blink",
+          blink: Math.sin(p * Math.PI),
+          gazeX: 0,
+          gazeY: 0,
+          textureKey: `${seedBase}:blink:${i}`,
+        }));
+      }
+
+      cacheFrames = {
+        open: nextOpen,
+        blink: nextBlink,
+        openCount,
+        blinkCount,
+        gazeCount: gazeBucketsX.length * gazeBucketsY.length,
+      };
       const elapsed = performance.now() - started;
       buildLabel.textContent = elapsed.toFixed(1) + " ms";
-      cacheLabel.textContent = `${cacheFrames.length} frames @${cacheDpr.toFixed(2)}x`;
+      cacheLabel.textContent = `${cacheFrames.gazeCount * openCount + blinkCount} frames @${cacheDpr.toFixed(2)}x`;
     }
 
     function drawDetailedEye(target, opts) {
@@ -313,14 +354,15 @@
       const lidScale = 1 - blink * 0.93;
       const layerMode = opts.layerMode || "full";
       const gazeStrength = opts.gazeStrength ?? 0.012;
-      const mouseGazeStrength = opts.mouseGazeStrength ?? 0;
+      const mouseGazeStrengthX = opts.mouseGazeStrengthX ?? opts.mouseGazeStrength ?? 0;
+      const mouseGazeStrengthY = opts.mouseGazeStrengthY ?? opts.mouseGazeStrength ?? 0;
       const autoGazeStrength = opts.autoGazeStrength ?? 0;
       const gazeX = opts.gazeX ?? 0;
       const gazeY = opts.gazeY ?? 0;
-      const lookX = gazeX * rx * mouseGazeStrength +
+      const lookX = gazeX * rx * mouseGazeStrengthX +
         (hash01(opts.cacheSeed, "look") - 0.5) * rx * gazeStrength +
         (opts.motion ? Math.sin(opts.time * 0.0011) * rx * autoGazeStrength : 0);
-      const lookY = gazeY * ry * mouseGazeStrength +
+      const lookY = gazeY * ry * mouseGazeStrengthY +
         (hash01(opts.cacheSeed, "look-y") - 0.5) * ry * gazeStrength +
         (opts.motion ? Math.cos(opts.time * 0.0014) * ry * autoGazeStrength : 0);
       const irisR = Math.min(rx, ry) * 0.56;
@@ -496,16 +538,41 @@
       return Math.sin(p * Math.PI);
     }
 
-    function selectCachedFrame(now, blink) {
-      const openCount = 18;
-      const blinkStartIndex = openCount;
-      if (blink > 0.01) {
-        const blinkCount = cacheFrames.length - openCount;
-        const index = blinkStartIndex + Math.min(blinkCount - 1, Math.round(blink * (blinkCount - 1)));
-        return cacheFrames[index] || cacheFrames[0];
+    function gazeKey(x, y) {
+      return `${x}:${y}`;
+    }
+
+    function nearestBucket(value, buckets) {
+      let best = buckets[0];
+      let bestDistance = Math.abs(value - best);
+      for (const candidate of buckets) {
+        const distance = Math.abs(value - candidate);
+        if (distance < bestDistance) {
+          best = candidate;
+          bestDistance = distance;
+        }
       }
-      const slow = settings.motion ? Math.floor(now / 900) : 0;
-      return cacheFrames[slow % openCount] || cacheFrames[0];
+      return best;
+    }
+
+    function nearestGaze() {
+      return {
+        x: nearestBucket(mouseX, gazeBucketsX),
+        y: nearestBucket(mouseY, gazeBucketsY),
+      };
+    }
+
+    function selectCachedFrame(now, blink) {
+      if (blink > 0.01) {
+        const blinkCount = cacheFrames.blink.length;
+        const index = Math.min(blinkCount - 1, Math.round(blink * (blinkCount - 1)));
+        return cacheFrames.blink[index] || cacheFrames.blink[0];
+      }
+      const gaze = nearestGaze();
+      const frames = cacheFrames.open.get(gazeKey(gaze.x, gaze.y)) || cacheFrames.open.get(gazeKey(0, 0));
+      if (!frames || !frames.length) return null;
+      const slow = settings.motion ? Math.floor(now / 360) : 0;
+      return frames[slow % frames.length];
     }
 
     function drawBackground(now) {
@@ -552,28 +619,9 @@
       const drawH = frame.height;
       const x = width * 0.5 - drawW * 0.5;
       const y = height * 0.5 - drawH * 0.5;
-      drawDetailedEye(ctx, {
-        width: drawW,
-        height: drawH,
-        cx: x + drawW * 0.5,
-        cy: y + drawH * 0.52,
-        rx: Math.min(drawW * 0.42, 360),
-        ry: Math.min(drawH * 0.33, 142),
-        blink,
-        time: now,
-        motion: settings.motion,
-        cacheSeed: `${seedBase}:eye-base`,
-        textureSeed: `${seedBase}:iris:${Math.floor(now / 180)}`,
-        layerMode: "iris",
-        gazeStrength: 0,
-        mouseGazeStrength: 0.045,
-        autoGazeStrength: 0.014,
-        gazeX: mouseX,
-        gazeY: mouseY,
-      });
       ctx.drawImage(frame.canvas, 0, 0, frame.sourceWidth, frame.sourceHeight, x, y, drawW, drawH);
-      activeLabel.textContent = `${frame.kind} ${frame.index}`;
-      return "iris + drawImage";
+      activeLabel.textContent = `${frame.kind} ${frame.index} gaze ${frame.gazeX},${frame.gazeY}`;
+      return "full-frame drawImage";
     }
 
     function drawLiveEye(now, blink) {
@@ -590,7 +638,8 @@
         cacheSeed: `${seedBase}:eye-base`,
         textureSeed: `${seedBase}:live:${Math.floor(now / 180)}`,
         gazeStrength: 0,
-        mouseGazeStrength: 0.045,
+        mouseGazeStrengthX: 0.045,
+        mouseGazeStrengthY: 0.06,
         autoGazeStrength: 0.014,
         gazeX: mouseX,
         gazeY: mouseY,
