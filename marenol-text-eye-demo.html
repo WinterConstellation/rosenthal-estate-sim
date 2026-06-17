@@ -157,7 +157,8 @@
             if (eroded) continue;
 
             const noise = Math.sin(x * 0.11 + y * 0.17 + t * 0.004) * 0.5 + 0.5;
-            const seed = x * 3.13 + y * 5.71 + Math.floor(t / 260);`n            let char = pickSeeded(glyphs, seed);
+            const seed = x * 3.13 + y * 5.71 + Math.floor(t / 260);
+            let char = pickSeeded(glyphs, seed);
             let color = "rgba(118, 16, 16, 0.44)";
             let alpha = 0.36 + noise * 0.28;
 
