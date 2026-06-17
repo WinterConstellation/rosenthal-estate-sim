@@ -122,7 +122,7 @@
   <section class="panel" aria-label="render test panel">
     <h1>Cached text eye render test</h1>
     <div class="grid">
-      <span>mode <strong id="modeLabel">cached sprite</strong></span>
+      <span>mode <strong id="modeLabel">cached reference</strong></span>
       <span>cache <strong id="cacheLabel">--</strong></span>
       <span>build <strong id="buildLabel">-- ms</strong></span>
       <span>active <strong id="activeLabel">--</strong></span>
@@ -132,13 +132,13 @@
       <span>rain <strong id="rainLabel">--</strong></span>
     </div>
     <div class="controls">
-      <button id="liveButton" type="button">live render</button>
+      <button id="liveButton" type="button">live original</button>
       <button id="motionButton" class="is-on" type="button">motion</button>
       <button id="rainButton" class="is-on" type="button">text rain</button>
       <button id="blinkButton" type="button">blink now</button>
       <button id="rebuildButton" type="button">rebuild cache</button>
     </div>
-    <div class="note">Default: pre-rendered eye frames are replayed with cheap drawImage calls. Live render redraws the original text eye every frame for comparison.</div>
+    <div class="note">Cached mode pre-renders the original eye function into gaze buckets. Live mode calls the original-style eye renderer every frame.</div>
   </section>
 
   <script>
@@ -161,7 +161,8 @@
     const rebuildButton = document.getElementById("rebuildButton");
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const seedBase = "cached-eye-test:seed-1:night:altered";
+    const seedBase = "cached-eye-reference:seed-1:night:altered";
+    const variantId = "sleepy1";
     const glyphs = [".", "-", "*", "+", "x", "X", ":", "'", "`"];
     const irisGlyphs = ["*", "+", "x", "X", "#", "%"];
     const edgeGlyphs = ["/", "\\", "|", "_", "-", "."];
@@ -179,18 +180,17 @@
     let height = 0;
     let dpr = 1;
     let cacheDpr = 1;
-    let cacheFrames = { open: new Map(), blink: [], openCount: 0, blinkCount: 0, gazeCount: 0 };
+    let mouseX = 0;
+    let mouseY = 0;
+    let cacheFrames = { open: new Map(), blink: [], openCount: 0, blinkCount: 0, gazeCount: 0, crop: null };
     let rainGlyphs = [];
     let backgroundCuts = [];
     let frames = 0;
     let lastFpsTime = performance.now();
-    let lastFrameTime = performance.now();
     let blinkStart = -10000;
     let blinkDuration = 190;
     let nextBlink = 0;
     let forcedBlink = false;
-    let mouseX = 0;
-    let mouseY = 0;
 
     function hashString(input) {
       let h = 2166136261;
@@ -209,6 +209,11 @@
       return ((h ^ (h >>> 14)) >>> 0) / 4294967296;
     }
 
+    function pseudo(value) {
+      const n = Math.sin(value * 127.1 + 311.7) * 43758.5453;
+      return n - Math.floor(n);
+    }
+
     function clamp(value, min, max) {
       return Math.max(min, Math.min(max, value));
     }
@@ -217,9 +222,17 @@
       return list[Math.floor(hash01(...parts) * list.length) % list.length];
     }
 
+    function pickRandom(list) {
+      return list[Math.floor(Math.random() * list.length)];
+    }
+
+    function pickSeeded(list, seed) {
+      return list[Math.floor(pseudo(seed) * list.length) % list.length];
+    }
+
     function resize() {
       dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      cacheDpr = Math.min(window.devicePixelRatio || 1, 1.35);
+      cacheDpr = Math.min(window.devicePixelRatio || 1, 1);
       width = Math.max(1, Math.floor(window.innerWidth));
       height = Math.max(1, Math.floor(window.innerHeight));
       canvas.width = Math.floor(width * dpr);
@@ -253,49 +266,56 @@
       rainLabel.textContent = String(rainGlyphs.length);
     }
 
+    function eyeGeometry() {
+      const cx = width * 0.5;
+      const cy = height * 0.51;
+      const rx = Math.min(width * 0.37, 360);
+      const ry = Math.min(height * 0.19, 142);
+      return { cx, cy, rx, ry };
+    }
+
+    function eyeCropRect() {
+      const g = eyeGeometry();
+      const x = clamp(Math.floor(g.cx - g.rx * 1.25), 0, width);
+      const y = clamp(Math.floor(g.cy - g.ry * 1.85), 0, height);
+      const right = clamp(Math.ceil(g.cx + g.rx * 1.25), 0, width);
+      const bottom = clamp(Math.ceil(g.cy + g.ry * 1.95), 0, height);
+      return {
+        x,
+        y,
+        width: Math.max(1, right - x),
+        height: Math.max(1, bottom - y),
+      };
+    }
+
     function rebuildCache() {
       const started = performance.now();
-      const frameWidth = Math.ceil(Math.min(width * 0.82, 780));
-      const frameHeight = Math.ceil(Math.min(height * 0.46, 360));
-      const openCount = 4;
-      const blinkCount = 6;
+      const crop = eyeCropRect();
+      const openCount = 6;
+      const blinkCount = 8;
       const nextOpen = new Map();
       const nextBlink = [];
 
-      const buildFrame = ({ index, kind, blink, gazeX, gazeY, textureKey }) => {
+      const buildFrame = ({ index, kind, blink, gazeX, gazeY, time }) => {
         const local = document.createElement("canvas");
-        local.width = Math.ceil(frameWidth * cacheDpr);
-        local.height = Math.ceil(frameHeight * cacheDpr);
+        local.width = Math.ceil(crop.width * cacheDpr);
+        local.height = Math.ceil(crop.height * cacheDpr);
         const localCtx = local.getContext("2d", { alpha: true });
-        localCtx.setTransform(cacheDpr, 0, 0, cacheDpr, 0, 0);
-        localCtx.clearRect(0, 0, frameWidth, frameHeight);
+        localCtx.setTransform(cacheDpr, 0, 0, cacheDpr, -crop.x * cacheDpr, -crop.y * cacheDpr);
+        localCtx.clearRect(crop.x, crop.y, crop.width, crop.height);
         localCtx.imageSmoothingEnabled = false;
-        const time = index * 113;
-        drawDetailedEye(localCtx, {
-          width: frameWidth,
-          height: frameHeight,
-          cx: frameWidth * 0.5,
-          cy: frameHeight * 0.52,
-          rx: Math.min(frameWidth * 0.42, 360),
-          ry: Math.min(frameHeight * 0.33, 142),
-          blink,
+        drawReferenceEye(localCtx, {
           time,
-          motion: true,
-          cacheSeed: `${seedBase}:eye-base`,
-          textureSeed: textureKey,
-          gazeStrength: 0,
-          mouseGazeStrengthX: 0.045,
-          mouseGazeStrengthY: 0.06,
-          autoGazeStrength: 0.014,
+          blink,
           gazeX,
           gazeY,
+          motion: true,
         });
         return {
           canvas: local,
           sourceWidth: local.width,
           sourceHeight: local.height,
-          width: frameWidth,
-          height: frameHeight,
+          crop,
           blink,
           gazeX,
           gazeY,
@@ -314,7 +334,7 @@
               blink: 0,
               gazeX: gx,
               gazeY: gy,
-              textureKey: `${seedBase}:gaze:${gx}:${gy}:frame:${i}`,
+              time: i * 113,
             }));
           }
           nextOpen.set(gazeKey(gx, gy), frames);
@@ -329,7 +349,7 @@
           blink: Math.sin(p * Math.PI),
           gazeX: 0,
           gazeY: 0,
-          textureKey: `${seedBase}:blink:${i}`,
+          time: i * 113,
         }));
       }
 
@@ -339,40 +359,36 @@
         openCount,
         blinkCount,
         gazeCount: gazeBucketsX.length * gazeBucketsY.length,
+        crop,
       };
       const elapsed = performance.now() - started;
       buildLabel.textContent = elapsed.toFixed(1) + " ms";
       cacheLabel.textContent = `${cacheFrames.gazeCount * openCount + blinkCount} frames @${cacheDpr.toFixed(2)}x`;
     }
 
-    function drawDetailedEye(target, opts) {
-      const rx = opts.rx;
-      const ry = opts.ry;
-      const cell = clamp(Math.min(opts.width, opts.height) / 84, 7, 10);
+    function drawReferenceEye(target, opts) {
+      const t = opts.time;
+      const g = eyeGeometry();
+      const cx = g.cx;
+      const cy = g.cy;
+      const rx = g.rx;
+      const ry = g.ry;
+      const cell = clamp(Math.min(width, height) / 84, 7, 10);
       const fontSize = cell * 1.36;
-      const blink = opts.blink;
-      const lidScale = 1 - blink * 0.93;
-      const layerMode = opts.layerMode || "full";
-      const gazeStrength = opts.gazeStrength ?? 0.012;
-      const mouseGazeStrengthX = opts.mouseGazeStrengthX ?? opts.mouseGazeStrength ?? 0;
-      const mouseGazeStrengthY = opts.mouseGazeStrengthY ?? opts.mouseGazeStrength ?? 0;
-      const autoGazeStrength = opts.autoGazeStrength ?? 0;
-      const gazeX = opts.gazeX ?? 0;
-      const gazeY = opts.gazeY ?? 0;
-      const lookX = gazeX * rx * mouseGazeStrengthX +
-        (hash01(opts.cacheSeed, "look") - 0.5) * rx * gazeStrength +
-        (opts.motion ? Math.sin(opts.time * 0.0011) * rx * autoGazeStrength : 0);
-      const lookY = gazeY * ry * mouseGazeStrengthY +
-        (hash01(opts.cacheSeed, "look-y") - 0.5) * ry * gazeStrength +
-        (opts.motion ? Math.cos(opts.time * 0.0014) * ry * autoGazeStrength : 0);
+      const lookX = opts.gazeX * rx * 0.045 + (opts.motion ? Math.sin(t * 0.0011) * 7 : 0);
+      const lookY = opts.gazeY * ry * 0.06 + (opts.motion ? Math.cos(t * 0.0014) * 4 : 0);
       const irisR = Math.min(rx, ry) * 0.56;
       const pupilR = irisR * 0.39;
+      const blink = opts.blink;
+      const lidScale = 1 - blink * 0.93;
 
       target.save();
       target.textAlign = "center";
       target.textBaseline = "middle";
+      target.font = `${fontSize}px Consolas, "Courier New", monospace`;
       target.globalCompositeOperation = "source-over";
 
+      const jitterAmp = opts.motion ? 0.45 : 0;
       for (let y = -ry; y <= ry; y += cell * 1.12) {
         for (let x = -rx; x <= rx; x += cell) {
           const nx = x / rx;
@@ -384,72 +400,75 @@
           const lowerLine = lines.lower;
           if (y < upperLine || y > lowerLine) continue;
 
-          const parts = [opts.cacheSeed, Math.round(x), Math.round(y)];
-          const textureParts = [opts.textureSeed || opts.cacheSeed, Math.round(x), Math.round(y)];
           const px = x - lookX;
           const py = y - lookY;
-          const dist = Math.hypot(px, py);
+          const dist = Math.sqrt(px * px + py * py);
           const edge = Math.min(y - upperLine, lowerLine - y);
-          const inIris = dist < irisR;
-          if (layerMode === "base" && inIris) continue;
-          if (layerMode === "iris" && !inIris) continue;
-
-          const eroded = edge < cell * 8 && hash01(...textureParts, "erode") > 0.89;
+          const scar = Math.sin(x * 0.073 + y * 0.031 + t * 0.003);
+          const eroded = scar > 0.88 && edge < cell * 8;
           if (eroded) continue;
 
-          const noise = Math.sin(x * 0.11 + y * 0.17 + opts.time * 0.004) * 0.5 + 0.5;
-          let char = pick(glyphs, ...parts, "body");
+          const noise = Math.sin(x * 0.11 + y * 0.17 + t * 0.004) * 0.5 + 0.5;
+          const seed = x * 3.13 + y * 5.71 + Math.floor(t / 260);
+          let char = pickSeeded(glyphs, seed);
           let color = "rgba(118, 16, 16, 0.44)";
           let alpha = 0.36 + noise * 0.28;
 
           if (edge < cell * 3.2) {
-            char = pick(edgeGlyphs, ...parts, "edge");
-            color = `rgba(218, 0, 0, ${0.32 + noise * 0.38})`;
+            char = pickSeeded(edgeGlyphs, seed + 7.1);
+            color = `rgba(202, 0, 0, ${0.27 + noise * 0.34})`;
           }
 
           if (dist < irisR) {
             const ring = dist / irisR;
-            char = pick(irisGlyphs, ...parts, "iris");
+            char = pickSeeded(irisGlyphs, seed + 13.2);
             alpha = 0.52 + noise * 0.38;
             const red = Math.floor(160 + 70 * (1 - ring));
             const green = Math.floor(8 + 20 * (1 - ring));
             color = `rgba(${red}, ${green}, ${Math.floor(18 + noise * 26)}, ${alpha})`;
 
-            const spoke = Math.abs(Math.sin(Math.atan2(py, px) * 18 + opts.time * 0.0013));
+            const spoke = Math.abs(Math.sin(Math.atan2(py, px) * 18 + t * 0.0013));
             if (spoke > 0.86 && ring > 0.34) {
-              char = pick(["/", "\\", "|"], ...parts, "spoke");
+              char = pickSeeded(["/", "\\", "|"], seed + 17.3);
               color = `rgba(255, 34, 46, ${0.58 + noise * 0.3})`;
             }
           }
 
           if (dist < pupilR) {
             const inner = dist / pupilR;
-            char = pick([" ", ".", "`"], ...parts, "pupil");
+            char = pickSeeded([" ", ".", "`"], seed + 19.9);
             color = `rgba(${Math.floor(12 + noise * 15)}, 0, 0, ${0.86 - inner * 0.25})`;
           }
 
           const h1 = Math.hypot(px + irisR * 0.32, py + irisR * 0.38);
           const h2 = Math.hypot(px - irisR * 0.18, py + irisR * 0.2);
           if (h1 < irisR * 0.13 || h2 < irisR * 0.07) {
-            char = pick(["*", "+", "."], ...parts, "highlight");
+            char = pickSeeded(["*", "+", "."], seed + 23.1);
             color = `rgba(255, 214, 222, ${0.8 + noise * 0.18})`;
           }
 
-          const jx = opts.motion ? 0.18 * Math.sin(opts.time * 0.012 + x * 0.23 + y * 0.11) : 0;
-          const jy = opts.motion ? 0.18 * Math.cos(opts.time * 0.011 + x * 0.08 - y * 0.19) : 0;
-          target.font = `700 ${fontSize}px Consolas, "Courier New", monospace`;
+          const jx = jitterAmp * Math.sin(t * 0.012 + x * 0.23 + y * 0.11);
+          const jy = jitterAmp * Math.cos(t * 0.011 + x * 0.08 - y * 0.19);
           target.fillStyle = color;
-          target.fillText(char, opts.cx + x + jx, opts.cy + y + jy);
+          target.fillText(char, cx + x + jx, cy + y + jy);
         }
       }
 
-      if (layerMode !== "iris") {
-        drawLids(target, opts.cx, opts.cy, rx, ry, lidScale, blink, opts.time, opts.cacheSeed);
-      }
+      drawReferenceLids(target, cx, cy, rx, ry, lidScale, blink, t);
       target.restore();
     }
 
     function getEyeMaskLines(nx, ax, ry, lidScale) {
+      if (variantId === "eye1") {
+        const almond = ry * Math.pow(1 - Math.pow(ax, 1.52), 0.53) * lidScale;
+        const upperBias = 1 + 0.1 * Math.sin((nx + 0.2) * Math.PI);
+        const lowerBias = 0.85 + 0.11 * Math.cos((nx - 0.1) * Math.PI);
+        return {
+          upper: -almond * upperBias,
+          lower: almond * lowerBias,
+        };
+      }
+
       const almond = ry * Math.pow(1 - Math.pow(ax, 1.34), 0.62) * lidScale;
       const sleepyDrop = ry * (0.1 + 0.025 * Math.sin((nx - 0.2) * Math.PI));
       return {
@@ -458,69 +477,139 @@
       };
     }
 
-    function drawLids(target, cx, cy, rx, ry, lidScale, blink, time, cacheSeed) {
+    function drawReferenceLids(target, cx, cy, rx, ry, lidScale, blink, t) {
+      target.save();
+      target.globalCompositeOperation = "source-over";
       const close = blink * ry * 1.25;
-      const upperY = cy - ry * 0.42 * lidScale + ry * 0.1 - close * 0.18;
-      const lowerY = cy + ry * 0.72 * lidScale + ry * 0.02 + close * 0.12;
+      const lid = getLidConfig(cy, ry, lidScale, close);
+      const upperY = lid.upperY;
+      const lowerY = lid.lowerY;
 
-      const gradTop = target.createLinearGradient(cx, cy - ry * 1.35, cx, cy + ry * 0.08);
+      const gradTop = target.createLinearGradient(cx, cy - ry * lid.topGradStart, cx, cy + ry * lid.topGradEnd);
       gradTop.addColorStop(0, "rgba(0, 0, 0, 0.98)");
-      gradTop.addColorStop(0.58, "rgba(0, 0, 0, 0.82)");
+      gradTop.addColorStop(0.58, `rgba(0, 0, 0, ${lid.topMidAlpha})`);
       gradTop.addColorStop(1, "rgba(0, 0, 0, 0.1)");
       target.fillStyle = gradTop;
-      target.fillRect(0, 0, cx * 2, upperY + ry * 0.22);
+      target.beginPath();
+      target.rect(0, 0, width, upperY + ry * lid.topCoverPad);
+      target.fill();
 
       const gradBottom = target.createLinearGradient(cx, cy, cx, cy + ry * 1.8);
       gradBottom.addColorStop(0, "rgba(0, 0, 0, 0.02)");
-      gradBottom.addColorStop(0.38, "rgba(0, 0, 0, 0.5)");
+      gradBottom.addColorStop(0.38, `rgba(0, 0, 0, ${lid.bottomMidAlpha})`);
       gradBottom.addColorStop(1, "rgba(0, 0, 0, 0.98)");
       target.fillStyle = gradBottom;
-      target.fillRect(0, lowerY - ry * 0.06, cx * 2, cy * 2);
-
-      target.fillStyle = "rgba(0, 0, 0, 0.52)";
       target.beginPath();
-      target.ellipse(cx, cy - ry * 0.42, rx * 1.14, ry * 0.34, 0, 0, Math.PI * 2);
-      target.fill();
-      target.beginPath();
-      target.ellipse(cx, cy + ry * 0.76, rx * 1.06, ry * 0.24, 0, 0, Math.PI * 2);
+      target.rect(0, lowerY - ry * lid.bottomCoverPad, width, height);
       target.fill();
 
-      drawLidGlyphBand(target, cx, cy, rx, ry, lidScale, blink, time, cacheSeed, -1);
-      drawLidGlyphBand(target, cx, cy, rx, ry, lidScale, blink, time, cacheSeed, 1);
+      target.globalCompositeOperation = "source-over";
+      target.fillStyle = `rgba(0, 0, 0, ${lid.shadowAlpha})`;
+      target.beginPath();
+      target.ellipse(cx, cy - ry * lid.topShadowY, rx * 1.14, ry * lid.topShadowH, 0, 0, Math.PI * 2);
+      target.fill();
+      target.beginPath();
+      target.ellipse(cx, cy + ry * lid.bottomShadowY, rx * 1.06, ry * lid.bottomShadowH, 0, 0, Math.PI * 2);
+      target.fill();
+
+      target.globalCompositeOperation = "source-over";
+      target.textAlign = "center";
+      target.textBaseline = "middle";
+      drawReferenceLidGlyphBand(target, cx, cy, rx, ry, lidScale, blink, t, -1);
+      drawReferenceLidGlyphBand(target, cx, cy, rx, ry, lidScale, blink, t, 1);
+      target.restore();
     }
 
-    function drawLidGlyphBand(target, cx, cy, rx, ry, lidScale, blink, time, cacheSeed, side) {
+    function getLidConfig(cy, ry, lidScale, close) {
+      if (variantId === "eye1") {
+        return {
+          upperY: cy - ry * lidScale - close * 0.18,
+          lowerY: cy + ry * lidScale + close * 0.12,
+          topGradStart: 1.7,
+          topGradEnd: 0,
+          topMidAlpha: 0.74,
+          bottomMidAlpha: 0.62,
+          topCoverPad: 0.18,
+          bottomCoverPad: 0.16,
+          shadowAlpha: 0.38,
+          topShadowY: 0.98,
+          topShadowH: 0.44,
+          bottomShadowY: 0.88,
+          bottomShadowH: 0.36,
+        };
+      }
+
+      return {
+        upperY: cy - ry * 0.42 * lidScale + ry * 0.1 - close * 0.18,
+        lowerY: cy + ry * 0.72 * lidScale + ry * 0.02 + close * 0.12,
+        topGradStart: 1.35,
+        topGradEnd: 0.08,
+        topMidAlpha: 0.82,
+        bottomMidAlpha: 0.5,
+        topCoverPad: 0.22,
+        bottomCoverPad: 0.06,
+        shadowAlpha: 0.52,
+        topShadowY: 0.42,
+        topShadowH: 0.34,
+        bottomShadowY: 0.76,
+        bottomShadowH: 0.24,
+      };
+    }
+
+    function drawReferenceLidGlyphBand(target, cx, cy, rx, ry, lidScale, blink, t, side) {
+      const time = t * 0.001;
       const sampleCount = 112;
-      const band = side < 0 ? 9 : 4;
+      const band = variantId === "eye1" ? (side < 0 ? 7 : 5) : (side < 0 ? 9 : 4);
       const baseSize = clamp(Math.min(width, height) / 112, 5, 8);
 
       for (let i = 0; i <= sampleCount; i += 1) {
         const p = i / sampleCount;
         const nx = -1 + p * 2;
         const endFade = Math.pow(1 - Math.abs(nx), 0.28);
-        const shape = Math.pow(1 - Math.abs(nx), side < 0 ? 0.58 : 0.64);
-        if (endFade < 0.22 || hash01(cacheSeed, side, i, "skip") < 0.18 + blink * 0.18) continue;
+        const shape = Math.pow(
+          1 - Math.abs(nx),
+          variantId === "eye1" ? (side < 0 ? 0.52 : 0.55) : (side < 0 ? 0.58 : 0.64)
+        );
+        const x = cx + nx * rx;
+        const curveY = getLidBandY(cy, ry, shape, lidScale, side);
+        const skip = pseudo(i * 8.31 + side * 19.7) < 0.18 + blink * 0.18;
+        if (skip || endFade < 0.22) continue;
 
         for (let layer = 0; layer < band; layer += 1) {
-          const n1 = hash01(cacheSeed, side, i, layer, "n1");
-          const n2 = hash01(cacheSeed, side, i, layer, "n2");
-          const n3 = hash01(cacheSeed, side, i, layer, "n3");
-          const inward = side < 0 ? layer * 2.7 : -layer * 2.2;
-          const curveY = side < 0
-            ? cy - ry * 0.42 * shape * lidScale + ry * 0.1
-            : cy + ry * 0.72 * shape * lidScale + ry * 0.02;
-          const torn = Math.sin(nx * 9.2 + layer * 1.7 + time * 0.0018) * (side < 0 ? 2.6 : 1.8);
+          const seed = i * 17.13 + layer * 23.9 + side * 41.7;
+          const n1 = pseudo(seed + Math.floor(time * 9));
+          const n2 = pseudo(seed + 5.2);
+          const n3 = pseudo(seed + 9.9);
+          const inward = variantId === "eye1"
+            ? (side < 0 ? layer * 3.5 : -layer * 3.3)
+            : (side < 0 ? layer * 2.7 : -layer * 2.2);
+          const torn = Math.sin(nx * 9.2 + layer * 1.7 + time * 1.8) *
+            (variantId === "eye1" ? 3.2 : (side < 0 ? 2.6 : 1.8));
           const y = curveY + inward + (n1 - 0.5) * 13 + torn;
-          const x = cx + nx * rx + (n2 - 0.5) * 12;
-          const alpha = (0.05 + (band - layer) / band * (side < 0 ? 0.19 : 0.12) + n3 * 0.1) * endFade;
-          const red = Math.floor(108 + n1 * 104);
+          const xJitter = (n2 - 0.5) * 12 + Math.sin(time * 2.4 + seed) * 1.8;
+          const alpha = variantId === "eye1"
+            ? (0.06 + (band - layer) / band * 0.21 + n3 * 0.15) * endFade
+            : (0.05 + (band - layer) / band * (side < 0 ? 0.19 : 0.12) + n3 * 0.1) * endFade;
+          const red = Math.floor((variantId === "eye1" ? 126 : 98) + n1 * (variantId === "eye1" ? 114 : 86));
           const size = baseSize + n2 * 5 + (layer === 0 ? 1.5 : 0);
 
           target.font = `${layer < 2 ? 700 : 400} ${size}px Consolas, "Courier New", monospace`;
-          target.fillStyle = `rgba(${red}, 0, ${Math.floor(n3 * 18)}, ${alpha * 1.2})`;
-          target.fillText(pick(lidGlyphs, cacheSeed, side, i, layer, "glyph"), x, y);
+          target.fillStyle = `rgba(${red}, 0, ${Math.floor(n3 * 18)}, ${alpha})`;
+          target.fillText(pickRandom(lidGlyphs), x + xJitter, y);
         }
       }
+    }
+
+    function getLidBandY(cy, ry, shape, lidScale, side) {
+      if (variantId === "eye1") {
+        return side < 0
+          ? cy - ry * shape * lidScale
+          : cy + ry * 0.88 * shape * lidScale;
+      }
+
+      return side < 0
+        ? cy - ry * 0.42 * shape * lidScale + ry * 0.1
+        : cy + ry * 0.72 * shape * lidScale + ry * 0.02;
     }
 
     function triggerBlink(now) {
@@ -615,37 +704,22 @@
     function drawCachedEye(now, blink) {
       const frame = selectCachedFrame(now, blink);
       if (!frame) return "--";
-      const drawW = frame.width;
-      const drawH = frame.height;
-      const x = width * 0.5 - drawW * 0.5;
-      const y = height * 0.5 - drawH * 0.5;
-      ctx.drawImage(frame.canvas, 0, 0, frame.sourceWidth, frame.sourceHeight, x, y, drawW, drawH);
+      const crop = frame.crop;
+      ctx.drawImage(frame.canvas, 0, 0, frame.sourceWidth, frame.sourceHeight, crop.x, crop.y, crop.width, crop.height);
       activeLabel.textContent = `${frame.kind} ${frame.index} gaze ${frame.gazeX},${frame.gazeY}`;
-      return "full-frame drawImage";
+      return "reference drawImage";
     }
 
     function drawLiveEye(now, blink) {
-      drawDetailedEye(ctx, {
-        width,
-        height,
-        cx: width * 0.5,
-        cy: height * 0.51,
-        rx: Math.min(width * 0.37, 360),
-        ry: Math.min(height * 0.19, 142),
-        blink,
+      drawReferenceEye(ctx, {
         time: now,
-        motion: settings.motion,
-        cacheSeed: `${seedBase}:eye-base`,
-        textureSeed: `${seedBase}:live:${Math.floor(now / 180)}`,
-        gazeStrength: 0,
-        mouseGazeStrengthX: 0.045,
-        mouseGazeStrengthY: 0.06,
-        autoGazeStrength: 0.014,
+        blink,
         gazeX: mouseX,
         gazeY: mouseY,
+        motion: settings.motion,
       });
-      activeLabel.textContent = "live";
-      return "fillText";
+      activeLabel.textContent = "live original";
+      return "original fillText";
     }
 
     function frame(now) {
@@ -673,7 +747,6 @@
         lastFpsTime = now;
         frames = 0;
       }
-      lastFrameTime = now;
     }
 
     function setButton(button, value) {
@@ -682,7 +755,7 @@
 
     liveButton.addEventListener("click", () => {
       settings.live = !settings.live;
-      modeLabel.textContent = settings.live ? "live fillText" : "cached sprite";
+      modeLabel.textContent = settings.live ? "live original" : "cached reference";
       setButton(liveButton, settings.live);
     });
 
