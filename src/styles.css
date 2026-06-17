@@ -829,11 +829,12 @@ button:focus-visible {
   top: var(--y);
   left: var(--x);
   display: inline-block;
-  max-width: 32ch;
-  font-size: clamp(36px, calc(1.56rem + var(--horror-strength) * 1.38rem), 84px);
+  max-width: none;
+  font-size: clamp(9px, calc(0.39rem + var(--horror-strength) * 0.345rem), 21px);
   font-weight: 700;
   letter-spacing: 0.12em;
   line-height: 1.35;
+  white-space: nowrap;
   opacity: calc(0.2 + var(--horror-strength) * 0.52);
   transform: rotate(var(--rotate)) scale(var(--scale));
   animation: horror-fragment-drift 9.5s ease-in-out infinite both;

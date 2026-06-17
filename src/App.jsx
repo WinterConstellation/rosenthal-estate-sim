@@ -263,12 +263,12 @@ function resolveHorrorDirector(game, isNight) {
   return {
     intensity,
     textMist: {
-      enabled: intensity >= 0.12,
+      enabled: isNight && intensity >= 0.12,
       intensity,
       fragmentCount: Math.min(8, Math.max(3, Math.round(3 + intensity * 5))),
     },
     staticRows: {
-      enabled: intensity >= 0.58,
+      enabled: isNight && intensity >= 0.58,
       rows: HORROR_STATIC_ROWS.slice(0, intensity >= 0.78 ? 3 : 2),
     },
     textEyes: {
