@@ -285,6 +285,10 @@
 
     const GLYPHS = [".", "-", "*", "+", "x", "X", ":", "'", "`", "/", "\\", "|", "_", "#", "%"];
     const EYE_GLYPHS = [".", "-", "*", "+", "x", "X", "#", "%", "@", "0"];
+    const IRIS_GLYPHS = ["*", "+", "x", "X", "#", "%"];
+    const EDGE_GLYPHS = ["/", "\\", "|", "_", "-", "."];
+    const LID_GLYPHS = ["-", "_", ".", "'", "`", "x", "+", ":"];
+    const EYE_VARIANT = "sleepy1";
     const canvas = document.getElementById("scene");
     const ctx = canvas.getContext("2d", { alpha: true });
     const debug = document.getElementById("debug");
@@ -313,7 +317,7 @@
     let dpr = 1;
     let glyphs = [];
     let mist = [];
-    let eyeGlyphs = [];
+    let eyeModel = null;
     let raf = 0;
     let lastFpsTime = performance.now();
     let lastFrameTime = performance.now();
@@ -338,6 +342,10 @@
 
     function pick(list, ...parts) {
       return list[Math.floor(hash01(...parts) * list.length) % list.length];
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
     }
 
     function stateSeed(extra = "") {
@@ -414,7 +422,7 @@
         };
       });
 
-      eyeGlyphs = createEyeGlyphs();
+      eyeModel = createEyeModel();
       buildDomStress();
       glyphLabel.textContent = String(settings.glyphCount);
     }
@@ -432,33 +440,197 @@
       }).join("");
     }
 
-    function createEyeGlyphs() {
+    function createEyeModel() {
       const seed = stateSeed("eye");
-      const cx = width * (0.54 + (hash01(seed, "cx") - 0.5) * 0.28);
-      const cy = height * (0.46 + (hash01(seed, "cy") - 0.5) * 0.18);
-      const rx = Math.min(width * 0.23, 330);
-      const ry = Math.min(height * 0.095, 94);
-      const cell = Math.max(8, Math.min(12, Math.min(width, height) / 98));
-      const result = [];
-      for (let y = -ry; y <= ry; y += cell * 1.06) {
+      const cx = width * (0.52 + (hash01(seed, "cx") - 0.5) * 0.16);
+      const cy = height * (0.5 + (hash01(seed, "cy") - 0.5) * 0.12);
+      const rx = Math.min(width * 0.32, 330);
+      const ry = Math.min(height * 0.145, 112);
+      const cell = clamp(Math.min(width, height) / 72, 10, 14);
+      const fontSize = cell * 1.16;
+      const lookX = (hash01(seed, "lookX") - 0.5) * rx * 0.08;
+      const lookY = (hash01(seed, "lookY") - 0.5) * ry * 0.1;
+      const irisR = Math.min(rx, ry) * 0.56;
+      const pupilR = irisR * 0.39;
+      const body = [];
+      for (let y = -ry; y <= ry; y += cell * 1.12) {
         for (let x = -rx; x <= rx; x += cell) {
           const nx = x / rx;
-          if (Math.abs(nx) > 1) continue;
-          const lidShape = Math.pow(1 - Math.pow(Math.abs(nx), 1.35), 0.62);
-          const upper = -ry * lidShape * 0.48 + ry * 0.08;
-          const lower = ry * lidShape * 0.78 + ry * 0.04;
+          const ax = Math.abs(nx);
+          if (ax > 1) continue;
+
+          const lines = getEyeMaskLines(nx, ax, ry, 1);
+          const upper = lines.upper;
+          const lower = lines.lower;
           if (y < upper || y > lower) continue;
-          const dist = Math.hypot(x, y);
-          const iris = dist < ry * 0.76;
-          const pupil = dist < ry * 0.34;
-          const edge = Math.min(y - upper, lower - y) < cell * 2.4;
+
           const parts = [seed, Math.round(x), Math.round(y)];
-          const glyph = pupil ? pick([".", "`", " "], ...parts, "pupil") : iris ? pick(EYE_GLYPHS, ...parts, "iris") : edge ? pick(["-", "_", "/", "\\", "."], ...parts, "edge") : pick(GLYPHS, ...parts, "body");
-          const alpha = pupil ? 0.82 : iris ? 0.55 : edge ? 0.62 : 0.22;
-          result.push({ x: cx + x, y: cy + y, glyph, alpha, iris, pupil, edge, phase: hash01(...parts, "phase") * Math.PI * 2 });
+          const px = x - lookX;
+          const py = y - lookY;
+          const dist = Math.hypot(px, py);
+          const edgeDistance = Math.min(y - upper, lower - y);
+          const edge = edgeDistance < cell * 3.2;
+          const iris = dist < irisR;
+          const pupil = dist < pupilR;
+          const ring = iris ? dist / irisR : 1;
+          const angle = Math.atan2(py, px);
+          const eroded = edgeDistance < cell * 8 && hash01(...parts, "erode") > 0.9;
+          if (eroded) continue;
+
+          const spoke = iris && !pupil && Math.abs(Math.sin(angle * 18 + hash01(...parts, "spoke") * Math.PI)) > 0.86 && ring > 0.34;
+          const highlightA = Math.hypot(px + irisR * 0.32, py + irisR * 0.38) < irisR * 0.13;
+          const highlightB = Math.hypot(px - irisR * 0.18, py + irisR * 0.2) < irisR * 0.07;
+          const highlight = highlightA || highlightB;
+          let glyph = pick(GLYPHS, ...parts, "body");
+          if (edge) glyph = pick(EDGE_GLYPHS, ...parts, "edge");
+          if (iris) glyph = pick(IRIS_GLYPHS, ...parts, "iris");
+          if (spoke) glyph = pick(["/", "\\", "|"], ...parts, "spoke");
+          if (pupil) glyph = pick([" ", ".", "`"], ...parts, "pupil");
+          if (highlight) glyph = pick(["*", "+", "."], ...parts, "highlight");
+
+          const noise = hash01(...parts, "noise");
+          const alpha = pupil ? 0.86 - ring * 0.1 : highlight ? 0.88 + noise * 0.08 : spoke ? 0.7 + noise * 0.18 : iris ? 0.54 + noise * 0.34 : edge ? 0.5 + noise * 0.26 : 0.25 + noise * 0.22;
+          const size = edge ? fontSize * 1.18 : iris ? fontSize * 1.08 : fontSize;
+          body.push({
+            x: cx + x,
+            y: cy + y,
+            iris,
+            pupil,
+            edge,
+            spoke,
+            highlight,
+            glyph,
+            alpha,
+            size,
+            ring,
+            noise,
+            phase: hash01(...parts, "phase") * Math.PI * 2,
+          });
+        }
+      }
+      return {
+        cx,
+        cy,
+        rx,
+        ry,
+        cell,
+        body,
+        lids: createEyeLidGlyphs(seed, cx, cy, rx, ry),
+      };
+    }
+
+    function getEyeMaskLines(nx, ax, ry, lidScale) {
+      if (EYE_VARIANT === "eye1") {
+        const almond = ry * Math.pow(1 - Math.pow(ax, 1.52), 0.53) * lidScale;
+        const upperBias = 1 + 0.1 * Math.sin((nx + 0.2) * Math.PI);
+        const lowerBias = 0.85 + 0.11 * Math.cos((nx - 0.1) * Math.PI);
+        return {
+          upper: -almond * upperBias,
+          lower: almond * lowerBias,
+        };
+      }
+
+      const almond = ry * Math.pow(1 - Math.pow(ax, 1.34), 0.62) * lidScale;
+      const sleepyDrop = ry * (0.1 + 0.025 * Math.sin((nx - 0.2) * Math.PI));
+      return {
+        upper: -almond * (0.4 + 0.05 * Math.sin((nx + 0.15) * Math.PI)) + sleepyDrop,
+        lower: almond * (0.72 + 0.04 * Math.cos((nx - 0.1) * Math.PI)) + sleepyDrop * 0.1,
+      };
+    }
+
+    function createEyeLidGlyphs(seed, cx, cy, rx, ry) {
+      const result = [];
+      const sampleCount = 84;
+      const baseSize = clamp(Math.min(width, height) / 100, 5, 8);
+      for (const side of [-1, 1]) {
+        const band = EYE_VARIANT === "eye1" ? (side < 0 ? 5 : 4) : (side < 0 ? 6 : 3);
+        for (let i = 0; i <= sampleCount; i += 1) {
+          const p = i / sampleCount;
+          const nx = -1 + p * 2;
+          const endFade = Math.pow(1 - Math.abs(nx), 0.28);
+          const shape = Math.pow(
+            1 - Math.abs(nx),
+            EYE_VARIANT === "eye1" ? (side < 0 ? 0.52 : 0.55) : (side < 0 ? 0.58 : 0.64)
+          );
+          if (endFade < 0.22 || hash01(seed, side, i, "skip") < 0.18) continue;
+
+          for (let layer = 0; layer < band; layer += 1) {
+            const n1 = hash01(seed, side, i, layer, "n1");
+            const n2 = hash01(seed, side, i, layer, "n2");
+            const n3 = hash01(seed, side, i, layer, "n3");
+            const inward = EYE_VARIANT === "eye1"
+              ? (side < 0 ? layer * 3.5 : -layer * 3.3)
+              : (side < 0 ? layer * 2.7 : -layer * 2.2);
+            const alpha = EYE_VARIANT === "eye1"
+              ? (0.06 + (band - layer) / band * 0.21 + n3 * 0.15) * endFade
+              : (0.05 + (band - layer) / band * (side < 0 ? 0.19 : 0.12) + n3 * 0.1) * endFade;
+            result.push({
+              side,
+              nx,
+              shape,
+              layer,
+              x: cx + nx * rx + (n2 - 0.5) * 12,
+              inward,
+              alpha: clamp(alpha * 1.2, 0, 0.48),
+              red: Math.floor((EYE_VARIANT === "eye1" ? 126 : 108) + n1 * (EYE_VARIANT === "eye1" ? 114 : 104)),
+              blue: Math.floor(n3 * 18),
+              size: baseSize + n2 * 5 + (layer === 0 ? 1.5 : 0),
+              weight: layer < 2 ? 700 : 400,
+              glyph: pick(LID_GLYPHS, seed, side, i, layer, "glyph"),
+              phase: hash01(seed, side, i, layer, "phase") * Math.PI * 2,
+            });
+          }
         }
       }
       return result;
+    }
+
+    function getLidBandY(cy, ry, shape, lidScale, side) {
+      if (EYE_VARIANT === "eye1") {
+        return side < 0
+          ? cy - ry * shape * lidScale
+          : cy + ry * 0.88 * shape * lidScale;
+      }
+
+      return side < 0
+        ? cy - ry * 0.42 * shape * lidScale + ry * 0.1
+        : cy + ry * 0.72 * shape * lidScale + ry * 0.02;
+    }
+
+    function getLidConfig(cy, ry, lidScale, close) {
+      if (EYE_VARIANT === "eye1") {
+        return {
+          upperY: cy - ry * lidScale - close * 0.18,
+          lowerY: cy + ry * lidScale + close * 0.12,
+          topGradStart: 1.7,
+          topGradEnd: 0,
+          topMidAlpha: 0.74,
+          bottomMidAlpha: 0.62,
+          topCoverPad: 0.18,
+          bottomCoverPad: 0.16,
+          shadowAlpha: 0.38,
+          topShadowY: 0.98,
+          topShadowH: 0.44,
+          bottomShadowY: 0.88,
+          bottomShadowH: 0.36,
+        };
+      }
+
+      return {
+        upperY: cy - ry * 0.42 * lidScale + ry * 0.1 - close * 0.18,
+        lowerY: cy + ry * 0.72 * lidScale + ry * 0.02 + close * 0.12,
+        topGradStart: 1.35,
+        topGradEnd: 0.08,
+        topMidAlpha: 0.82,
+        bottomMidAlpha: 0.5,
+        topCoverPad: 0.22,
+        bottomCoverPad: 0.06,
+        shadowAlpha: 0.52,
+        topShadowY: 0.42,
+        topShadowH: 0.34,
+        bottomShadowY: 0.76,
+        bottomShadowH: 0.24,
+      };
     }
 
     function buildDomStress() {
@@ -544,29 +716,89 @@
     }
 
     function drawEye(t) {
+      if (!eyeModel) return;
       const blink = settings.motion ? Math.max(0, Math.sin(t * 0.42) - 0.82) * 2.8 : 0;
       const openScale = Math.max(0.22, 1 - blink);
+      const lidScale = Math.max(0.08, 1 - blink * 0.93);
+      const irisDriftX = settings.motion ? Math.sin(t * 1.1) * 5.5 : 0;
+      const irisDriftY = settings.motion ? Math.cos(t * 1.4) * 3.2 : 0;
       ctx.save();
       ctx.globalCompositeOperation = "source-over";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      for (const item of eyeGlyphs) {
-        const centerY = height * 0.5;
-        const y = centerY + (item.y - centerY) * openScale;
+      for (const item of eyeModel.body) {
+        const y = eyeModel.cy + (item.y - eyeModel.cy) * openScale;
         const twitchX = settings.motion ? Math.sin(t * 4.1 + item.phase) * 0.65 : 0;
         const twitchY = settings.motion ? Math.cos(t * 3.7 + item.phase) * 0.35 : 0;
-        const size = item.edge ? 15 : item.iris ? 14 : 12;
-        ctx.font = `700 ${size}px Consolas, 'Courier New', monospace`;
-        if (item.pupil) {
-          ctx.fillStyle = `rgba(0, 0, 0, ${item.alpha})`;
+        const innerDriftX = item.iris || item.pupil || item.spoke || item.highlight ? irisDriftX : 0;
+        const innerDriftY = item.iris || item.pupil || item.spoke || item.highlight ? irisDriftY : 0;
+        const pulse = settings.motion ? 0.85 + Math.sin(t * 2 + item.phase) * 0.12 : 0.9;
+        ctx.font = `700 ${item.size}px Consolas, 'Courier New', monospace`;
+        if (item.highlight) {
+          ctx.fillStyle = `rgba(255, 214, 222, ${item.alpha})`;
+        } else if (item.pupil) {
+          ctx.fillStyle = `rgba(${Math.floor(10 + item.noise * 14)}, 0, 0, ${item.alpha})`;
+        } else if (item.spoke) {
+          ctx.fillStyle = `rgba(255, 34, 46, ${item.alpha * pulse})`;
         } else if (item.iris) {
-          ctx.fillStyle = `rgba(255, 52, 66, ${item.alpha})`;
+          const red = Math.floor(160 + 70 * (1 - item.ring));
+          const green = Math.floor(8 + 20 * (1 - item.ring));
+          const blue = Math.floor(18 + item.noise * 26);
+          ctx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${item.alpha * pulse})`;
         } else if (item.edge) {
-          ctx.fillStyle = `rgba(255, 84, 94, ${item.alpha})`;
+          ctx.fillStyle = `rgba(255, 92, 102, ${item.alpha * 1.12})`;
         } else {
-          ctx.fillStyle = `rgba(183, 18, 34, ${item.alpha})`;
+          ctx.fillStyle = `rgba(118, 16, 16, ${item.alpha})`;
         }
-        ctx.fillText(item.glyph, item.x + twitchX, y + twitchY);
+        ctx.fillText(item.glyph, item.x + innerDriftX + twitchX, y + innerDriftY + twitchY);
+      }
+      drawEyeLids(eyeModel, lidScale, blink, t);
+      ctx.restore();
+    }
+
+    function drawEyeLids(model, lidScale, blink, t) {
+      const close = blink * model.ry * 1.25;
+      const lid = getLidConfig(model.cy, model.ry, lidScale, close);
+      const upperY = lid.upperY;
+      const lowerY = lid.lowerY;
+
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      const gradTop = ctx.createLinearGradient(model.cx, model.cy - model.ry * lid.topGradStart, model.cx, model.cy + model.ry * lid.topGradEnd);
+      gradTop.addColorStop(0, "rgba(0, 0, 0, 0.98)");
+      gradTop.addColorStop(0.58, `rgba(0, 0, 0, ${lid.topMidAlpha})`);
+      gradTop.addColorStop(1, "rgba(0, 0, 0, 0.1)");
+      ctx.fillStyle = gradTop;
+      ctx.beginPath();
+      ctx.rect(0, 0, width, upperY + model.ry * lid.topCoverPad);
+      ctx.fill();
+
+      const gradBottom = ctx.createLinearGradient(model.cx, model.cy, model.cx, model.cy + model.ry * 1.8);
+      gradBottom.addColorStop(0, "rgba(0, 0, 0, 0.02)");
+      gradBottom.addColorStop(0.38, `rgba(0, 0, 0, ${lid.bottomMidAlpha})`);
+      gradBottom.addColorStop(1, "rgba(0, 0, 0, 0.98)");
+      ctx.fillStyle = gradBottom;
+      ctx.beginPath();
+      ctx.rect(0, lowerY - model.ry * lid.bottomCoverPad, width, height);
+      ctx.fill();
+
+      ctx.fillStyle = `rgba(0, 0, 0, ${lid.shadowAlpha})`;
+      ctx.beginPath();
+      ctx.ellipse(model.cx, model.cy - model.ry * lid.topShadowY, model.rx * 1.14, model.ry * lid.topShadowH, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(model.cx, model.cy + model.ry * lid.bottomShadowY, model.rx * 1.06, model.ry * lid.bottomShadowH, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      for (const item of model.lids) {
+        const curveY = getLidBandY(model.cy, model.ry, item.shape, lidScale, item.side);
+        const torn = Math.sin(item.nx * 9.2 + item.layer * 1.7 + t * 1.8) *
+          (EYE_VARIANT === "eye1" ? 3.2 : (item.side < 0 ? 2.6 : 1.8));
+        const motionX = settings.motion ? Math.sin(t * 2.4 + item.phase) * 1.8 : 0;
+        const y = curveY + item.inward + torn;
+        ctx.font = `${item.weight} ${item.size}px Consolas, 'Courier New', monospace`;
+        ctx.fillStyle = `rgba(${item.red}, 0, ${item.blue}, ${item.alpha})`;
+        ctx.fillText(item.glyph, item.x + motionX, y);
       }
       ctx.restore();
     }
