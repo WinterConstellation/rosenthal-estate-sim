@@ -280,7 +280,8 @@
           blink,
           time,
           motion: true,
-          cacheSeed: `${seedBase}:frame:${i}`,
+          cacheSeed: `${seedBase}:eye-base`,
+          textureSeed: `${seedBase}:frame:${i}`,
         });
         next.push({
           canvas: local,
@@ -307,8 +308,9 @@
       const fontSize = cell * 1.36;
       const blink = opts.blink;
       const lidScale = 1 - blink * 0.93;
-      const lookX = Math.sin(opts.time * 0.011 + hash01(opts.cacheSeed, "look")) * rx * 0.045;
-      const lookY = Math.cos(opts.time * 0.014 + hash01(opts.cacheSeed, "look-y")) * ry * 0.06;
+      const gazeStrength = opts.gazeStrength ?? 0.012;
+      const lookX = (hash01(opts.cacheSeed, "look") - 0.5) * rx * gazeStrength;
+      const lookY = (hash01(opts.cacheSeed, "look-y") - 0.5) * ry * gazeStrength;
       const irisR = Math.min(rx, ry) * 0.56;
       const pupilR = irisR * 0.39;
 
@@ -329,11 +331,12 @@
           if (y < upperLine || y > lowerLine) continue;
 
           const parts = [opts.cacheSeed, Math.round(x), Math.round(y)];
+          const textureParts = [opts.textureSeed || opts.cacheSeed, Math.round(x), Math.round(y)];
           const px = x - lookX;
           const py = y - lookY;
           const dist = Math.hypot(px, py);
           const edge = Math.min(y - upperLine, lowerLine - y);
-          const eroded = edge < cell * 8 && hash01(...parts, "erode") > 0.89;
+          const eroded = edge < cell * 8 && hash01(...textureParts, "erode") > 0.89;
           if (eroded) continue;
 
           const noise = Math.sin(x * 0.11 + y * 0.17 + opts.time * 0.004) * 0.5 + 0.5;
@@ -374,8 +377,8 @@
             color = `rgba(255, 214, 222, ${0.8 + noise * 0.18})`;
           }
 
-          const jx = opts.motion ? 0.45 * Math.sin(opts.time * 0.012 + x * 0.23 + y * 0.11) : 0;
-          const jy = opts.motion ? 0.45 * Math.cos(opts.time * 0.011 + x * 0.08 - y * 0.19) : 0;
+          const jx = opts.motion ? 0.18 * Math.sin(opts.time * 0.012 + x * 0.23 + y * 0.11) : 0;
+          const jy = opts.motion ? 0.18 * Math.cos(opts.time * 0.011 + x * 0.08 - y * 0.19) : 0;
           target.font = `700 ${fontSize}px Consolas, "Courier New", monospace`;
           target.fillStyle = color;
           target.fillText(char, opts.cx + x + jx, opts.cy + y + jy);
@@ -483,7 +486,7 @@
         const index = blinkStartIndex + Math.min(blinkCount - 1, Math.round(blink * (blinkCount - 1)));
         return cacheFrames[index] || cacheFrames[0];
       }
-      const slow = settings.motion ? Math.floor(now / 92) : 0;
+      const slow = settings.motion ? Math.floor(now / 900) : 0;
       return cacheFrames[slow % openCount] || cacheFrames[0];
     }
 
@@ -527,11 +530,10 @@
     function drawCachedEye(now, blink) {
       const frame = selectCachedFrame(now, blink);
       if (!frame) return "--";
-      const scale = 1 + (settings.motion ? Math.sin(now * 0.0014) * 0.012 : 0);
-      const drawW = frame.width * scale;
-      const drawH = frame.height * scale;
-      const x = width * 0.5 - drawW * 0.5 + (settings.motion ? Math.sin(now * 0.0011) * 8 : 0);
-      const y = height * 0.5 - drawH * 0.5 + (settings.motion ? Math.cos(now * 0.0013) * 4 : 0);
+      const drawW = frame.width;
+      const drawH = frame.height;
+      const x = width * 0.5 - drawW * 0.5;
+      const y = height * 0.5 - drawH * 0.5;
       ctx.drawImage(frame.canvas, 0, 0, frame.sourceWidth, frame.sourceHeight, x, y, drawW, drawH);
       activeLabel.textContent = `${frame.kind} ${frame.index}`;
       return "drawImage";
@@ -548,7 +550,9 @@
         blink,
         time: now,
         motion: settings.motion,
-        cacheSeed: `${seedBase}:live:${Math.floor(now / 120)}`,
+        cacheSeed: `${seedBase}:eye-base`,
+        textureSeed: `${seedBase}:live:${Math.floor(now / 180)}`,
+        gazeStrength: 0.012,
       });
       activeLabel.textContent = "live";
       return "fillText";
