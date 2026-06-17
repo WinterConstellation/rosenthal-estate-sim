@@ -127,7 +127,6 @@ function uniqueIds(values = []) {
   return [...new Set(values.filter(Boolean))];
 }
 
-
 export function normalizeProgressMeta(meta = {}) {
   const traitProgress = createEmptyTraitProgress();
   Object.entries(meta?.traitProgress ?? {}).forEach(([key, value]) => {

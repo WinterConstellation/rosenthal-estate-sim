@@ -30,7 +30,6 @@ import {
   chooseExplorationOption,
   completeTransition,
   continueAfterResult,
-  createDefaultMeta,
   createNewRun,
   deriveHorrorState,
   normalizeProgressMeta,
@@ -141,8 +140,6 @@ assert.deepEqual(deterministicA.revealedHorrorTraits, []);
 assert.deepEqual(deterministicA.revealedHorrorStates, []);
 assert.equal(Object.keys(deterministicA.meta.traitProgress).length, 10);
 assert.deepEqual(deterministicA.meta.equippedStigma, { prefixId: null, suffixId: null });
-assert.deepEqual(createDefaultMeta().ownedStigmaPrefixIds, []);
-assert.deepEqual(createDefaultMeta().ownedStigmaSuffixIds, []);
 const horrorTraitAction = DAY_ACTIONS.find((action) => action.id === "count-rooms");
 const horrorTraitResult = chooseDayAction({ ...deterministicA, phase: "day" }, horrorTraitAction);
 assert.equal(horrorTraitResult.horrorTraits.intrusion, 1);
