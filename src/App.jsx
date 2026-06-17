@@ -296,16 +296,16 @@ function drawTextEye(ctx, layout, width, height, time, pointer, effect, index, r
   const cy = height * layout.y;
   const rx = Math.min(width * layout.rx, 310) * layout.s * (0.82 + strength * 0.32);
   const ry = Math.min(height * layout.ry, 118) * layout.s * (0.86 + strength * 0.3);
-  const cell = Math.max(7, Math.min(11, Math.min(width, height) / 112));
-  const fontSize = cell * 1.16;
+  const cell = Math.max(9, Math.min(14, Math.min(width, height) / 88));
+  const fontSize = cell * 1.28;
   const pointerX = (pointer.x * width - cx) / Math.max(1, rx);
   const pointerY = (pointer.y * height - cy) / Math.max(1, ry);
   const lookX = Math.max(-1, Math.min(1, pointerX)) * rx * 0.12;
   const lookY = Math.max(-1, Math.min(1, pointerY)) * ry * 0.16;
   const irisR = Math.min(rx, ry) * 0.56;
   const pupilR = irisR * 0.36;
-  const timeStep = reduceMotion ? 0 : Math.floor(time / 120);
-  const burst = effect.burst && !reduceMotion ? Math.sin(time * 0.026) * (2.2 + strength * 4.2) : 0;
+  const timeStep = reduceMotion ? 0 : Math.floor(time / 220);
+  const burst = effect.burst && !reduceMotion ? Math.sin(time * 0.018) * (0.9 + strength * 1.6) : 0;
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -313,7 +313,7 @@ function drawTextEye(ctx, layout, width, height, time, pointer, effect, index, r
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.font = `${fontSize}px Consolas, "Courier New", monospace`;
-  ctx.globalCompositeOperation = "screen";
+  ctx.globalCompositeOperation = "source-over";
 
   for (let y = -ry; y <= ry; y += cell * 1.12) {
     for (let x = -rx; x <= rx; x += cell) {
@@ -355,8 +355,8 @@ function drawTextEye(ctx, layout, width, height, time, pointer, effect, index, r
         color = `rgba(255, 214, 222, ${0.58 + strength * 0.28})`;
       }
 
-      const jitterX = reduceMotion ? 0 : Math.sin(time * 0.013 + x * 0.23 + y * 0.11) * (0.45 + strength * 1.2) + burst;
-      const jitterY = reduceMotion ? 0 : Math.cos(time * 0.012 + x * 0.08 - y * 0.19) * (0.45 + strength * 1.2) - burst * 0.35;
+      const jitterX = reduceMotion ? 0 : Math.sin(time * 0.013 + x * 0.23 + y * 0.11) * (0.18 + strength * 0.48) + burst;
+      const jitterY = reduceMotion ? 0 : Math.cos(time * 0.012 + x * 0.08 - y * 0.19) * (0.18 + strength * 0.48) - burst * 0.22;
       ctx.fillStyle = color;
       ctx.fillText(char, x + jitterX, y + jitterY);
     }
@@ -383,19 +383,21 @@ function HorrorTextEyes({ effect }) {
     let lastDraw = 0;
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       width = Math.floor(window.innerWidth);
       height = Math.floor(window.innerHeight);
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = false;
     };
     const move = (event) => {
       pointer.x = Math.max(0, Math.min(1, event.clientX / Math.max(1, width)));
       pointer.y = Math.max(0, Math.min(1, event.clientY / Math.max(1, height)));
     };
+    const frameInterval = effect.burst ? 72 : 110;
     const draw = (time) => {
-      if (!reduceMotion && time - lastDraw < 33) {
+      if (!reduceMotion && time - lastDraw < frameInterval) {
         frameId = requestAnimationFrame(draw);
         return;
       }
