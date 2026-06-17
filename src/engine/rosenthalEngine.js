@@ -127,16 +127,6 @@ function uniqueIds(values = []) {
   return [...new Set(values.filter(Boolean))];
 }
 
-export function createDefaultMeta() {
-  return {
-    cycle: 1,
-    traitProgress: createEmptyTraitProgress(),
-    ownedStigmaPrefixIds: [],
-    ownedStigmaSuffixIds: [],
-    equippedStigma: { prefixId: null, suffixId: null },
-    endingRecords: {},
-  };
-}
 
 export function normalizeProgressMeta(meta = {}) {
   const traitProgress = createEmptyTraitProgress();

@@ -370,10 +370,7 @@
         return Math.sin(clamp(phase, 0, 1) * Math.PI);
       }
 
-      let last = performance.now();
       function frame(now) {
-        last = now;
-
         drawBackground(now);
         drawEye(now);
 
