@@ -1,16 +1,16 @@
-# 핑퐁 파일 정리 및 실제 수정 내역
+# 핑퐁 파일 정리 및 실제 수정 이력
 
 이 문서는 최신 작업 인계용이다.
-길어지면 이전 토론과 중간 폐기안은 지우고, 다음 작업자가 알아야 할 현재 판단과 다음 작업 후보만 남긴다.
+길어지면 이전 논의와 중간 자기반성은 지우고, 다음 작업자가 바로 이어받을 현재 판단과 후보만 남긴다.
 
 ## 최신 기준
 
-기준 시각: 2026-06-19 03:20 KST
-기준 원격: `origin/main` = `44ba6ce Recover mark catalog to 100 total`
+기준 원격: `origin/main`
+기준 시각: 2026-06-19 KST
 
 ## 현재 확정 상태
 
-- 성흔/낙인 표식은 도합 `100개`가 정본이다.
+- 성흔/낙인 표식은 총 `100개`가 정본이다.
   - 성흔 50개
   - 낙인 50개
   - 성향형 94개
@@ -20,27 +20,33 @@
   - 낙인 단독 축: 3 / 10 / 20 / 30 / 40 / 50
   - 혼합 축: 성흔 25 + 낙인 25, 성흔 50 + 낙인 50
   - 전체 완결: total 100
-- `scripts/verify-game.mjs`는 `MARKS.length === 100`, 성흔 50, 낙인 50, 분기 조건 도달 가능성, 전체 보유 시 unlock key 해방 여부를 검증한다.
-- `src/rules/README.md`는 200개 목표가 아니라 현재 100개 정본 기준으로 맞춰져 있다.
+- `scripts/verify-game.mjs`는 표식 총량, 성흔/낙인 50개씩, unlock 조건 도달 가능성을 검증한다.
 - 기존 저장 마이그레이션(`LEGACY_STIGMA_MARK_MAP`)은 유지한다.
 
 ## UI/글리프 기준
 
-- 현재 `origin/main`은 `GlyphAtmosphereCanvas`, 글리프 형식 override, `src/glyph-fall-fix.css` 로드를 유지한다.
-- 글리프 분위기/override 구현은 현재 정본에서 유지한다.
-- 개발자 패널에는 UI 프리셋, 글리프 형식, 공포 상태 프리셋, 눈 override가 있다.
-- `눈 깜빡임 폭주`는 라벨과 실제 burst 동작이 맞도록 보정되어 있다.
+- UI 단계는 `day-calm`, `day-anomaly`, `day-critical`, `night-calm`, `night-anomaly`, `night-critical` 6단계다.
+- 기본 밤은 붉은 공포 배경이 아니라 `night-calm`의 푸른 밤/조용한 밤이다.
+- 붉은 밤/오염 계열은 `night-anomaly` 또는 `night-critical` 쪽에서만 강하게 사용한다.
+- 글리프 분위기 효과는 별도 효과 모듈로 격리한다.
+  - 구현: `src/effects/GlyphAtmosphereCanvas.jsx`
+  - 스타일: `src/effects/glyphAtmosphere.css`
+  - `src/App.jsx`는 글리프 렌더러 내부 구현을 직접 소유하지 않는다.
+- dev 패널에서는 글리프 형식 override를 제거했다.
+  - dev는 UI 프리셋, 공포 상태 프리셋, 눈 override, 수치 편집에 집중한다.
+  - 글리프 형식은 UI 프리셋과 director 상태에서 자동 결정한다.
+- 이전 임시 보정 파일 `src/glyph-fall-fix.css`와 `index.html` 로드는 제거한다.
 
-## 확인 완료
+## 확인 완료 기준
 
-- 원격 `origin/main` 파일 기준 직접 카운트:
+- 원격 기준 표식 상태:
   - `MARKS=100`
   - `stigma=50`
   - `brand=50`
   - 도달 불가능한 unlock 조건 없음
 - 로컬 확인:
-  - `npm.cmd run verify` 통과
-  - `npm.cmd run build` 통과
+  - `npm.cmd run verify`
+  - `npm.cmd run build`
 
 ## 다음 작업 후보
 

@@ -1,0 +1,23 @@
+.glyph-atmosphere-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.72;
+  mix-blend-mode: screen;
+  transform: scaleY(-1);
+}
+
+.theme-night .glyph-atmosphere-canvas {
+  opacity: 1;
+}
+
+.theme-night-calm .glyph-atmosphere-canvas {
+  opacity: 0.76;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glyph-atmosphere-canvas {
+    display: none;
+  }
+}
