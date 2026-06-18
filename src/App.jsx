@@ -164,8 +164,8 @@ const HORROR_STATIC_ROWS = [
 ];
 
 const HORROR_FLOATING_TEXT_ENABLED = false;
-const HORROR_TEXT_RAIN_SEED = "cached-eye-reference:seed-1:night:altered";
-const HORROR_TEXT_RAIN_GLYPHS = [".", "-", "*", "+", "x", "X", ":", "'", "`"];
+const GLYPH_ATMOSPHERE_SEED = "cached-eye-reference:seed-1:night:altered";
+const GLYPH_ATMOSPHERE_GLYPHS = [".", "-", "*", "+", "x", "X", ":", "'", "`"];
 
 const HORROR_NIGHT_PHASES = new Set(["night-companion", "night-direction", "expedition", "finale", "escape-transformed-choice", "nightfall-transition"]);
 const HORROR_NIGHT_RESULT_PHASES = new Set(["night-companion", "night-direction", "expedition", "finale", "daybreak"]);
@@ -294,10 +294,10 @@ function resolveHorrorDirector(game, isNight) {
       intensity,
       fragmentCount: Math.min(8, Math.max(3, Math.round(3 + intensity * 5))),
     },
-    textRain: {
+    glyphAtmosphere: {
       enabled: isNight ? intensity >= 0.12 : true,
       intensity: isNight ? intensity : Math.max(0.22, intensity),
-      tone: isNight ? "night" : "day",
+      format: isNight ? "night-red-rain" : "day-glow",
     },
     staticRows: {
       enabled: isNight && intensity >= 0.58,
@@ -669,7 +669,46 @@ function HorrorTextEyes({ effect }) {
   return <canvas className="horror-text-eyes" ref={canvasRef} style={{ "--horror-eye-strength": effect.intensity.toFixed(2) }} aria-hidden="true" />;
 }
 
-function HorrorTextRainCanvas({ effect }) {
+function getGlyphAtmosphereConfig(format) {
+  switch (format) {
+    case "night-blue-glow":
+      return {
+        kind: "glow",
+        core: [202, 225, 255],
+        halo: [116, 164, 255],
+        glyph: [164, 198, 255],
+        speedScale: 0.62,
+        alphaScale: 0.86,
+      };
+    case "night-red-rain":
+      return {
+        kind: "glyph",
+        glyph: [225, 24, 42],
+        speedScale: 1,
+        alphaScale: 1,
+      };
+    case "critical-corruption":
+      return {
+        kind: "corruption",
+        glyph: [255, 35, 54],
+        alt: [255, 215, 222],
+        speedScale: 1.36,
+        alphaScale: 1.28,
+      };
+    case "day-glow":
+    default:
+      return {
+        kind: "glow",
+        core: [255, 255, 236],
+        halo: [255, 245, 190],
+        glyph: [255, 245, 190],
+        speedScale: 0.72,
+        alphaScale: 1,
+      };
+  }
+}
+
+function GlyphAtmosphereCanvas({ effect }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -681,24 +720,24 @@ function HorrorTextRainCanvas({ effect }) {
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return undefined;
 
-    let rainGlyphs = [];
+    let glyphParticles = [];
     let width = 0;
     let height = 0;
     let frameId = 0;
     let visible = !document.hidden;
 
-    const generateRain = () => {
-      const rainCount = Math.round(clampRange((width * height) / 4200, 120, 310));
-      rainGlyphs = Array.from({ length: rainCount }, (_, index) => ({
-        x: hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "x") * width,
-        y: hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "y") * height,
-        size: 7 + hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "size") * 8,
-        speed: 8.4 + hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "speed") * 40.6,
-        sway: (hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "sway") - 0.5) * 24,
-        phase: hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "phase") * Math.PI * 2,
-        glyph: pickHashed(HORROR_TEXT_RAIN_GLYPHS, HORROR_TEXT_RAIN_SEED, "rain", index, "glyph"),
-        alpha: 0.08 + hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "alpha") * 0.22,
-        light: 0.45 + hash01(HORROR_TEXT_RAIN_SEED, "rain", index, "light") * 0.55,
+    const generateGlyphField = () => {
+      const glyphCount = Math.round(clampRange((width * height) / 4200, 120, 310));
+      glyphParticles = Array.from({ length: glyphCount }, (_, index) => ({
+        x: hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "x") * width,
+        y: hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "y") * height,
+        size: 7 + hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "size") * 8,
+        speed: 8.4 + hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "speed") * 40.6,
+        sway: (hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "sway") - 0.5) * 24,
+        phase: hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "phase") * Math.PI * 2,
+        glyph: pickHashed(GLYPH_ATMOSPHERE_GLYPHS, GLYPH_ATMOSPHERE_SEED, "glyph", index, "glyph"),
+        alpha: 0.08 + hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "alpha") * 0.22,
+        light: 0.45 + hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "light") * 0.55,
       }));
     };
 
@@ -710,7 +749,7 @@ function HorrorTextRainCanvas({ effect }) {
       canvas.height = Math.floor(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = false;
-      generateRain();
+      generateGlyphField();
     };
 
     const visibility = () => {
@@ -729,20 +768,26 @@ function HorrorTextRainCanvas({ effect }) {
       ctx.textBaseline = "middle";
 
       const t = time / 1000;
-      const dayTone = effect.tone === "day";
-      for (const item of rainGlyphs) {
-        const y = (item.y + t * item.speed) % (height + 60) - 30;
+      const config = getGlyphAtmosphereConfig(effect.format);
+      for (const item of glyphParticles) {
+        const y = (item.y + t * item.speed * config.speedScale) % (height + 60) - 30;
         const x = item.x + Math.sin(t * 1.8 + item.phase) * item.sway;
         ctx.font = `700 ${item.size}px Consolas, "Courier New", monospace`;
-        if (dayTone) {
-          const glowAlpha = Math.min(0.32, item.alpha * 1.25);
-          const coreAlpha = Math.min(0.5, item.alpha * 1.7);
-          ctx.fillStyle = `rgba(255, 255, 236, ${coreAlpha})`;
+        if (config.kind === "glow") {
+          const glowAlpha = Math.min(0.32, item.alpha * 1.25 * config.alphaScale);
+          const coreAlpha = Math.min(0.5, item.alpha * 1.7 * config.alphaScale);
+          ctx.fillStyle = `rgba(${config.core[0]}, ${config.core[1]}, ${config.core[2]}, ${coreAlpha})`;
           ctx.fillRect(x - 1, y - 1, 2 + item.light * 2, 2 + item.light * 2);
-          ctx.fillStyle = `rgba(255, 245, 190, ${glowAlpha * 0.8})`;
+          ctx.fillStyle = `rgba(${config.halo[0]}, ${config.halo[1]}, ${config.halo[2]}, ${glowAlpha * 0.8})`;
           ctx.fillText(item.glyph, x + item.light * 2.2, y + item.light * 1.5);
+        } else if (config.kind === "corruption") {
+          const tear = Math.sin(t * 6.4 + item.phase) * item.light * 4;
+          ctx.fillStyle = `rgba(${config.glyph[0]}, ${config.glyph[1]}, ${config.glyph[2]}, ${Math.min(0.42, item.alpha * config.alphaScale)})`;
+          ctx.fillText(item.glyph, x + tear, y);
+          ctx.fillStyle = `rgba(${config.alt[0]}, ${config.alt[1]}, ${config.alt[2]}, ${Math.min(0.18, item.alpha * 0.55)})`;
+          ctx.fillText(item.glyph, x - tear * 0.35, y + item.light * 3);
         } else {
-          ctx.fillStyle = `rgba(225, 24, 42, ${item.alpha})`;
+          ctx.fillStyle = `rgba(${config.glyph[0]}, ${config.glyph[1]}, ${config.glyph[2]}, ${item.alpha * config.alphaScale})`;
           ctx.fillText(item.glyph, x, y);
         }
       }
@@ -761,15 +806,15 @@ function HorrorTextRainCanvas({ effect }) {
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", visibility);
     };
-  }, [effect.enabled, effect.tone]);
+  }, [effect.enabled, effect.format]);
 
   if (!effect.enabled) return null;
-  return <canvas className="horror-text-rain-canvas" ref={canvasRef} aria-hidden="true" />;
+  return <canvas className={`glyph-atmosphere-canvas glyph-atmosphere-canvas--${effect.format}`} ref={canvasRef} aria-hidden="true" />;
 }
 
 function HorrorTextOverlay({ game, isNight, director: directorOverride }) {
   const director = directorOverride ?? resolveHorrorDirector(game, isNight);
-  if (!director.textMist.enabled && !director.textRain.enabled && !director.staticRows.enabled && !director.textEyes.enabled) return null;
+  if (!director.textMist.enabled && !director.glyphAtmosphere.enabled && !director.staticRows.enabled && !director.textEyes.enabled) return null;
 
   const intensity = director.intensity;
 
@@ -779,7 +824,7 @@ function HorrorTextOverlay({ game, isNight, director: directorOverride }) {
       style={{ "--horror-strength": intensity.toFixed(2) }}
       aria-hidden="true"
     >
-      <HorrorTextRainCanvas effect={director.textRain} />
+      <GlyphAtmosphereCanvas effect={director.glyphAtmosphere} />
       <HorrorTextEyes effect={director.textEyes} />
       {director.textMist.enabled && (
         <div className="horror-text-overlay__mist">

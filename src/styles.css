@@ -1045,19 +1045,19 @@ button:focus-visible {
 
 .horror-text-overlay__mist,
 .horror-text-overlay__static,
-.horror-text-rain-canvas {
+.glyph-atmosphere-canvas {
   position: absolute;
   inset: 0;
 }
 
-.horror-text-rain-canvas {
+.glyph-atmosphere-canvas {
   width: 100%;
   height: 100%;
   opacity: 0.72;
   mix-blend-mode: screen;
 }
 
-.theme-night .horror-text-rain-canvas {
+.theme-night .glyph-atmosphere-canvas {
   opacity: 1;
 }
 
@@ -1940,7 +1940,7 @@ button:focus-visible {
     transition-duration: 1ms !important;
   }
 
-  .horror-text-rain-canvas,
+  .glyph-atmosphere-canvas,
   .horror-text-overlay__static {
     display: none;
   }
