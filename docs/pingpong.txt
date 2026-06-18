@@ -166,3 +166,11 @@
 - `src/App.jsx`의 `GlyphAtmosphereCanvas`를 캐시 텍스처 기반 렌더링으로 변경.
 - `src/styles.css`에는 기존 `.glyph-atmosphere-canvas` 스타일 유지.
 - 변경 기록: `docs/work_log.txt` 반영.
+
+2026-06-18 23:48 KST
+- `GlyphAtmosphereCanvas`를 단일 텍스처에서 3개 캐시 레이어(`slow/mid/fast`)로 분리해, layer별 서로 다른 속도/투명도로 떠다님 감각을 되살림.
+- `buildGlyphAtmosphereTexture`에 `layerIndex` 반영하여 레이어별 글리프 배치를 분리.
+- `textureHeight = safeHeight * 2`로 확장하고, `effect.intensity`는 draw 루프의 alpha/속도 계산에서만 사용.
+- `drawImage`는 레이어당 2회(`drawImage` 총 6회)만 사용.
+- `effect.intensity`를 텍스처 재생성 트리거에서 분리.
+- 변경 기록 반영: `docs/work_log.txt`.

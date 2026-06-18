@@ -99,3 +99,10 @@
 2026-06-18 23:30 KST
 - `GlyphAtmosphereCanvas`: `buildGlyphAtmosphereTexture` 도입, resize/format 변경 시 오프스크린 텍스처 재생성 후 `drawImage` 1-2회만 사용.
 - `docs/pingpong.txt` 및 `docs/work_log.txt`에 작업 변경 내용 기록.
+
+2026-06-18 23:48 KST
+- `GlyphAtmosphereCanvas` 캐시 텍스처를 `slow/mid/fast` 3개 레이어로 분리해 레이어별 속도/투명도 다르게 적용.
+- `buildGlyphAtmosphereTexture`가 `layerIndex`로 레이어별 배치 분리, `textureHeight`를 `height*2`로 확장.
+- draw 루프는 `drawImage`만 사용(프레임당 레이어당 2회, 총 6회)해 fillText를 제거.
+- `effect.intensity`는 draw 루프 산출값에만 반영하고 텍스처 재생성 의존성에서 제외.
+- 기록: `docs/pingpong.txt`, `pingpong`.

@@ -1052,11 +1052,17 @@ function getGlyphAtmosphereConfig(format) {
   }
 }
 
-function buildGlyphAtmosphereTexture(width, height, format, dpr) {
+const GLYPH_ATMOSPHERE_LAYERS = [
+  { key: "slow", speed: 0.45, alpha: 0.45 },
+  { key: "mid", speed: 0.8, alpha: 0.65 },
+  { key: "fast", speed: 1.15, alpha: 0.35 },
+];
+
+function buildGlyphAtmosphereTexture(width, height, format, dpr, layerIndex) {
   const config = getGlyphAtmosphereConfig(format);
   const safeWidth = Math.max(1, Math.floor(width));
   const safeHeight = Math.max(1, Math.floor(height));
-  const textureHeight = Math.max(1, safeHeight);
+  const textureHeight = Math.max(1, safeHeight * 2);
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.floor(safeWidth * dpr));
   canvas.height = Math.max(1, Math.floor(textureHeight * dpr));
@@ -1064,7 +1070,8 @@ function buildGlyphAtmosphereTexture(width, height, format, dpr) {
   const ctx = canvas.getContext("2d", { alpha: true });
   if (!ctx) return null;
 
-  const glyphCount = Math.round(clampRange((safeWidth * safeHeight) / 4200, 120, 310));
+  const baseGlyphCount = Math.round(clampRange((safeWidth * safeHeight) / 4200, 120, 310));
+  const glyphCount = Math.max(40, Math.round(baseGlyphCount / GLYPH_ATMOSPHERE_LAYERS.length));
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, safeWidth, textureHeight);
   ctx.imageSmoothingEnabled = false;
@@ -1073,13 +1080,20 @@ function buildGlyphAtmosphereTexture(width, height, format, dpr) {
   ctx.globalCompositeOperation = "source-over";
 
   for (let index = 0; index < glyphCount; index += 1) {
-    const x = hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "x") * safeWidth;
-    const y = hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "y") * textureHeight;
-    const size = 7 + hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "size") * 8;
-    const glyph = pickHashed(GLYPH_ATMOSPHERE_GLYPHS, GLYPH_ATMOSPHERE_SEED, "glyph", index, "glyph");
-    const baseAlpha = 0.08 + hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "alpha") * 0.22;
-    const glow = 0.45 + hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "light") * 0.55;
-    const wave = hash01(GLYPH_ATMOSPHERE_SEED, "glyph", index, "phase");
+    const x = hash01(GLYPH_ATMOSPHERE_SEED, "glyph-layer", layerIndex, index, "x") * safeWidth;
+    const y = hash01(GLYPH_ATMOSPHERE_SEED, "glyph-layer", layerIndex, index, "y") * textureHeight;
+    const size = 7 + hash01(GLYPH_ATMOSPHERE_SEED, "glyph-layer", layerIndex, index, "size") * 8;
+    const glyph = pickHashed(
+      GLYPH_ATMOSPHERE_GLYPHS,
+      GLYPH_ATMOSPHERE_SEED,
+      "glyph-layer",
+      layerIndex,
+      index,
+      "glyph",
+    );
+    const baseAlpha = 0.08 + hash01(GLYPH_ATMOSPHERE_SEED, "glyph-layer", layerIndex, index, "alpha") * 0.22;
+    const glow = 0.45 + hash01(GLYPH_ATMOSPHERE_SEED, "glyph-layer", layerIndex, index, "light") * 0.55;
+    const wave = hash01(GLYPH_ATMOSPHERE_SEED, "glyph-layer", layerIndex, index, "phase");
 
     ctx.font = `700 ${size}px Consolas, "Courier New", monospace`;
 
@@ -1120,7 +1134,7 @@ function GlyphAtmosphereCanvas({ effect }) {
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return undefined;
 
-    let glyphTexture = null;
+    let glyphLayers = [];
     let width = 0;
     let height = 0;
     let textureHeight = 0;
@@ -1137,9 +1151,15 @@ function GlyphAtmosphereCanvas({ effect }) {
       canvas.height = Math.floor(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = false;
-      const cached = buildGlyphAtmosphereTexture(width, height, effect.format, dpr);
-      glyphTexture = cached ? cached.canvas : null;
-      textureHeight = cached ? cached.textureHeight : 0;
+      glyphLayers = GLYPH_ATMOSPHERE_LAYERS.map((layer, layerIndex) => {
+        const cached = buildGlyphAtmosphereTexture(width, height, effect.format, dpr, layerIndex);
+        if (!cached) return null;
+        return {
+          ...layer,
+          canvas: cached.canvas,
+        };
+      }).filter(Boolean);
+      textureHeight = glyphLayers[0]?.canvas ? glyphLayers[0].canvas.height / dpr : 0;
     };
 
     const visibility = () => {
@@ -1150,7 +1170,7 @@ function GlyphAtmosphereCanvas({ effect }) {
     };
 
     const draw = (time) => {
-      if (!glyphTexture) {
+      if (!glyphLayers.length) {
         frameId = requestAnimationFrame(draw);
         return;
       }
@@ -1170,26 +1190,18 @@ function GlyphAtmosphereCanvas({ effect }) {
       const config = getGlyphAtmosphereConfig(effect.format);
       const intensity = clamp01(effect.intensity);
       const scrollBase = 16 + config.speedScale * 18;
-      const scrollSpeed = scrollBase * (0.6 + intensity * 0.8);
-      const verticalShift = (t * scrollSpeed) % textureHeight;
-      const jitterY = (Math.sin(t * 0.16) * 1.7) * intensity;
-      const jitterX = Math.sin(t * 0.09) * 4 * intensity;
+      const scrollFactor = 0.6 + intensity * 0.8;
       const baseAlpha = clamp01(0.32 + intensity * (0.2 + config.alphaScale * 0.2));
 
       ctx.clearRect(0, 0, width, height);
       ctx.save();
-      ctx.globalAlpha = baseAlpha;
       ctx.globalCompositeOperation = "lighter";
-      if (config.kind === "glyph" || config.kind === "corruption") {
-        const primaryOffset = (verticalShift + jitterY) % textureHeight;
-        const primaryX = jitterX;
-        ctx.drawImage(glyphTexture, primaryX, -primaryOffset, width, textureHeight);
-        ctx.drawImage(glyphTexture, primaryX, textureHeight - primaryOffset, width, textureHeight);
-      } else {
-        const primaryOffset = verticalShift % textureHeight;
-        ctx.drawImage(glyphTexture, 0, -primaryOffset, width, textureHeight);
-        ctx.drawImage(glyphTexture, 0, textureHeight - primaryOffset, width, textureHeight);
-      }
+      glyphLayers.forEach((layer) => {
+        const layerShift = (t * scrollBase * layer.speed * scrollFactor * config.speedScale * 1.35) % textureHeight;
+        ctx.globalAlpha = baseAlpha * layer.alpha;
+        ctx.drawImage(layer.canvas, 0, -layerShift, width, textureHeight);
+        ctx.drawImage(layer.canvas, 0, textureHeight - layerShift, width, textureHeight);
+      });
       ctx.restore();
       frameId = requestAnimationFrame(draw);
     };
@@ -1204,7 +1216,7 @@ function GlyphAtmosphereCanvas({ effect }) {
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", visibility);
     };
-  }, [effect.enabled, effect.format, effect.intensity]);
+  }, [effect.enabled, effect.format]);
 
   if (!effect.enabled) return null;
   return <canvas className={`glyph-atmosphere-canvas glyph-atmosphere-canvas--${effect.format}`} ref={canvasRef} aria-hidden="true" />;
