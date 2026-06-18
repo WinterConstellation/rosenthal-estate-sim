@@ -226,6 +226,66 @@ function syncDeveloperHorrorState(state) {
   };
 }
 
+function createDeveloperHorrorTraits(overrides = {}) {
+  return normalizeHorrorTraits({
+    ...Object.fromEntries(DEV_HORROR_TRAIT_KEYS.map((key) => [key, 0])),
+    ...overrides,
+  });
+}
+
+function applyDeveloperCompanionPreset(companionStates = {}, preset = {}) {
+  if (!preset.transformFirstCompanion && !preset.resetCompanions) return companionStates;
+  const entries = Object.entries(companionStates);
+  if (!entries.length) return companionStates;
+  if (preset.resetCompanions) {
+    return Object.fromEntries(entries.map(([id, person]) => [
+      id,
+      person.status === "transformed"
+        ? { ...person, status: "alive", countedAsSacrifice: false }
+        : person,
+    ]));
+  }
+  const [firstId] = entries.find(([, person]) => person.status === "alive") ?? entries[0];
+  return {
+    ...companionStates,
+    [firstId]: {
+      ...companionStates[firstId],
+      status: "transformed",
+      revealed: true,
+    },
+  };
+}
+
+function applyDeveloperHorrorPresetToGame(game, presetId) {
+  const preset = DEV_HORROR_PRESETS.find((item) => item.id === presetId);
+  if (!preset) return game;
+  const next = {
+    ...game,
+    resources: {
+      ...game.resources,
+      ...(preset.resources ?? {}),
+    },
+    estate: {
+      ...game.estate,
+      ...(preset.estate ?? {}),
+    },
+    horrorTraits: createDeveloperHorrorTraits(preset.horrorTraits),
+    companionStates: applyDeveloperCompanionPreset(game.companionStates, preset),
+  };
+  if (Object.prototype.hasOwnProperty.call(preset, "route")) next.route = preset.route;
+  if (Object.prototype.hasOwnProperty.call(preset, "truthDiscovered")) {
+    next.truthFlags = {
+      ...(game.truthFlags ?? {}),
+      truthDiscovered: preset.truthDiscovered,
+    };
+  }
+  if (preset.clearRevealedHorror) {
+    next.revealedHorrorTraits = [];
+    next.revealedHorrorStates = [];
+  }
+  return syncDeveloperHorrorState(next);
+}
+
 function shouldOpenDeveloperMode() {
   return new URLSearchParams(window.location.search).get("dev") === "1";
 }
@@ -324,6 +384,92 @@ const UI_PRESENTATION_GLYPH_FORMAT = {
 
 const DEV_UI_PRESET_OPTIONS = ["auto", "day-calm", "day-anomaly", "day-critical", "night-calm", "night-anomaly", "night-critical"];
 const DEV_GLYPH_FORMAT_OPTIONS = ["auto", "day-glow", "night-blue-glow", "night-red-rain", "critical-corruption"];
+const DEV_HORROR_PRESETS = [
+  {
+    id: "calm-baseline",
+    label: "calm baseline",
+    description: "low fear, clean estate",
+    resources: { fear: 0 },
+    estate: { corruption: 0, recordIntegrity: 50 },
+    horrorTraits: {},
+    route: null,
+    truthDiscovered: false,
+  },
+  {
+    id: "mild-anomaly",
+    label: "mild anomaly",
+    description: "just over anomaly line",
+    resources: { fear: 30 },
+    estate: { corruption: 24, recordIntegrity: 44 },
+    horrorTraits: { intrusion: 8, omen: 6 },
+    route: null,
+    truthDiscovered: false,
+  },
+  {
+    id: "high-fear",
+    label: "high fear",
+    description: "fear-heavy pressure",
+    resources: { fear: 70 },
+    estate: { corruption: 18, recordIntegrity: 40 },
+    horrorTraits: { madness: 14, haunting: 8, omen: 8 },
+    route: null,
+    truthDiscovered: false,
+  },
+  {
+    id: "high-corruption",
+    label: "high corruption",
+    description: "estate corruption focus",
+    resources: { fear: 34 },
+    estate: { corruption: 66, recordIntegrity: 34 },
+    horrorTraits: { erosion: 18, mentalTaint: 14, intrusion: 10 },
+    route: null,
+    truthDiscovered: false,
+  },
+  {
+    id: "truth-discovered",
+    label: "truth discovered",
+    description: "truth flag with pressure",
+    resources: { fear: 36 },
+    estate: { corruption: 28, recordIntegrity: 38 },
+    horrorTraits: { intrusion: 12, nameDamage: 8 },
+    route: null,
+    truthDiscovered: true,
+  },
+  {
+    id: "altered-route",
+    label: "altered route",
+    description: "route-driven anomaly",
+    resources: { fear: 42 },
+    estate: { corruption: 36, recordIntegrity: 36 },
+    horrorTraits: { erosion: 12, intrusion: 16, omen: 10 },
+    route: "altered",
+    truthDiscovered: false,
+  },
+  {
+    id: "critical",
+    label: "critical",
+    description: "eyes/static threshold",
+    resources: { fear: 78 },
+    estate: { corruption: 70, recordIntegrity: 26 },
+    horrorTraits: { madness: 20, erosion: 28, mentalTaint: 24, intrusion: 24, nameDamage: 14, omen: 18 },
+    route: "altered",
+    truthDiscovered: true,
+    transformFirstCompanion: true,
+  },
+  {
+    id: "reset-visible-horror",
+    label: "reset visible horror",
+    description: "clear horror preview state",
+    resources: { fear: 0 },
+    estate: { corruption: 0, recordIntegrity: 50 },
+    horrorTraits: {},
+    route: null,
+    truthDiscovered: false,
+    resetCompanions: true,
+    clearRevealedHorror: true,
+    resetPreview: true,
+  },
+];
 
 function resolveUiPresentation(game, isNight, horrorDirector) {
   const fear = Number(game.derivedHorror?.effectiveFear ?? game.resources?.fear ?? 0) / 100;
@@ -1886,6 +2032,28 @@ function DeveloperPreviewSection({
   );
 }
 
+function DeveloperHorrorPresetSection({ onApplyPreset }) {
+  return (
+    <section className="developer-section">
+      <h3>horror presets</h3>
+      <div className="developer-preset-grid">
+        {DEV_HORROR_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            className={preset.resetPreview ? "is-danger" : ""}
+            onClick={() => onApplyPreset(preset.id)}
+          >
+            <span>{preset.label}</span>
+            <small>{preset.description}</small>
+          </button>
+        ))}
+      </div>
+      <small>Preset buttons change only developer-test state for the current run.</small>
+    </section>
+  );
+}
+
 function DeveloperPanel({
   game,
   eyeOverride,
@@ -1897,6 +2065,7 @@ function DeveloperPanel({
   onNightPreviewChange,
   onUiPresetChange,
   onGlyphFormatChange,
+  onApplyHorrorPreset,
   onSetMapValue,
   onSetTraitProgress,
   onTogglePassiveOwned,
@@ -1920,6 +2089,7 @@ function DeveloperPanel({
         onUiPresetChange={onUiPresetChange}
         onGlyphFormatChange={onGlyphFormatChange}
       />
+      <DeveloperHorrorPresetSection onApplyPreset={onApplyHorrorPreset} />
       <DeveloperEyeSection eyeOverride={eyeOverride} onChange={onEyeOverrideChange} />
       <DeveloperNumberSection
         title="stats"
@@ -2146,6 +2316,17 @@ function App() {
     });
   };
 
+  const applyDeveloperHorrorPreset = (presetId) => {
+    const preset = DEV_HORROR_PRESETS.find((item) => item.id === presetId);
+    setGame((current) => applyDeveloperHorrorPresetToGame(current, presetId));
+    if (preset?.resetPreview) {
+      setDeveloperNightPreview(false);
+      setDeveloperUiPreset("auto");
+      setDeveloperGlyphFormat("auto");
+      setEyeOverride((current) => ({ ...current, forceEyes: false, burst: false }));
+    }
+  };
+
   const toggleDeveloperPassiveOwned = (passiveId) => {
     setGame((current) => {
       const ownedPassiveIds = current.ownedPassiveIds ?? [];
@@ -2201,6 +2382,7 @@ function App() {
             onNightPreviewChange={setDeveloperNightPreview}
             onUiPresetChange={setDeveloperUiPreset}
             onGlyphFormatChange={setDeveloperGlyphFormat}
+            onApplyHorrorPreset={applyDeveloperHorrorPreset}
             onSetMapValue={setDeveloperMapValue}
             onSetTraitProgress={setDeveloperTraitProgress}
             onTogglePassiveOwned={toggleDeveloperPassiveOwned}
@@ -2557,6 +2739,7 @@ function App() {
           onNightPreviewChange={setDeveloperNightPreview}
           onUiPresetChange={setDeveloperUiPreset}
           onGlyphFormatChange={setDeveloperGlyphFormat}
+          onApplyHorrorPreset={applyDeveloperHorrorPreset}
           onSetMapValue={setDeveloperMapValue}
           onSetTraitProgress={setDeveloperTraitProgress}
           onTogglePassiveOwned={toggleDeveloperPassiveOwned}

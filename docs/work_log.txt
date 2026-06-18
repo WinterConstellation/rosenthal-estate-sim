@@ -34,3 +34,8 @@
 - 작업 요약: 개발자툴에 UI 프리셋 미리보기와 글리프 서식 강제 선택을 추가했다.
 - 수정 파일: `src/App.jsx`, `src/styles.css`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 비고: 로컬 빌드/검증은 사용자가 직접 진행하기로 했으므로 실행하지 않았다.
+
+2026-06-18 17:39 KST
+- 작업 요약: 개발자툴에 공포 상태 프리셋 버튼을 추가했다.
+- 수정 파일: `src/App.jsx`, `src/styles.css`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 비고: 로컬 빌드/검증은 사용자가 직접 진행하기로 했으므로 실행하지 않았다.

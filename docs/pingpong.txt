@@ -5,7 +5,7 @@
 
 ## 최신 작업 보고
 
-기준 시각: 2026-06-18 16:17 KST
+기준 시각: 2026-06-18 17:39 KST
 
 ### 반영된 커밋
 
@@ -20,6 +20,10 @@
   - 개발자툴에 `UI preset` 미리보기 선택을 추가했다.
   - 개발자툴에 `glyph format` 강제 선택을 추가했다.
   - 두 기능 모두 저장 데이터는 바꾸지 않는 화면 표시 override다.
+- 이번 작업 추가
+  - 개발자툴에 `Horror State Preset` 버튼을 추가했다.
+  - 공포/오염/진실/변질 상태를 빠르게 만들고 기존 파생 공포 계산을 다시 태운다.
+  - `reset visible horror`는 공포 수치와 개발자 preview/강제 눈 표시를 함께 낮춘다.
 
 ## 현재 구현 상태
 
@@ -61,6 +65,11 @@
   - 예전에 제거한 떠다니는 문장 레이어(`textMist`)는 강제로 되살리지 않는다.
   - 실제 저장 데이터, 진행도, 이벤트 스크립트는 바꾸지 않는다.
 - 기존 `force night preview`는 남겨두되, `UI preset`이 선택되면 그 값이 우선한다.
+- 개발자툴 전용 `applyDeveloperHorrorPresetToGame`을 추가했다.
+  - 버튼은 현재 회차의 개발자 테스트용 state만 바꾼다.
+  - `syncDeveloperHorrorState`를 재사용해 `derivedHorror`, `revealedHorrorTraits`, `revealedHorrorStates`를 다시 계산한다.
+  - `critical` 프리셋은 첫 생존 동행자가 있으면 테스트용으로 `transformed` 상태로 바꿔 눈/임계 UI를 확인하기 쉽게 한다.
+  - `reset visible horror`는 동행자 변질 상태도 생존 상태로 되돌리고, 개발자 preview select와 eye override를 끈다.
 
 ### `src/styles.css`
 
@@ -93,6 +102,7 @@
 - 줄바꿈 LF 정규화
 - 개발자툴 `UI preset` 미리보기 추가
 - 개발자툴 `glyph format` 강제 선택 추가
+- 개발자툴 `Horror State Preset` 버튼 추가
 
 ## 아직 하지 않은 것
 
@@ -127,7 +137,7 @@
 
 ### 3차 구현: Horror State Preset 버튼
 
-숫자를 하나씩 입력하지 않고 장면 상태를 빠르게 만들기 위한 버튼이다.
+구현 완료. 숫자를 하나씩 입력하지 않고 장면 상태를 빠르게 만들기 위한 버튼이다.
 
 후보:
 
@@ -194,8 +204,7 @@
 
 ## 다음 구현 후보
 
-1. 개발자툴에 `Horror State Preset` 버튼을 추가한다.
-2. 사용자가 로컬에서 확인한 뒤 `night-calm` 색감과 빛무리 밀도를 조정한다.
-3. `anomaly` / `critical` 임계값을 플레이 감각에 맞게 조정한다.
-4. 낮 `day-anomaly` / `day-critical` 전용 표현을 추가한다.
-5. 사용자가 별도 안내하면 `night-critical` 전용 연출을 만든다.
+1. 사용자가 로컬에서 확인한 뒤 `night-calm` 색감과 빛무리 밀도를 조정한다.
+2. `anomaly` / `critical` 임계값을 플레이 감각에 맞게 조정한다.
+3. 낮 `day-anomaly` / `day-critical` 전용 표현을 추가한다.
+4. 사용자가 별도 안내하면 `night-critical` 전용 연출을 만든다.

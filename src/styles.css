@@ -451,6 +451,45 @@ button:focus-visible {
   align-items: end;
 }
 
+.developer-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.developer-preset-grid button {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  padding: 7px 8px;
+  border: 1px solid rgba(174, 75, 83, 0.28);
+  border-radius: 6px;
+  background: rgba(37, 23, 28, 0.82);
+  color: #f1d9d6;
+  text-align: left;
+  cursor: pointer;
+}
+
+.developer-preset-grid button:hover {
+  border-color: rgba(236, 116, 124, 0.72);
+  background: rgba(64, 31, 38, 0.92);
+}
+
+.developer-preset-grid button.is-danger {
+  border-color: rgba(111, 145, 188, 0.34);
+  background: rgba(18, 30, 46, 0.86);
+}
+
+.developer-preset-grid button span {
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.developer-preset-grid button small {
+  color: rgba(239, 221, 217, 0.66);
+  font-size: 0.56rem;
+}
+
 .developer-trait-list,
 .developer-passive-list {
   display: grid;
