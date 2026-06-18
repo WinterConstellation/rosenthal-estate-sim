@@ -139,3 +139,8 @@
 - 수정 파일: `src/App.jsx`, `src/styles.css`, `index.html`, `src/glyph-fall-fix.css`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 기준: `MARKS=100`, 성흔 50, 낙인 50, 분기 해방 조건은 3/10/20/30/40/50 및 total 100.
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-19 03:20 KST
+- 작업: 원격 `origin/main` 기준으로 성흔/낙인 100개 반영 여부와 누락 잔재를 재확인하고, 최신 인계용 `docs/pingpong.txt`를 현재 정본만 남기도록 정리했다.
+- 확인: 원격 `origin/main` 직접 카운트 기준 `MARKS=100`, 성흔 50, 낙인 50, 도달 불가능한 unlock 조건 없음.
+- 수정 파일: `docs/pingpong.txt`, `docs/work_log.txt`

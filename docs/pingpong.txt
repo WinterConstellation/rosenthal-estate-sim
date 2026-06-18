@@ -1,228 +1,58 @@
-﻿# 핑퐁 파일 정리 및 실제 수정 내역
+# 핑퐁 파일 정리 및 실제 수정 내역
 
-사용자의 요청에 의해 이 파일의 이전 핑퐁 내용은 삭제했다.
-이 문서는 실제 코드 수정 내역과 다음 작업자가 알아야 할 판단만 남긴다.
+이 문서는 최신 작업 인계용이다.
+길어지면 이전 토론과 중간 폐기안은 지우고, 다음 작업자가 알아야 할 현재 판단과 다음 작업 후보만 남긴다.
 
-## 최신 작업 보고
+## 최신 기준
 
-기준 시각: 2026-06-18 18:42 KST
+기준 시각: 2026-06-19 03:20 KST
+기준 원격: `origin/main` = `44ba6ce Recover mark catalog to 100 total`
 
-### 반영 의도
+## 현재 확정 상태
 
-- 기존 접두/접미 성흔 조합은 이후 확장에 불리하므로 단일 수집 아이템 구조로 바꿨다.
-- 성흔과 낙인을 같은 계열의 "표식"으로 두되, 루트에 따라 이득/손해가 반전되도록 했다.
-- 영구 도감 수집과 실제 선택 계산 효과를 분리했다.
-- 도감 전체 보유만으로는 효과가 적용되지 않는다. 진행불가 방지를 위해 이번 회차에 휴대하거나 장착한 표식만 계산에 들어간다.
-- 수집 개수 N개를 목표로 삼을 수 있도록 분기 키와 capstone 표식을 해방하는 구조를 추가했다.
+- 성흔/낙인 표식은 도합 `100개`가 정본이다.
+  - 성흔 50개
+  - 낙인 50개
+  - 성향형 94개
+  - 단독 6개
+- `MARK_BRANCH_UNLOCKS`는 현재 총량 안에서 모두 도달 가능해야 한다.
+  - 성흔 단독 축: 3 / 10 / 20 / 30 / 40 / 50
+  - 낙인 단독 축: 3 / 10 / 20 / 30 / 40 / 50
+  - 혼합 축: 성흔 25 + 낙인 25, 성흔 50 + 낙인 50
+  - 전체 완결: total 100
+- `scripts/verify-game.mjs`는 `MARKS.length === 100`, 성흔 50, 낙인 50, 분기 조건 도달 가능성, 전체 보유 시 unlock key 해방 여부를 검증한다.
+- `src/rules/README.md`는 200개 목표가 아니라 현재 100개 정본 기준으로 맞춰져 있다.
+- 기존 저장 마이그레이션(`LEGACY_STIGMA_MARK_MAP`)은 유지한다.
 
-### 완성된 구조
+## UI/글리프 기준
 
-- `MARKS`
-  - 성흔 30개, 낙인 30개를 생성한다.
-  - 각 표식은 `kind`, `affinity`, `tier`, `polarity`, `carryEffect`, `equipEffect`, `unlockCondition`, `branchUnlocks`를 가진다.
-  - 각 성향마다 성흔 3개, 낙인 3개가 있다.
-  - 각 성향의 세 번째 표식은 `capstone`이며, 해당 종류의 수집 개수가 일정 기준을 넘어야 획득 후보가 된다.
-- `meta`
-  - `ownedMarkIds`: 영구 도감 보유 목록
-  - `loadoutMarkIds`: 이번 회차 휴대 목록, 최대 10개
-  - `equippedMarkId`: 장착 표식 1개
-  - `unlockedBranchKeys`: 수집 개수에 따라 열린 분기 키
-- 현재 회차 state
-  - `ownedMarkIds`, `loadoutMarkIds`, `equippedMarkId`를 직접 들고 있다.
-  - 저장 시 `syncMetaFromRun`이 meta로 병합한다.
-- 기존 저장 마이그레이션
-  - `ownedStigmaPrefixIds`, `ownedStigmaSuffixIds`, `equippedStigma`는 `LEGACY_STIGMA_MARK_MAP`으로 새 표식 id에 합쳐진다.
+- 현재 `origin/main`은 `GlyphAtmosphereCanvas`, 글리프 형식 override, `src/glyph-fall-fix.css` 로드를 유지한다.
+- 글리프 분위기/override 구현은 현재 정본에서 유지한다.
+- 개발자 패널에는 UI 프리셋, 글리프 형식, 공포 상태 프리셋, 눈 override가 있다.
+- `눈 깜빡임 폭주`는 라벨과 실제 burst 동작이 맞도록 보정되어 있다.
 
-### 효과 적용 원칙
+## 확인 완료
 
-- `route !== "altered"`
-  - 성흔은 이득
-  - 낙인은 손해
-- `route === "altered"`
-  - 낙인은 이득
-  - 성흔은 손해
-- `polarity: "neutral"` 표식은 루트 반전 영향을 받지 않는다.
-- 휴대 표식은 약한 효과를 준다.
-  - 휴대 스탯 보정 합계는 ±3으로 제한한다.
-  - 휴대 성공률 보정 합계는 ±12%로 제한한다.
-- 장착 표식은 강한 효과를 준다.
-  - 장착 성공률 보정은 ±8%로 제한한다.
-  - 장착 표식은 휴대 목록에서 제외된다.
-- 표식 효과는 관련 성향 선택에 반응한다.
-  - 예: `life` 표식은 생활 성향 선택에 반응한다.
-  - 일부 위험 선택은 기사도/처형/구마/의심 표식에도 반응한다.
+- 원격 `origin/main` 파일 기준 직접 카운트:
+  - `MARKS=100`
+  - `stigma=50`
+  - `brand=50`
+  - 도달 불가능한 unlock 조건 없음
+- 로컬 확인:
+  - `npm.cmd run verify` 통과
+  - `npm.cmd run build` 통과
 
-### 수집 N개별 해방
+## 다음 작업 후보
 
-- 성흔 3개: `purification-hint`
-- 성흔 10개: `guardian-vow`
-- 성흔 20개: `white-rite`
-- 성흔 30개: `true-normal-gate`
-- 낙인 3개: `defilement-hint`
-- 낙인 10개: `black-bargain`
-- 낙인 20개: `slaughter-threshold`
-- 낙인 30개: `altered-crown-gate`
-- 성흔 5개 + 낙인 5개: `observer-ledger`
-- 성흔 10개 + 낙인 10개: `dual-rite`
-- 성흔 15개 + 낙인 15개: `third-axis-gate`
-- 전체 60개: `closed-codex`
+1. 성흔/낙인 효과 밸런스 1차 정리
+2. 1일차 낮 튜토리얼 고정 스크립트 정리
+3. 2일차 낮 약한 변주
+4. 3일차 시작쯤 최초 균열 발현 구조
 
-### UI 상태
+## 보류
 
-- 규칙 모달 안에 `장비 / 도감` 섹션을 추가했다.
-- 표시 항목:
-  - 전체 수집률
-  - 성흔/낙인 수집률
-  - 휴대 10칸 현황
-  - 현재 장착 표식
-  - 해방된 분기 키
-  - 보유/미보유/미해금 표식 카드
-  - 휴대 효과와 장착 효과 요약
-- 오른쪽 캐릭터 패널은 현재 장착 표식과 휴대 수만 간략히 보여준다.
-
-### 로컬에서 확인해야 하는 것
-
-- 기존 저장을 불러왔을 때 과거 성흔이 새 표식으로 변환되는지 확인한다.
-- 도감 보유만으로 효과가 적용되지 않는지 확인한다.
-- 휴대 10개 제한이 지켜지는지 확인한다.
-- 장착한 표식이 휴대 목록에서 빠지는지 확인한다.
-- 장착 해제 후 장착 없음 상태가 유지되는지 확인한다.
-- 정상 축에서 성흔이 이득/낙인이 손해로 보이는지 확인한다.
-- `altered` 진입 후 낙인이 이득/성흔이 손해로 반전되는지 확인한다.
-- 관련 성향 선택에서 성공률/스탯 변화에 표식 효과가 붙는지 확인한다.
-- 수집 개수에 따라 분기 키가 표시되는지 확인한다.
-
-### 검증 메모
-
-- 사용자가 로컬 실행 검증을 진행하기로 했으므로 `npm run build`, `npm run verify`는 실행하지 않았다.
-- 로컬 번들 Node로 다음 파일의 문법만 확인했다.
-  - `src/rules/systemRules.js`
-  - `src/engine/rulesEngine.js`
-  - `src/engine/rosenthalEngine.js`
-- JSX 전체 빌드는 생략했다.
-
-### 수정 파일
-
-- `src/rules/systemRules.js`
-- `src/engine/rulesEngine.js`
-- `src/engine/rosenthalEngine.js`
-- `src/App.jsx`
-- `src/styles.css`
-- `docs/pingpong.txt`
-- `docs/work_log.txt`
-
-2026-06-18 19:52 KST
-- 진행 내용: 구시대 성흔 검증 제거 후 새 mark 메타 기반 검증 정리, 모바일 topbar 레이아웃 패치, README 규칙 문구 정비.
-- 반영 파일:
-  - `scripts/verify-game.mjs`
-  - `src/styles.css`
-  - `src/rules/README.md`
-- 주의: 기존 마이그레이션(LEGACY_STIGMA_MARK_MAP) 경로는 유지하되, verify 기대값을 새 mark 메타 기준으로 통일.
-
-2026-06-18 20:31 KST
-- 작업: 관리자/개발자 패널 표시 문구 영어 항목을 한국어로 정리(섹션 제목, 라벨, 버튼, 설명, 프리셋/포맷/눈 override 명칭).
-- 수정 파일: src/App.jsx
-
-2026-06-18 20:55 KST
-- 작업: `src/App.jsx` 사용자 가시 문구 정리(기능 변경 없음)
-- 치환: `표시 템플릿`→`UI 프리셋`, `텍스트 스타일`→`글리프 형식`, `연속 반짝임 사용`→`눈 깜빡임 연속 표시`, `밤 화면 미리보기 강제 적용`→`밤 화면으로 미리보기`, `실시간 상태 편집기`→`상태 편집`, `공포 설정`→`공포 상태 프리셋`
-- 문서 반영: `docs/work_log.txt`, `docs/pingpong.txt`
-- verify/build 실행 대상: `src/App.jsx`
-
-2026-06-18 21:20 KST
-- 작업: `src/rules/systemRules.js`, `src/engine/rulesEngine.js`, `src/App.jsx`, `scripts/verify-game.mjs`를 반영해 `MARKS`를 성향/단독 분리 구조로 확장 가능한 형태로 정리.
-- 반영: `AFFINITY_MARK_GROUPS` + `STANDALONE_MARKS`, `isMarkObtainable` 조건 체크, capstone self-lock 방지 오프셋, `MARK_BRANCH_UNLOCKS` 200개 확장 기준 반영.
-- 샘플 단독 표식: 6개 등록(성흔 3, 낙인 3) 및 MARKS 기반 표식 분모 UI 반영.
-- verify: `MARKS` 최소 66개, id 중복 없음, 필수 필드, 카테고리/affinity, `isMarkObtainable` 기본 true 조건 체크 추가.
-- 문서: `src/rules/README.md`에 표식 구조(성향/단독 분리 및 100+100 확장 목표) 반영.
-
-2026-06-18 22:20 KST
-- 작업: 성향/단독 표식 구조 최종 정리
-  - src/rules/systemRules.js
-    - MARK_BRANCH_UNLOCKS를 성향/낙인 기준(3/10/25/50/75/100)으로 정렬.
-    - isMarkObtainable / isMarkConditionMet 추가, 단독 표식 포함 조건 판정 적용.
-    - createMark capstone 조건을 markCountMin으로 통일.
-    - isMarkCollectionUnlocked를 획득 전 수량 기준으로 변경(자기잠금 방지).
-  - scripts/verify-game.mjs
-    - MARKS 최소 개수, id 중복, 필수 필드, 카테고리/affinity 규칙 검증 보강.
-  - 문서: src/rules/README.md 상태값(100+100 목표, 단독 샘플 6개) 유지.
-  - 핵심: 기존 마이그레이션(LEGACY_STIGMA_MARK_MAP, ownedMarkIds/loadoutMarkIds/equippedMarkId) 유지.
-
-2026-06-18 22:55 KST
-- 작업: 표식 구조를 성향/단독 분리 구조로 정렬하고 단독 샘플 6개를 추가함. 샘플은 성흔3·낙인3.
-- 변경 파일: `src/rules/systemRules.js`, `src/engine/rulesEngine.js`, `src/App.jsx`, `scripts/verify-game.mjs`, `src/rules/README.md`, `docs/work_log.txt`
-- 확인: `npm.cmd run verify`, `npm.cmd run build` 통과
-
-
-2026-06-18 23:00 KST
-- ��ǥ�� ���� ���� �� ������ ���ռ� Ȯ��.
-  - src/rules/systemRules.js: createMark�� entry.tier�� �ݿ��ϰ� STANDALONE_MARKS 6���� ������ ���·� AFFINITY_MARK_GROUPS ���� ����.
-  - src/engine/rulesEngine.js: �ĺ� ���� �� isMarkCollectionUnlockedForCandidate + isMarkObtainable ���� ����.
-  - scripts/verify-game.mjs: MARKS 66+ / �ߺ� ���� / ���硤���� ���� 33�� �̻� / ���� ���� ǥ�� isMarkObtainable ���� �߰�.
-  - src/rules/README.md, docs/work_log.txt �ڵ���� ��� ����.
-  - ���: npm.cmd run verify, npm.cmd run build
-
-2026-06-18 23:30 KST
-- `src/App.jsx`의 `GlyphAtmosphereCanvas`를 캐시 텍스처 기반 렌더링으로 변경.
-- `src/styles.css`에는 기존 `.glyph-atmosphere-canvas` 스타일 유지.
-- 변경 기록: `docs/work_log.txt` 반영.
-
-2026-06-18 23:48 KST
-- `GlyphAtmosphereCanvas`를 단일 텍스처에서 3개 캐시 레이어(`slow/mid/fast`)로 분리해, layer별 서로 다른 속도/투명도로 떠다님 감각을 되살림.
-- `buildGlyphAtmosphereTexture`에 `layerIndex` 반영하여 레이어별 글리프 배치를 분리.
-- `textureHeight = safeHeight * 2`로 확장하고, `effect.intensity`는 draw 루프의 alpha/속도 계산에서만 사용.
-- `drawImage`는 레이어당 2회(`drawImage` 총 6회)만 사용.
-- `effect.intensity`를 텍스처 재생성 트리거에서 분리.
-- 변경 기록 반영: `docs/work_log.txt`.
-
-2026-06-19 02:06 KST
-- 성흔/낙인 표식 복구 검토. 로컬에는 `backup/codex-local-broken-20260619-013147` 브랜치가 남아 있었고, 그 안의 `fdee63c Add mark catalog to 100 total`이 성흔/낙인 도합 100개 작업이었다.
-- 그대로 반영하면 안 되는 상태였다. 해당 작업은 표식 총합을 100개(성흔 50, 낙인 50)로 바꾸면서도 `MARK_BRANCH_UNLOCKS` 일부 조건을 성흔 75/100, 낙인 75/100, 성흔100+낙인100, total 200 전제에 남겨 두고 있었다. 즉 코드가 빌드되어도 일부 분기 키는 현재 카탈로그에서 영원히 열리지 않는 구조였다.
-- `docs/work_log.txt` 쪽에는 이전 작업 중 인코딩 깨짐이 섞여 있었으므로 백업 커밋의 문서 변경은 그대로 가져오지 않았다.
-- `src/App.jsx`에는 표식 복구와 무관한 글리프 설정 삭제 diff가 잠깐 섞였으나 범위 밖 변경으로 판단해 되돌렸다.
-- 반영한 것: `src/rules/systemRules.js`의 신규 성향형 표식 34개, 성흔/낙인 도합 100개 구조, `src/rules/README.md`의 총합 100개 설명, `scripts/verify-game.mjs`의 엄격한 검증.
-- 보정한 것: 분기 해방 조건을 현재 최대치 안에서 도달 가능하도록 성흔/낙인 단독 축은 3/10/20/30/40/50, 혼합 축은 25+25 및 50+50, 전체 완결은 total 100으로 정리했다.
-- 추가 방어: `npm.cmd run verify`가 이제 `MARK_BRANCH_UNLOCKS` 조건이 현재 표식 총량보다 큰 경우 실패한다. 전체 표식을 보유했을 때 모든 count 기반 분기와 capstone branch key가 실제로 해방되는지도 검증한다.
-- 검토 결과: 기존 저장 마이그레이션(`LEGACY_STIGMA_MARK_MAP`), 획득 후보 필터(`isMarkCollectionUnlockedForCandidate`, `isMarkObtainable`), 도감 UI의 `MARKS.length` 기반 분모와 충돌하지 않음.
-- 확인: `npm.cmd run verify`, `npm.cmd run build` 통과.
-
-2026-06-19 02:08 KST - GPT 확인용 요약
-- 성흔/낙인 복구 대상은 백업 브랜치 `backup/codex-local-broken-20260619-013147`의 `fdee63c Add mark catalog to 100 total`이었다.
-- 핵심 문제: 표식은 도합 100개로 바뀌었는데 분기 조건 일부가 75/100/200 기준으로 남아 있어 그대로 쓰면 도달 불가능한 unlock key가 생겼다.
-- 최종 반영: 성향형 신규 표식 34개를 넣어 MARKS=100, 성흔=50, 낙인=50으로 정리했다.
-- 최종 보정: MARK_BRANCH_UNLOCKS는 성흔/낙인 3/10/20/30/40/50, 혼합 25+25 및 50+50, 전체 total 100으로 맞췄다.
-- 추가 방어: `npm.cmd run verify`가 표식 총량, 성향별 분포, 분기 조건 도달 가능성, 전체 보유 시 unlock key 해방 여부를 검증한다.
-- 제외: 인코딩 깨진 백업 문서 변경과 표식과 무관한 `src/App.jsx` 글리프 diff는 반영하지 않았다.
-- 확인: `npm.cmd run verify`, `npm.cmd run build` 통과.
-2026-06-19 02:12 KST - 제외된 변경
-- 배경 글자 낙하 효과 제거 변경은 이번 정본에서 제외했다.
-- 현재 기준: `glyphAtmosphere`, `GlyphAtmosphereCanvas`, 글리프 텍스처 생성 유틸, 개발자 패널의 글리프 형식 선택은 유지한다.
-- `index.html`의 `src/glyph-fall-fix.css` 로드와 `src/glyph-fall-fix.css`도 유지한다.
-- 100개 표식 반영은 `6a9d57c Recover mark catalog to total 100` 기준만 채택한다.
-
-2026-06-19 02:33 KST
-- 올바른 원 스레드: `019edbca-56b3-7683-a100-70d2ed7a4ff6`(`핑퐁 파일 정리 및 이름 변경`)를 확인했다.
-- 가져온 UI 결정: 기본 밤은 `night-calm` 푸른 안정 배경이고, 붉은 밤은 `night-anomaly`/`night-critical` 이후 위험 신호로만 사용한다.
-- 가져온 초반 튜토리얼 흐름: 1일차 낮은 영지 경영 튜토리얼 고정, 2일차 낮은 같은 구조의 약한 변주, 일반적 최초 균열은 3일차 시작쯤으로 둔다.
-- 메인 스토리는 1일차부터 깔리지만, 플레이어에게는 초반 영지 경영 튜토리얼처럼 보이게 한다.
-- 최신 상태 보정: 100개 표식 정본에서는 해당 스레드의 글리프 분위기/override 계열을 유지하고, 02:12 KST 배경 글자 낙하 효과 제거 변경은 미반영으로 둔다.
-
-2026-06-19 02:34 KST
-- DEV 패널의 `눈 깜빡임 연속 표시` 문구와 실제 `burst` 동작 불일치를 보정했다.
-- `src/App.jsx`: 라벨을 `눈 깜빡임 폭주`로 변경하고, `burst`가 켜졌을 때 실제 blink 예약 간격도 짧아지도록 `getMarenolBlink`를 조정했다.
-- 확인: `npm.cmd run verify`, `npm.cmd run build` 통과.
-
-2026-06-19 02:40 KST - 기록 누락 보강
-- 2026-06-18 15:26 이후 커밋 히스토리를 다시 대조했다. 중요한 변경 중 일부가 작업 당시 `docs/work_log.txt`/`docs/pingpong.txt`에 같이 남지 않았거나 사후 기록만 남아 있었다.
-- 보강 대상:
-  - `6b539d7`: UI 단계 프리셋 분리.
-  - `74bc97d`, `f79d487`, `a3bb756`: 개발자·관리자 UI 라벨 한국어 정리 시도와 최종 `dev` 라벨 복원.
-  - `817abd2`: `scripts/verify-game.mjs`의 mark-only 검증 스키마 반영.
-  - `87843de`, `0da0d97`, `8a89b27`, `a3b581c`: 글리프 낙하 방향 CSS 추가/로드, 텍스처 스크롤 캔버스 숨김 시도, 아래 방향 흐름 복원.
-- 현재 코드 기준 주의: 글리프 낙하 방향 CSS와 텍스처 흐름은 유지한다. 02:12 KST 제거 변경은 현재 구현 상태가 아니라 제외된 변경이다.
-2026-06-19 02:50 KST - 성흔/낙인 100개 정본 확정
-- `MARKS=100`, 성흔 50개, 낙인 50개가 정본이다.
-- `MARK_BRANCH_UNLOCKS`는 성흔/낙인 단독 축 3/10/20/30/40/50, 혼합 축 25+25 및 50+50, 전체 total 100 기준으로 둔다.
-- 글리프 분위기/override 구현은 유지한다. `6617983 Recover marks and remove glyph fall effect`의 글리프 제거 변경은 포함하지 않는다.
-- 확인: `npm.cmd run verify`, `npm.cmd run build` 통과.
-- 다음 작업 후보는 성흔/낙인 효과 밸런스 1차 정리다.
+- `night-critical` 전용 연출
+- `day-anomaly` / `day-critical` 상세 표현
+- phase jump
+- companion 상태 편집
+- 선택지 데이터 전면 조정
