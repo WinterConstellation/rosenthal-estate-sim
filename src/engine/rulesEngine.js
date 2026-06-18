@@ -10,7 +10,8 @@ import {
   TRAIT_META,
   TRAIT_STAT_KEYS,
   getMark,
-  isMarkCollectionUnlocked,
+  isMarkCollectionUnlockedForCandidate,
+  isMarkObtainable,
 } from "../rules/systemRules.js";
 import { DAY_ACTIONS, NIGHT_CHOICES } from "../rules/tutorialRules.js";
 import { createRunSeed, seededPick, seededRank, seededValue } from "./seed.js";
@@ -57,6 +58,7 @@ function getMarkRouteSign(game, mark) {
 
 function markMatchesChoice(mark, choice = {}) {
   if (!mark) return false;
+  if (mark.affinity == null) return true;
   const traitValue = choice.traits?.[mark.affinity]
     ?? choice.success?.traits?.[mark.affinity]
     ?? choice.effects?.traits?.[mark.affinity]
@@ -559,7 +561,8 @@ export function deriveMark(game) {
       mark.kind === kind
       && (!affinity || mark.affinity === affinity)
       && !ownedMarkIds.includes(mark.id)
-      && isMarkCollectionUnlocked(mark, ownedMarkIds)
+      && isMarkCollectionUnlockedForCandidate(mark, ownedMarkIds)
+      && isMarkObtainable(mark, game, game.meta)
     ));
     return seededRank(candidates, `${seed}:${kind}:${affinity ?? "any"}`)[0] ?? null;
   };

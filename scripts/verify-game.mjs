@@ -46,7 +46,15 @@ import {
   startExpedition,
 } from "../src/engine/rosenthalEngine.js";
 import { getEffectiveChoiceChance, resolveChoice, roundToTenth, truncateToTenth } from "../src/engine/rulesEngine.js";
-import { HORROR_DERIVED_META, HORROR_TRAIT_META } from "../src/rules/systemRules.js";
+import {
+  HORROR_DERIVED_META,
+  HORROR_TRAIT_META,
+  LEGACY_STIGMA_MARK_MAP,
+  STANDALONE_MARKS,
+  MARKS,
+  getMark,
+  isMarkObtainable,
+} from "../src/rules/systemRules.js";
 
 assert.equal(SAINT_SEEDS.length, 60);
 assert.equal(new Set(SAINT_SEEDS.map((seed) => seed.name)).size, 60);
@@ -150,6 +158,50 @@ assert.equal(Object.keys(deterministicA.meta.traitProgress).length, 10);
 assert.deepEqual(deterministicA.meta.ownedMarkIds, []);
 assert.deepEqual(deterministicA.meta.loadoutMarkIds, []);
 assert.equal(deterministicA.meta.equippedMarkId, null);
+const markCounts = MARKS.reduce((counts, mark) => {
+  counts.total += 1;
+  counts[mark.kind] = (counts[mark.kind] ?? 0) + 1;
+  return counts;
+}, { total: 0, stigma: 0, brand: 0 });
+const standaloneMarkCount = MARKS.filter((mark) => mark.category === "standalone").length;
+const affinityMarkCount = MARKS.filter((mark) => mark.category === "affinity").length;
+const standaloneStigmaCount = STANDALONE_MARKS.filter((mark) => mark.kind === "stigma").length;
+const standaloneBrandCount = STANDALONE_MARKS.filter((mark) => mark.kind === "brand").length;
+const markIds = MARKS.map((mark) => mark.id);
+const uniqueMarkIds = new Set(markIds);
+assert.ok(markCounts.total >= 66);
+assert.ok(markCounts.stigma >= 33);
+assert.ok(markCounts.brand >= 33);
+assert.equal(markIds.length, uniqueMarkIds.size);
+assert.equal(standaloneMarkCount, STANDALONE_MARKS.length);
+assert.equal(affinityMarkCount, markCounts.total - standaloneMarkCount);
+assert.equal(markCounts.stigma + markCounts.brand, markCounts.total, "성흔/낙인 합계 일치");
+assert.ok(standaloneStigmaCount >= 3, "단독 성흔 샘플은 최소 3개");
+assert.ok(standaloneBrandCount >= 3, "단독 낙인 샘플은 최소 3개");
+assert.ok(MARKS.every((mark) => (
+  mark.id
+  && mark.kind
+  && mark.category
+  && mark.name
+  && mark.polarity
+  && mark.category
+  && mark.carryEffect
+  && mark.equipEffect
+)));
+assert.ok(MARKS.every((mark) => mark.kind === "stigma" || mark.kind === "brand"));
+assert.ok(MARKS.every((mark) => mark.polarity === "route" || mark.polarity === "neutral"));
+assert.ok(MARKS.every((mark) => mark.category === "affinity" ? Boolean(mark.affinity) : true));
+assert.ok(MARKS.every((mark) => mark.category !== "standalone" || mark.affinity == null || typeof mark.affinity === "string"));
+assert.ok(MARKS.every((mark) => ["affinity", "standalone"].includes(mark.category)));
+Object.values(LEGACY_STIGMA_MARK_MAP).forEach((markId) => {
+  assert.ok(markId);
+  assert.ok(Boolean(getMark(markId)));
+});
+const noConditionMark = MARKS.find((mark) => (mark.obtainConditions?.length ?? 0) === 0);
+assert.equal(
+  noConditionMark ? isMarkObtainable(noConditionMark, deterministicA, deterministicA.meta) : false,
+  true,
+);
 const horrorTraitAction = DAY_ACTIONS.find((action) => action.id === "count-rooms");
 const horrorTraitResult = chooseDayAction({ ...deterministicA, phase: "day" }, horrorTraitAction);
 assert.equal(horrorTraitResult.horrorTraits.intrusion, 1);

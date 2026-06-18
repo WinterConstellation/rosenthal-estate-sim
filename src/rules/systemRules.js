@@ -147,95 +147,178 @@ export const MARK_LOADOUT_LIMIT = 10;
 export const MARK_BRANCH_UNLOCKS = [
   { id: "purification-hint", label: "정화 의식 단서", condition: { stigma: 3 } },
   { id: "guardian-vow", label: "방어/보존 분기", condition: { stigma: 10 } },
-  { id: "white-rite", label: "낙인 정화 의식", condition: { stigma: 20 } },
-  { id: "true-normal-gate", label: "정상 축 심화 분기", condition: { stigma: 30 } },
+  { id: "white-rite", label: "낙인 정화 의식", condition: { stigma: 25 } },
+  { id: "guardian-branch", label: "보루 분기", condition: { stigma: 50 } },
+  { id: "pale-vow", label: "백색 경고", condition: { stigma: 75 } },
+  { id: "true-normal-gate", label: "정상 축 심화 분기", condition: { stigma: 100 } },
   { id: "defilement-hint", label: "훼손 의식 단서", condition: { brand: 3 } },
   { id: "black-bargain", label: "악성 거래 분기", condition: { brand: 10 } },
-  { id: "slaughter-threshold", label: "몰살/변질 진입 분기", condition: { brand: 20 } },
-  { id: "altered-crown-gate", label: "악성 축 심화 분기", condition: { brand: 30 } },
-  { id: "observer-ledger", label: "중립 관측 단서", condition: { stigma: 5, brand: 5 } },
-  { id: "dual-rite", label: "성흔/낙인 반전 의식", condition: { stigma: 10, brand: 10 } },
-  { id: "third-axis-gate", label: "제3축 분기 조건", condition: { stigma: 15, brand: 15 } },
-  { id: "closed-codex", label: "도감 완성 기록", condition: { total: 60 } },
+  { id: "slaughter-threshold", label: "몰살 진입 분기", condition: { brand: 25 } },
+  { id: "massacre-branch", label: "학살 분기", condition: { brand: 50 } },
+  { id: "black-crown", label: "심연 분기", condition: { brand: 75 } },
+  { id: "altered-crown-gate", label: "변질 축 심화 분기", condition: { brand: 100 } },
+  { id: "observer-ledger", label: "관측부 기록", condition: { stigma: 50, brand: 50 } },
+  { id: "closed-codex", label: "도감 폐쇄 조건", condition: { stigma: 100, brand: 100 } },
+  { id: "complete-codex", label: "도감 완결", condition: { total: 200 } },
 ];
 
-const MARK_GROUPS = [
+export const AFFINITY_MARK_GROUPS = [
   {
     affinity: "life",
     capstoneCount: 3,
     branch: { stigma: "warmth-rite", brand: "cold-hand-rite" },
-    stigma: ["따뜻한화로의 성흔", "빵부스러기의 성흔", "손바닥온기의 성흔"],
-    brand: ["식은화로의 낙인", "굶주린식탁의 낙인", "차가운손의 낙인"],
+    stigma: [
+      { name: "따뜻한화로의 성흔", tier: "base" },
+      { name: "빵부스러기의 성흔", tier: "neutral" },
+      { name: "손바닥온기의 성흔", tier: "capstone" },
+    ],
+    brand: [
+      { name: "식은화로의 낙인", tier: "base" },
+      { name: "굶주린식탁의 낙인", tier: "neutral" },
+      { name: "차가운손의 낙인", tier: "capstone" },
+    ],
   },
   {
     affinity: "record",
     capstoneCount: 6,
     branch: { stigma: "ledger-preserved", brand: "ledger-blackened" },
-    stigma: ["봉인장부의 성흔", "증언초의 성흔", "잉크눈물의 성흔"],
-    brand: ["찢긴장부의 낙인", "허위증언의 낙인", "검은잉크의 낙인"],
+    stigma: [
+      { name: "봉인장부의 성흔", tier: "base" },
+      { name: "증언초의 성흔", tier: "neutral" },
+      { name: "잉크눈물의 성흔", tier: "capstone" },
+    ],
+    brand: [
+      { name: "찢긴장부의 낙인", tier: "base" },
+      { name: "허위증언의 낙인", tier: "neutral" },
+      { name: "검은잉크의 낙인", tier: "capstone" },
+    ],
   },
   {
     affinity: "knight",
     capstoneCount: 10,
     branch: { stigma: "watchman-bell", brand: "blood-watchman" },
-    stigma: ["백철검의 성흔", "방패기도의 성흔", "파수종의 성흔"],
-    brand: ["녹슨맹세의 낙인", "도망친방패의 낙인", "피묻은파수의 낙인"],
+    stigma: [
+      { name: "백철검의 성흔", tier: "base" },
+      { name: "방패기도의 성흔", tier: "neutral" },
+      { name: "파수종의 성흔", tier: "capstone" },
+    ],
+    brand: [
+      { name: "녹슨맹세의 낙인", tier: "base" },
+      { name: "도망친방패의 낙인", tier: "neutral" },
+      { name: "피묻은파수의 낙인", tier: "capstone" },
+    ],
   },
   {
     affinity: "trade",
     capstoneCount: 10,
     branch: { stigma: "fair-bargain", brand: "sold-name" },
-    stigma: ["은계약의 성흔", "저울기도의 성흔", "선의상인의 성흔"],
-    brand: ["부정계약의 낙인", "깨진저울의 낙인", "매매된이름의 낙인"],
+    stigma: [
+      { name: "은계약의 성흔", tier: "base" },
+      { name: "저울기도의 성흔", tier: "neutral" },
+      { name: "선의상인의 성흔", tier: "capstone" },
+    ],
+    brand: [
+      { name: "부정계약의 낙인", tier: "base" },
+      { name: "깨진저울의 낙인", tier: "neutral" },
+      { name: "매매된이름의 낙인", tier: "capstone" },
+    ],
   },
   {
     affinity: "mansion",
     capstoneCount: 15,
     branch: { stigma: "empty-room-key", brand: "open-empty-room" },
-    stigma: ["문지방빛의 성흔", "회랑나침의 성흔", "빈방열쇠의 성흔"],
-    brand: ["뒤집힌문패의 낙인", "굶주린회랑의 낙인", "열린빈방의 낙인"],
+    stigma: [
+      { name: "문지방빛의 성흔", tier: "base" },
+      { name: "회랑나침의 성흔", tier: "neutral" },
+      { name: "빈방열쇠의 성흔", tier: "capstone" },
+    ],
+    brand: [
+      { name: "뒤집힌문패의 낙인", tier: "base" },
+      { name: "굶주린회랑의 낙인", tier: "neutral" },
+      { name: "열린빈방의 낙인", tier: "capstone" },
+    ],
   },
   {
     affinity: "shortcut",
     capstoneCount: 15,
     branch: { stigma: "ash-letter", brand: "false-letter" },
-    stigma: ["가는실의 성흔", "숨은문고리의 성흔", "잿빛편지의 성흔"],
-    brand: ["끊어진실의 낙인", "없는문고리의 낙인", "거짓편지의 낙인"],
+    stigma: [
+      { name: "가는실의 성흔", tier: "base" },
+      { name: "숨은문고리의 성흔", tier: "neutral" },
+      { name: "잿빛편지의 성흔", tier: "capstone" },
+    ],
+    brand: [
+      { name: "끊어진실의 낙인", tier: "base" },
+      { name: "없는문고리의 낙인", tier: "neutral" },
+      { name: "거짓편지의 낙인", tier: "capstone" },
+    ],
   },
   {
     affinity: "exorcism",
     capstoneCount: 20,
     branch: { stigma: "incense-ward", brand: "black-incense" },
-    stigma: ["소금원의 성흔", "종말기도의 성흔", "향연기의 성흔"],
-    brand: ["더러운소금의 낙인", "역기도의 낙인", "검은향연기의 낙인"],
+    stigma: [
+      { name: "소금원의 성흔", tier: "base" },
+      { name: "종말기도의 성흔", tier: "neutral" },
+      { name: "향연기의 성흔", tier: "capstone" },
+    ],
+    brand: [
+      { name: "더러운소금의 낙인", tier: "base" },
+      { name: "역기도의 낙인", tier: "neutral" },
+      { name: "검은향연기의 낙인", tier: "capstone" },
+    ],
   },
   {
     affinity: "execution",
     capstoneCount: 20,
     branch: { stigma: "silent-axe", brand: "laughing-axe" },
-    stigma: ["참수선의 성흔", "마지막명령의 성흔", "무음도끼의 성흔"],
-    brand: ["빗나간칼날의 낙인", "무고한명령의 낙인", "웃는도끼의 낙인"],
+    stigma: [
+      { name: "참수선의 성흔", tier: "base" },
+      { name: "마지막명령의 성흔", tier: "neutral" },
+      { name: "무음도끼의 성흔", tier: "capstone" },
+    ],
+    brand: [
+      { name: "빗나간칼날의 낙인", tier: "base" },
+      { name: "무고한명령의 낙인", tier: "neutral" },
+      { name: "웃는도끼의 낙인", tier: "capstone" },
+    ],
   },
   {
     affinity: "divine",
     capstoneCount: 25,
     branch: { stigma: "absolution-lance", brand: "banished-lance" },
-    stigma: ["새벽성배의 성흔", "흰촛농의 성흔", "면죄창의 성흔"],
-    brand: ["깨진성배의 낙인", "검은촛농의 낙인", "추방된창의 낙인"],
+    stigma: [
+      { name: "새벽성배의 성흔", tier: "base" },
+      { name: "흰촛농의 성흔", tier: "neutral" },
+      { name: "면죄창의 성흔", tier: "capstone" },
+    ],
+    brand: [
+      { name: "깨진성배의 낙인", tier: "base" },
+      { name: "검은촛농의 낙인", tier: "neutral" },
+      { name: "추방된창의 낙인", tier: "capstone" },
+    ],
   },
   {
     affinity: "suspicion",
     capstoneCount: 30,
     branch: { stigma: "doubting-eye", brand: "unclosing-eye" },
-    stigma: ["갈라진거울의 성흔", "발자국의 성흔", "의심하는눈의 성흔"],
-    brand: ["눈먼거울의 낙인", "지워진발자국의 낙인", "감지않는눈의 낙인"],
+    stigma: [
+      { name: "갈라진거울의 성흔", tier: "base" },
+      { name: "발자국의 성흔", tier: "neutral" },
+      { name: "의심하는눈의 성흔", tier: "capstone" },
+    ],
+    brand: [
+      { name: "눈먼거울의 낙인", tier: "base" },
+      { name: "지워진발자국의 낙인", tier: "neutral" },
+      { name: "감지않는눈의 낙인", tier: "capstone" },
+    ],
   },
 ];
 
-function createMarkEffect(affinity, index, neutral = false) {
+function createMarkEffect(affinity, tier = "base") {
   const statKey = TRAIT_STAT_KEYS[affinity];
-  const isCapstone = index === 2;
-  if (neutral) {
+  const isCapstone = tier === "capstone";
+  if (tier === "neutral") {
     return {
       carryEffect: { chance: isCapstone ? 1.2 : 0.7 },
       equipEffect: { chance: isCapstone ? 4 : 2 },
@@ -253,28 +336,136 @@ function createMarkEffect(affinity, index, neutral = false) {
   };
 }
 
-function createMark(group, kind, index) {
-  const isCapstone = index === 2;
-  const neutral = index === 1;
-  const effects = createMarkEffect(group.affinity, index, neutral);
+function createMark(group, kind, index, entry) {
+  const markEntry = entry ?? {};
+  const tier = markEntry.tier || (index === 2 ? "capstone" : index === 1 ? "neutral" : "base");
+  const isCapstone = tier === "capstone";
+  const neutral = tier === "neutral";
+  const effects = createMarkEffect(group.affinity, tier);
+  const tags = [
+    `affinity:${group.affinity}`,
+    `kind:${kind}`,
+    `tier:${tier}`,
+    neutral ? "polarity:neutral" : "polarity:route",
+  ];
+  const obtainConditions = isCapstone ? [{ kind: "markCountMin", key: kind, value: group.capstoneCount }] : [];
   return {
     id: `${kind}-${group.affinity}-${index + 1}`,
     kind,
+    category: "affinity",
     affinity: group.affinity,
-    name: group[kind][index],
-    tier: isCapstone ? "capstone" : "base",
+    name: markEntry.name ?? group[kind]?.[index] ?? `${group.affinity}-${kind}-${index + 1}`,
+    tier,
     polarity: neutral ? "neutral" : "route",
+    tags,
     description: `${TRAIT_META[group.affinity].label} 선택에 반응한다. ${neutral ? "중립 효과는 루트 반전에 흔들리지 않는다." : "루트가 뒤집히면 이득과 손해가 반전된다."}`,
+    obtainConditions,
     unlockCondition: isCapstone ? { kind, count: group.capstoneCount } : null,
     branchUnlocks: isCapstone ? [group.branch[kind]] : [],
     ...effects,
   };
 }
 
-export const MARKS = MARK_GROUPS.flatMap((group) => [
-  ...[0, 1, 2].map((index) => createMark(group, "stigma", index)),
-  ...[0, 1, 2].map((index) => createMark(group, "brand", index)),
-]);
+export const STANDALONE_MARKS = [
+  {
+    id: "stigma-standalone-first-bell",
+    kind: "stigma",
+    category: "standalone",
+    affinity: null,
+    name: "첫 종소리의 성흔",
+    tier: "base",
+    polarity: "neutral",
+    tags: ["standalone", "origin:sample", "kind:stigma"],
+    description: "첫 번째 종소리가 남긴 성흔입니다.",
+    carryEffect: { chance: 0.7 },
+    equipEffect: { chance: 2 },
+    unlockCondition: null,
+    branchUnlocks: [],
+  },
+  {
+    id: "stigma-standalone-closed-door",
+    kind: "stigma",
+    category: "standalone",
+    affinity: null,
+    name: "닫힌 문 앞의 성흔",
+    tier: "base",
+    polarity: "neutral",
+    tags: ["standalone", "origin:sample", "kind:stigma"],
+    description: "닫힌 문 앞에 남은 성흔입니다.",
+    carryEffect: { chance: 0.7 },
+    equipEffect: { chance: 2 },
+    unlockCondition: null,
+    branchUnlocks: [],
+  },
+  {
+    id: "stigma-standalone-granted-funeral",
+    kind: "stigma",
+    category: "standalone",
+    affinity: null,
+    name: "장례를 허락받은 자의 성흔",
+    tier: "base",
+    polarity: "neutral",
+    tags: ["standalone", "origin:sample", "kind:stigma"],
+    description: "허락된 장례의 표식입니다.",
+    carryEffect: { chance: 0.7 },
+    equipEffect: { chance: 2 },
+    unlockCondition: null,
+    branchUnlocks: [],
+  },
+  {
+    id: "brand-standalone-broken-bell",
+    kind: "brand",
+    category: "standalone",
+    affinity: null,
+    name: "끊긴 종소리의 낙인",
+    tier: "base",
+    polarity: "neutral",
+    tags: ["standalone", "origin:sample", "kind:brand"],
+    description: "끊어버린 종소리의 낙인입니다.",
+    carryEffect: { chance: 0.7 },
+    equipEffect: { chance: 2 },
+    unlockCondition: null,
+    branchUnlocks: [],
+  },
+  {
+    id: "brand-standalone-open-door",
+    kind: "brand",
+    category: "standalone",
+    affinity: null,
+    name: "열린 문 뒤의 낙인",
+    tier: "base",
+    polarity: "neutral",
+    tags: ["standalone", "origin:sample", "kind:brand"],
+    description: "열린 문 뒤편의 낙인입니다.",
+    carryEffect: { chance: 0.7 },
+    equipEffect: { chance: 2 },
+    unlockCondition: null,
+    branchUnlocks: [],
+  },
+  {
+    id: "brand-standalone-stolen-funeral",
+    kind: "brand",
+    category: "standalone",
+    affinity: null,
+    name: "장례를 빼앗은 자의 낙인",
+    tier: "base",
+    polarity: "neutral",
+    tags: ["standalone", "origin:sample", "kind:brand"],
+    description: "장례를 빼앗아 얻은 낙인입니다.",
+    carryEffect: { chance: 0.7 },
+    equipEffect: { chance: 2 },
+    unlockCondition: null,
+    branchUnlocks: [],
+  },
+];
+
+export const MARKS = [
+  ...AFFINITY_MARK_GROUPS.flatMap((group) => [
+    ...group.stigma.map((entry, index) => createMark(group, "stigma", index, entry)),
+    ...group.brand.map((entry, index) => createMark(group, "brand", index, entry)),
+  ]),
+  ...STANDALONE_MARKS,
+];
 
 export const LEGACY_STIGMA_MARK_MAP = {
   "rose-thorn": "stigma-life-1",
@@ -297,9 +488,153 @@ export function getMarkCounts(markIds = []) {
     if (!mark) return counts;
     counts.total += 1;
     counts[mark.kind] += 1;
-    counts.affinity[mark.affinity] = (counts.affinity[mark.affinity] ?? 0) + 1;
+    if (mark.affinity != null) {
+      counts.affinity[mark.affinity] = (counts.affinity[mark.affinity] ?? 0) + 1;
+    }
     return counts;
   }, { total: 0, stigma: 0, brand: 0, affinity: {} });
+}
+
+function asNumber(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function hasKeyedConditionValue(condition, keys = ["key", "id", "route", "routeId", "eventId", "markKind", "branchId"]) {
+  for (const key of keys) {
+    if (condition[key] != null) return condition[key];
+  }
+  return null;
+}
+
+function hasValueCondition(condition, fallback = "value") {
+  if (condition[fallback] != null) return condition[fallback];
+  if (condition.min != null) return condition.min;
+  if (condition.count != null) return condition.count;
+  if (condition.threshold != null) return condition.threshold;
+  return null;
+}
+
+function getUnlockedBranchConditionMet(condition, unlocks) {
+  const branch = hasKeyedConditionValue(condition, ["branch", "branchId", "id"]);
+  if (!branch) return false;
+  return (unlocks ?? []).includes(branch);
+}
+
+function getMarkCountConditionMet(condition, markCounts) {
+  const key = hasKeyedConditionValue(condition, ["key", "markKind", "kind"]);
+  if (!key) return false;
+  const value = asNumber(hasValueCondition(condition, "value"));
+  return (markCounts[key] ?? 0) >= value;
+}
+
+export function isMarkConditionMet(condition, game = {}, meta = {}, options = {}) {
+  if (!condition || typeof condition !== "object") return true;
+  const kind = condition.kind;
+  const gameStats = game.stats ?? {};
+  const gameTraits = game.traits ?? {};
+  const gameResources = game.resources ?? {};
+  const gameEstate = game.estate ?? {};
+  const eventSeen = new Set([...(game.eventSeen ?? []), ...(game.meta?.eventSeen ?? [])].filter(Boolean));
+  const gameEndings = { ...(meta?.endingRecords ?? {}), ...(game.meta?.endingRecords ?? {}) };
+  const unlockedBranches = new Set([...(meta?.unlockedBranchKeys ?? []), ...(game.meta?.unlockedBranchKeys ?? []), ...getUnlockedBranchKeys(game.meta?.ownedMarkIds ?? [], game)]);
+
+  switch (kind) {
+    case "statMin": {
+      const key = hasKeyedConditionValue(condition);
+      const value = asNumber(hasValueCondition(condition));
+      return asNumber(gameStats[key]) >= value;
+    }
+    case "statMax": {
+      const key = hasKeyedConditionValue(condition);
+      const value = asNumber(hasValueCondition(condition));
+      return asNumber(gameStats[key]) <= value;
+    }
+    case "traitMin": {
+      const key = hasKeyedConditionValue(condition);
+      const value = asNumber(hasValueCondition(condition));
+      return asNumber(gameTraits[key]) >= value;
+    }
+    case "traitMax": {
+      const key = hasKeyedConditionValue(condition);
+      const value = asNumber(hasValueCondition(condition));
+      return asNumber(gameTraits[key]) <= value;
+    }
+    case "resourceMin": {
+      const key = hasKeyedConditionValue(condition);
+      const value = asNumber(hasValueCondition(condition));
+      return asNumber(gameResources[key]) >= value;
+    }
+    case "resourceMax": {
+      const key = hasKeyedConditionValue(condition);
+      const value = asNumber(hasValueCondition(condition));
+      return asNumber(gameResources[key]) <= value;
+    }
+    case "estateMin": {
+      const key = hasKeyedConditionValue(condition);
+      const value = asNumber(hasValueCondition(condition));
+      return asNumber(gameEstate[key]) >= value;
+    }
+    case "estateMax": {
+      const key = hasKeyedConditionValue(condition);
+      const value = asNumber(hasValueCondition(condition));
+      return asNumber(gameEstate[key]) <= value;
+    }
+    case "eventSeen": {
+      const eventId = hasKeyedConditionValue(condition);
+      return eventSeen.has(eventId);
+    }
+    case "judgmentMet": {
+      const judgmentId = hasKeyedConditionValue(condition);
+      return Boolean(game.meta?.judgments?.[judgmentId] ?? game.truthFlags?.[judgmentId]);
+    }
+    case "endingSeen": {
+      const endingId = hasKeyedConditionValue(condition);
+      if (!endingId) return false;
+      if (gameEndings[endingId]) return true;
+      return Object.values(gameEndings).some((record) => record?.endingId === endingId || record?.id === endingId);
+    }
+    case "cycleMin": {
+      const value = asNumber(hasValueCondition(condition));
+      return asNumber(meta?.cycle ?? game.meta?.cycle ?? game.cycle) >= value;
+    }
+    case "routeIs": {
+      const route = (hasKeyedConditionValue(condition, ["route", "key"]) ?? "").toString();
+      return (game.route ?? meta?.route ?? null) === route;
+    }
+    case "routeNot": {
+      const route = (hasKeyedConditionValue(condition, ["route", "key"]) ?? "").toString();
+      return (game.route ?? meta?.route ?? null) !== route;
+    }
+    case "markCountMin": {
+      const markCounts = getMarkCounts(meta?.ownedMarkIds ?? options?.markIds ?? []);
+      return getMarkCountConditionMet(condition, markCounts);
+    }
+    case "branchUnlocked": {
+      return getUnlockedBranchConditionMet(condition, [...unlockedBranches]);
+    }
+    case "antiCheatStatMax": {
+      const key = hasKeyedConditionValue(condition);
+      const value = asNumber(hasValueCondition(condition));
+      return asNumber(gameStats[key]) <= value;
+    }
+    case "markCount":
+      return getMarkCountConditionMet(condition, getMarkCounts(meta?.ownedMarkIds ?? options?.markIds ?? []));
+    default:
+      return false;
+  }
+}
+
+export function isMarkObtainable(mark, game = {}, meta = {}) {
+  if (!mark) return false;
+  const rawConditions = mark.obtainConditions;
+  const conditions = Array.isArray(rawConditions) ? rawConditions : (Array.isArray(rawConditions?.conditions) ? rawConditions.conditions : []);
+  if (!conditions.length) return true;
+  const mode = (rawConditions?.mode ?? "all").toString();
+  const resolvedMeta = { ...meta, ...(game.meta ?? {}) };
+  const evaluate = (condition) => isMarkConditionMet(condition, game, resolvedMeta, { markIds: resolvedMeta?.ownedMarkIds ?? [] });
+  if (mode === "any") return conditions.some(evaluate);
+  return conditions.every(evaluate);
 }
 
 export function getUnlockedBranchKeys(markIds = []) {
@@ -319,7 +654,19 @@ export function getUnlockedBranchKeys(markIds = []) {
 export function isMarkCollectionUnlocked(mark, markIds = []) {
   if (!mark?.unlockCondition) return true;
   const counts = getMarkCounts(markIds);
-  return counts[mark.unlockCondition.kind] >= mark.unlockCondition.count;
+  const targetKind = mark.unlockCondition.kind === "total" ? "total" : mark.unlockCondition.kind;
+  const currentValue = (counts[targetKind] ?? 0) - (markIds.includes(mark.id) && (mark.kind === targetKind || targetKind === "total") ? 1 : 0);
+  const required = asNumber(mark.unlockCondition.count ?? mark.unlockCondition.value);
+  return currentValue >= required;
+}
+
+export function isMarkCollectionUnlockedForCandidate(mark, markIds = []) {
+  if (!mark?.unlockCondition) return true;
+  const counts = getMarkCounts(markIds);
+  const targetKind = mark.unlockCondition.kind === "total" ? "total" : mark.unlockCondition.kind;
+  const currentValue = (counts[targetKind] ?? 0) + (markIds.includes(mark.id) ? -1 : 1);
+  const required = asNumber(mark.unlockCondition.count ?? mark.unlockCondition.value);
+  return currentValue >= required;
 }
 
 export const PASSIVES = [

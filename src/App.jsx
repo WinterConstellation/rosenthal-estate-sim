@@ -1772,6 +1772,10 @@ function RulesModal({ game, tutorial, onClose, onTogglePassive, onToggleMarkLoad
   const loadoutMarkIds = getLoadoutMarkIds(game);
   const equippedMarkId = getEquippedMarkId(game);
   const markCounts = getMarkCounts(ownedMarkIds);
+  const markTotals = {
+    stigma: MARKS.filter((mark) => mark.kind === "stigma").length,
+    brand: MARKS.filter((mark) => mark.kind === "brand").length,
+  };
   const branchUnlocks = getBranchUnlockLabels(ownedMarkIds);
   const traitProgress = game.meta?.traitProgress ?? {};
   const totalTraitLevel = Object.values(traitProgress).reduce((sum, item) => sum + (item.level ?? 0), 0);
@@ -1870,8 +1874,8 @@ function RulesModal({ game, tutorial, onClose, onTogglePassive, onToggleMarkLoad
           </div>
           <p>도감 보유만으로는 효과가 적용되지 않는다. 이번 회차에 휴대하는 {MARK_LOADOUT_LIMIT}개와 장착한 1개만 선택 계산에 반영된다.</p>
           <div className="mark-summary">
-            <span>성흔 {markCounts.stigma} / 30</span>
-            <span>낙인 {markCounts.brand} / 30</span>
+            <span>성흔 {markCounts.stigma} / {markTotals.stigma}</span>
+            <span>낙인 {markCounts.brand} / {markTotals.brand}</span>
             <span>휴대 {loadoutMarkIds.length} / {MARK_LOADOUT_LIMIT}</span>
             <span>장착 {equippedMarkId ? getMarkName(equippedMarkId) : "없음"}</span>
           </div>
@@ -1899,7 +1903,11 @@ function RulesModal({ game, tutorial, onClose, onTogglePassive, onToggleMarkLoad
                   key={mark.id}
                 >
                   <div>
-                    <span>{MARK_KIND_LABELS[mark.kind]} · {TRAIT_META[mark.affinity]?.label}</span>
+                    <span>
+                      {MARK_KIND_LABELS[mark.kind]} ·
+                      {" "}
+                      {mark.category === "standalone" ? "단독표식" : (TRAIT_META[mark.affinity]?.label ?? mark.affinity)}
+                    </span>
                     <strong>{owned ? mark.name : unlocked ? "미획득 표식" : "미해금 표식"}</strong>
                     <small>{owned ? mark.description : getMarkUnlockText(mark)}</small>
                   </div>
@@ -2111,7 +2119,7 @@ function DeveloperEyeSection({ eyeOverride, onChange }) {
             checked={eyeOverride.burst}
             onChange={(event) => onChange({ burst: event.target.checked })}
           />
-          <span>연속 반짝임 사용</span>
+          <span>눈 깜빡임 연속 표시</span>
         </label>
       </div>
     </section>
@@ -2131,7 +2139,7 @@ function DeveloperPreviewSection({
       <h3>미리보기</h3>
       <div className="developer-preview-grid">
         <label>
-          <span>표시 템플릿</span>
+          <span>UI 프리셋</span>
           <select value={uiPreset} onChange={(event) => onUiPresetChange(event.target.value)}>
             {DEV_UI_PRESET_OPTIONS.map((option) => (
               <option key={option} value={option}>
@@ -2141,7 +2149,7 @@ function DeveloperPreviewSection({
           </select>
         </label>
         <label>
-          <span>텍스트 스타일</span>
+          <span>글리프 형식</span>
           <select value={glyphFormat} onChange={(event) => onGlyphFormatChange(event.target.value)}>
             {DEV_GLYPH_FORMAT_OPTIONS.map((option) => (
               <option key={option} value={option}>
@@ -2157,9 +2165,9 @@ function DeveloperPreviewSection({
           checked={nightPreview}
           onChange={(event) => onNightPreviewChange(event.target.checked)}
         />
-        <span>밤 화면 미리보기 강제 적용</span>
+        <span>밤 화면으로 미리보기</span>
       </label>
-      <small>선택한 화면 템플릿과 텍스트 스타일은 미리보기로만 반영되며, 저장 데이터에는 영향을 주지 않습니다.</small>
+      <small>선택한 UI 프리셋과 글리프 형식은 미리보기로만 반영되며, 저장 데이터에는 영향을 주지 않습니다.</small>
     </section>
   );
 }
@@ -2167,7 +2175,7 @@ function DeveloperPreviewSection({
 function DeveloperHorrorPresetSection({ onApplyPreset }) {
   return (
     <section className="developer-section">
-      <h3>공포 설정</h3>
+      <h3>공포 상태 프리셋</h3>
       <div className="developer-preset-grid">
         {DEV_HORROR_PRESETS.map((preset) => (
           <button
@@ -2208,7 +2216,7 @@ function DeveloperPanel({
       <header>
         <div>
           <strong>dev</strong>
-          <small>실시간 상태 편집기</small>
+          <small>상태 편집</small>
         </div>
         <button type="button" onClick={onClose}>닫기</button>
       </header>
