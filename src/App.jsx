@@ -1933,7 +1933,7 @@ function StartScreen({ hasContinue, developerMode, onContinue, onNew, onToggleDe
         <div>
           {hasContinue && <button type="button" onClick={onContinue}>지난 꿈을 이어간다</button>}
           <button type="button" onClick={onNew}>잠에서 깨어난다</button>
-          <button className={developerMode ? "is-active" : ""} type="button" onClick={onToggleDeveloper}>DEV</button>
+          <button className={developerMode ? "is-active" : ""} type="button" onClick={onToggleDeveloper}>관리자 모드</button>
         </div>
       </section>
     </div>
@@ -2180,10 +2180,10 @@ function DeveloperPanel({
   onTogglePassiveActive,
 }) {
   return (
-    <aside className="developer-panel" aria-label="developer mode">
+    <aside className="developer-panel" aria-label="관리자 모드">
       <header>
         <div>
-          <strong>DEV MODE</strong>
+          <strong>관리자 모드</strong>
           <small>direct state editor</small>
         </div>
         <button type="button" onClick={onClose}>close</button>
@@ -2811,7 +2811,7 @@ function App() {
           <button type="button" onClick={() => setRulesOpen(true)}>규칙</button>
           <button type="button" onClick={() => setSaveOpen(true)}>저장 기록</button>
           <button type="button" onClick={() => setShowStart(true)}>첫 화면</button>
-          <button className={developerMode ? "is-active" : ""} type="button" onClick={() => setDeveloperMode((current) => !current)}>DEV</button>
+          <button className={developerMode ? "is-active" : ""} type="button" onClick={() => setDeveloperMode((current) => !current)}>관리자 모드</button>
         </div>
       </header>
 
@@ -2862,7 +2862,7 @@ function App() {
         type="button"
         onClick={() => setDeveloperMode((current) => !current)}
       >
-        DEV
+        관리자 모드
       </button>
       {developerMode && (
         <DeveloperPanel
