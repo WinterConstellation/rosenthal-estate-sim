@@ -48,3 +48,8 @@
 - 변경 작업: 구시대 성흔 직접 검증을 정리하고 새 mark 메타(ownedMarkIds/loadoutMarkIds/equippedMarkId) 검증 기준으로 전환했다.
 - 수정 파일: `scripts/verify-game.mjs`, `src/styles.css`, `src/rules/README.md`
 - 비고: 마이그레이션 경로는 유지, 기대값은 새 mark 구조 기준으로 정렬
+
+2026-06-18 20:31 KST
+- 작업: src/App.jsx에서 개발자/관리자 패널 사용자 가시 문구를 영어→한국어로 전면 수정.
+- 확인: npm.cmd run verify, npm.cmd run build
+

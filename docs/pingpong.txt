@@ -118,3 +118,8 @@
   - `src/styles.css`
   - `src/rules/README.md`
 - 주의: 기존 마이그레이션(LEGACY_STIGMA_MARK_MAP) 경로는 유지하되, verify 기대값을 새 mark 메타 기준으로 통일.
+
+2026-06-18 20:31 KST
+- 작업: 관리자/개발자 패널 표시 문구 영어 항목을 한국어로 정리(섹션 제목, 라벨, 버튼, 설명, 프리셋/포맷/눈 override 명칭).
+- 수정 파일: src/App.jsx
+

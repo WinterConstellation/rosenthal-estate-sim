@@ -448,11 +448,31 @@ const UI_PRESENTATION_GLYPH_FORMAT = {
 
 const DEV_UI_PRESET_OPTIONS = ["auto", "day-calm", "day-anomaly", "day-critical", "night-calm", "night-anomaly", "night-critical"];
 const DEV_GLYPH_FORMAT_OPTIONS = ["auto", "day-glow", "night-blue-glow", "night-red-rain", "critical-corruption"];
+const DEV_UI_PRESET_LABELS = {
+  auto: "자동",
+  "day-calm": "주간 안정",
+  "day-anomaly": "주간 이상",
+  "day-critical": "주간 위기",
+  "night-calm": "야간 안정",
+  "night-anomaly": "야간 이상",
+  "night-critical": "야간 위기",
+};
+const DEV_GLYPH_FORMAT_LABELS = {
+  auto: "자동",
+  "day-glow": "주간 발광",
+  "night-blue-glow": "야간 푸른 빛",
+  "night-red-rain": "야간 붉은 비",
+  "critical-corruption": "급격한 오염",
+};
+const DEV_EYE_VARIANT_LABELS = {
+  sleepy1: "졸린 눈",
+  eye1: "일반 눈",
+};
 const DEV_HORROR_PRESETS = [
   {
     id: "calm-baseline",
-    label: "calm baseline",
-    description: "low fear, clean estate",
+    label: "안정 베이스",
+    description: "낮은 공포, 안정한 영지",
     resources: { fear: 0 },
     estate: { corruption: 0, recordIntegrity: 50 },
     horrorTraits: {},
@@ -461,8 +481,8 @@ const DEV_HORROR_PRESETS = [
   },
   {
     id: "mild-anomaly",
-    label: "mild anomaly",
-    description: "just over anomaly line",
+    label: "약한 이상",
+    description: "이상 수위 초반",
     resources: { fear: 30 },
     estate: { corruption: 24, recordIntegrity: 44 },
     horrorTraits: { intrusion: 8, omen: 6 },
@@ -471,8 +491,8 @@ const DEV_HORROR_PRESETS = [
   },
   {
     id: "high-fear",
-    label: "high fear",
-    description: "fear-heavy pressure",
+    label: "공포 고조",
+    description: "공포 위주의 강한 압박",
     resources: { fear: 70 },
     estate: { corruption: 18, recordIntegrity: 40 },
     horrorTraits: { madness: 14, haunting: 8, omen: 8 },
@@ -481,8 +501,8 @@ const DEV_HORROR_PRESETS = [
   },
   {
     id: "high-corruption",
-    label: "high corruption",
-    description: "estate corruption focus",
+    label: "오염 고조",
+    description: "영지 오염이 중심",
     resources: { fear: 34 },
     estate: { corruption: 66, recordIntegrity: 34 },
     horrorTraits: { erosion: 18, mentalTaint: 14, intrusion: 10 },
@@ -491,8 +511,8 @@ const DEV_HORROR_PRESETS = [
   },
   {
     id: "truth-discovered",
-    label: "truth discovered",
-    description: "truth flag with pressure",
+    label: "진실 발현",
+    description: "진실 플래그와 압박",
     resources: { fear: 36 },
     estate: { corruption: 28, recordIntegrity: 38 },
     horrorTraits: { intrusion: 12, nameDamage: 8 },
@@ -501,8 +521,8 @@ const DEV_HORROR_PRESETS = [
   },
   {
     id: "altered-route",
-    label: "altered route",
-    description: "route-driven anomaly",
+    label: "변단 진입",
+    description: "변단 경로 중심 이상",
     resources: { fear: 42 },
     estate: { corruption: 36, recordIntegrity: 36 },
     horrorTraits: { erosion: 12, intrusion: 16, omen: 10 },
@@ -511,8 +531,8 @@ const DEV_HORROR_PRESETS = [
   },
   {
     id: "critical",
-    label: "critical",
-    description: "eyes/static threshold",
+    label: "임계",
+    description: "눈/정적 임계치",
     resources: { fear: 78 },
     estate: { corruption: 70, recordIntegrity: 26 },
     horrorTraits: { madness: 20, erosion: 28, mentalTaint: 24, intrusion: 24, nameDamage: 14, omen: 18 },
@@ -522,8 +542,8 @@ const DEV_HORROR_PRESETS = [
   },
   {
     id: "reset-visible-horror",
-    label: "reset visible horror",
-    description: "clear horror preview state",
+    label: "공포 표시 리셋",
+    description: "공포 미리보기 상태 초기화",
     resources: { fear: 0 },
     estate: { corruption: 0, recordIntegrity: 50 },
     horrorTraits: {},
@@ -1965,7 +1985,7 @@ function DeveloperTraitSection({ game, onSetTraitValue, onSetTraitProgress }) {
   const traitProgress = game.meta?.traitProgress ?? {};
   return (
     <section className="developer-section">
-      <h3>traits</h3>
+      <h3>특성</h3>
       <div className="developer-trait-list">
         {DEV_TRAIT_KEYS.map((key) => {
           const progress = traitProgress[key] ?? { level: 0, xp: 0 };
@@ -1973,7 +1993,7 @@ function DeveloperTraitSection({ game, onSetTraitValue, onSetTraitProgress }) {
             <article className="developer-trait-row" key={key}>
               <strong>{getDeveloperLabel(key, TRAIT_META)}</strong>
               <label>
-                <span>value</span>
+                <span>현재값</span>
                 <input
                   type="number"
                   step="1"
@@ -1982,7 +2002,7 @@ function DeveloperTraitSection({ game, onSetTraitValue, onSetTraitProgress }) {
                 />
               </label>
               <label>
-                <span>level</span>
+                <span>레벨</span>
                 <input
                   type="number"
                   min="0"
@@ -1993,7 +2013,7 @@ function DeveloperTraitSection({ game, onSetTraitValue, onSetTraitProgress }) {
                 />
               </label>
               <label>
-                <span>xp</span>
+                <span>경험치</span>
                 <input
                   type="number"
                   min="0"
@@ -2016,7 +2036,7 @@ function DeveloperPassiveSection({ game, onToggleOwned, onToggleActive }) {
   const activePassiveIds = game.passiveIds ?? [];
   return (
     <section className="developer-section">
-      <h3>passives</h3>
+      <h3>패시브</h3>
       <div className="developer-passive-list">
         {PASSIVES.map((passive) => {
           const owned = ownedPassiveIds.includes(passive.id);
@@ -2028,10 +2048,10 @@ function DeveloperPassiveSection({ game, onToggleOwned, onToggleActive }) {
                 <small>{passive.description}</small>
               </div>
               <button className={owned ? "is-active" : ""} type="button" onClick={() => onToggleOwned(passive.id)}>
-                {owned ? "remove" : "gain"}
+                {owned ? "해제" : "획득"}
               </button>
               <button className={active ? "is-active" : ""} type="button" disabled={!owned && !active} onClick={() => onToggleActive(passive.id)}>
-                {active ? "unequip" : "equip"}
+                {active ? "비활성" : "활성"}
               </button>
             </article>
           );
@@ -2044,18 +2064,18 @@ function DeveloperPassiveSection({ game, onToggleOwned, onToggleActive }) {
 function DeveloperEyeSection({ eyeOverride, onChange }) {
   return (
     <section className="developer-section">
-      <h3>eyes</h3>
+      <h3>눈</h3>
       <label className="developer-toggle">
         <input
           type="checkbox"
           checked={eyeOverride.forceEyes}
           onChange={(event) => onChange({ forceEyes: event.target.checked })}
         />
-        <span>force eye canvas</span>
+        <span>눈 캔버스 강제 표시</span>
       </label>
       <div className="developer-number-grid">
         <label>
-          <span>intensity</span>
+          <span>강도</span>
           <input
             type="number"
             min="0.2"
@@ -2066,7 +2086,7 @@ function DeveloperEyeSection({ eyeOverride, onChange }) {
           />
         </label>
         <label>
-          <span>count</span>
+          <span>개수</span>
           <input
             type="number"
             min="1"
@@ -2079,10 +2099,10 @@ function DeveloperEyeSection({ eyeOverride, onChange }) {
       </div>
       <div className="developer-eye-row">
         <label>
-          <span>variant</span>
+          <span>종류</span>
           <select value={getTextEyeVariantId(eyeOverride.variant)} onChange={(event) => onChange({ variant: event.target.value })}>
-            <option value="sleepy1">sleepy1</option>
-            <option value="eye1">eye1</option>
+            <option value="sleepy1">{DEV_EYE_VARIANT_LABELS.sleepy1}</option>
+            <option value="eye1">{DEV_EYE_VARIANT_LABELS.eye1}</option>
           </select>
         </label>
         <label className="developer-toggle">
@@ -2091,7 +2111,7 @@ function DeveloperEyeSection({ eyeOverride, onChange }) {
             checked={eyeOverride.burst}
             onChange={(event) => onChange({ burst: event.target.checked })}
           />
-          <span>burst blink</span>
+          <span>반짝임 연속 트리거</span>
         </label>
       </div>
     </section>
@@ -2108,21 +2128,25 @@ function DeveloperPreviewSection({
 }) {
   return (
     <section className="developer-section">
-      <h3>preview</h3>
+      <h3>미리보기</h3>
       <div className="developer-preview-grid">
         <label>
-          <span>UI preset</span>
+          <span>UI 프리셋</span>
           <select value={uiPreset} onChange={(event) => onUiPresetChange(event.target.value)}>
             {DEV_UI_PRESET_OPTIONS.map((option) => (
-              <option key={option} value={option}>{option}</option>
+              <option key={option} value={option}>
+                {DEV_UI_PRESET_LABELS[option] ?? option}
+              </option>
             ))}
           </select>
         </label>
         <label>
-          <span>glyph format</span>
+          <span>문자 포맷</span>
           <select value={glyphFormat} onChange={(event) => onGlyphFormatChange(event.target.value)}>
             {DEV_GLYPH_FORMAT_OPTIONS.map((option) => (
-              <option key={option} value={option}>{option}</option>
+              <option key={option} value={option}>
+                {DEV_GLYPH_FORMAT_LABELS[option] ?? option}
+              </option>
             ))}
           </select>
         </label>
@@ -2133,9 +2157,9 @@ function DeveloperPreviewSection({
           checked={nightPreview}
           onChange={(event) => onNightPreviewChange(event.target.checked)}
         />
-        <span>force night preview legacy</span>
+        <span>야간 미리보기 강제</span>
       </label>
-      <small>preset/glyph overrides are visual only and do not touch save data.</small>
+      <small>프리셋/문자 포맷은 화면 미리보기만 반영하며 저장 데이터는 바꾸지 않습니다.</small>
     </section>
   );
 }
@@ -2143,7 +2167,7 @@ function DeveloperPreviewSection({
 function DeveloperHorrorPresetSection({ onApplyPreset }) {
   return (
     <section className="developer-section">
-      <h3>horror presets</h3>
+      <h3>공포 프리셋</h3>
       <div className="developer-preset-grid">
         {DEV_HORROR_PRESETS.map((preset) => (
           <button
@@ -2157,7 +2181,7 @@ function DeveloperHorrorPresetSection({ onApplyPreset }) {
           </button>
         ))}
       </div>
-      <small>Preset buttons change only developer-test state for the current run.</small>
+      <small>버튼은 현재 진행 데이터의 개발자 테스트 상태만 반영하고 저장 데이터는 바꾸지 않습니다.</small>
     </section>
   );
 }
@@ -2184,9 +2208,9 @@ function DeveloperPanel({
       <header>
         <div>
           <strong>관리자 모드</strong>
-          <small>direct state editor</small>
+          <small>즉시 상태 편집기</small>
         </div>
-        <button type="button" onClick={onClose}>close</button>
+        <button type="button" onClick={onClose}>닫기</button>
       </header>
 
       <DeveloperPreviewSection
@@ -2200,26 +2224,26 @@ function DeveloperPanel({
       <DeveloperHorrorPresetSection onApplyPreset={onApplyHorrorPreset} />
       <DeveloperEyeSection eyeOverride={eyeOverride} onChange={onEyeOverrideChange} />
       <DeveloperNumberSection
-        title="stats"
+        title="스탯"
         keys={DEV_STAT_KEYS}
         values={game.stats}
         onChange={(key, value) => onSetMapValue("stats", key, value)}
       />
       <DeveloperNumberSection
-        title="resources"
+        title="자원"
         keys={DEV_RESOURCE_KEYS}
         values={game.resources}
         labelMap={RESOURCE_META}
         onChange={(key, value) => onSetMapValue("resources", key, value)}
       />
       <DeveloperNumberSection
-        title="estate"
+        title="영지"
         keys={DEV_ESTATE_KEYS}
         values={game.estate}
         onChange={(key, value) => onSetMapValue("estate", key, value)}
       />
       <DeveloperNumberSection
-        title="horror"
+        title="공포"
         keys={DEV_HORROR_TRAIT_KEYS}
         values={game.horrorTraits}
         labelMap={HORROR_TRAIT_META}
