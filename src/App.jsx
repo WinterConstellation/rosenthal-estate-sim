@@ -521,8 +521,8 @@ const DEV_HORROR_PRESETS = [
   },
   {
     id: "altered-route",
-    label: "변단 진입",
-    description: "변단 경로 중심 이상",
+    label: "변질 진입",
+    description: "변질 경로 중심 이상",
     resources: { fear: 42 },
     estate: { corruption: 36, recordIntegrity: 36 },
     horrorTraits: { erosion: 12, intrusion: 16, omen: 10 },
@@ -2051,7 +2051,7 @@ function DeveloperPassiveSection({ game, onToggleOwned, onToggleActive }) {
                 {owned ? "해제" : "획득"}
               </button>
               <button className={active ? "is-active" : ""} type="button" disabled={!owned && !active} onClick={() => onToggleActive(passive.id)}>
-                {active ? "비활성" : "활성"}
+                {active ? "비활성화" : "활성화"}
               </button>
             </article>
           );
@@ -2111,7 +2111,7 @@ function DeveloperEyeSection({ eyeOverride, onChange }) {
             checked={eyeOverride.burst}
             onChange={(event) => onChange({ burst: event.target.checked })}
           />
-          <span>반짝임 연속 트리거</span>
+          <span>연속 반짝임 사용</span>
         </label>
       </div>
     </section>
@@ -2131,7 +2131,7 @@ function DeveloperPreviewSection({
       <h3>미리보기</h3>
       <div className="developer-preview-grid">
         <label>
-          <span>UI 프리셋</span>
+          <span>표시 템플릿</span>
           <select value={uiPreset} onChange={(event) => onUiPresetChange(event.target.value)}>
             {DEV_UI_PRESET_OPTIONS.map((option) => (
               <option key={option} value={option}>
@@ -2141,7 +2141,7 @@ function DeveloperPreviewSection({
           </select>
         </label>
         <label>
-          <span>문자 포맷</span>
+          <span>텍스트 스타일</span>
           <select value={glyphFormat} onChange={(event) => onGlyphFormatChange(event.target.value)}>
             {DEV_GLYPH_FORMAT_OPTIONS.map((option) => (
               <option key={option} value={option}>
@@ -2157,9 +2157,9 @@ function DeveloperPreviewSection({
           checked={nightPreview}
           onChange={(event) => onNightPreviewChange(event.target.checked)}
         />
-        <span>야간 미리보기 강제</span>
+        <span>밤 화면 미리보기 강제 적용</span>
       </label>
-      <small>프리셋/문자 포맷은 화면 미리보기만 반영하며 저장 데이터는 바꾸지 않습니다.</small>
+      <small>선택한 화면 템플릿과 텍스트 스타일은 미리보기로만 반영되며, 저장 데이터에는 영향을 주지 않습니다.</small>
     </section>
   );
 }
@@ -2167,7 +2167,7 @@ function DeveloperPreviewSection({
 function DeveloperHorrorPresetSection({ onApplyPreset }) {
   return (
     <section className="developer-section">
-      <h3>공포 프리셋</h3>
+      <h3>공포 설정</h3>
       <div className="developer-preset-grid">
         {DEV_HORROR_PRESETS.map((preset) => (
           <button
@@ -2181,7 +2181,7 @@ function DeveloperHorrorPresetSection({ onApplyPreset }) {
           </button>
         ))}
       </div>
-      <small>버튼은 현재 진행 데이터의 개발자 테스트 상태만 반영하고 저장 데이터는 바꾸지 않습니다.</small>
+      <small>버튼 적용은 현재 진행 중인 테스트 상태에만 반영되며 저장 데이터는 변경되지 않습니다.</small>
     </section>
   );
 }
@@ -2208,7 +2208,7 @@ function DeveloperPanel({
       <header>
         <div>
           <strong>관리자 모드</strong>
-          <small>즉시 상태 편집기</small>
+          <small>실시간 상태 편집기</small>
         </div>
         <button type="button" onClick={onClose}>닫기</button>
       </header>
