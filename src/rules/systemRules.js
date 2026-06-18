@@ -2,8 +2,8 @@ export const EFFECT_ORDER = [
   "trait",
   "job",
   "title",
-  "stigma-prefix",
-  "stigma-suffix",
+  "mark-loadout",
+  "mark-equipped",
   "passive-1",
   "passive-2",
   "passive-3",
@@ -39,6 +39,19 @@ export const TRAIT_META = {
   execution: { label: "처형", stat: "결단" },
   divine: { label: "신성", stat: "신앙" },
   suspicion: { label: "의심", stat: "통찰" },
+};
+
+export const TRAIT_STAT_KEYS = {
+  record: "insight",
+  knight: "resolve",
+  mansion: "insight",
+  trade: "charm",
+  life: "health",
+  shortcut: "insight",
+  exorcism: "faith",
+  execution: "resolve",
+  divine: "faith",
+  suspicion: "insight",
 };
 
 export const HORROR_TRAIT_META = {
@@ -129,59 +142,185 @@ export const TITLES = [
   },
 ];
 
-export const STIGMA_PREFIXES = [
+export const MARK_LOADOUT_LIMIT = 10;
+
+export const MARK_BRANCH_UNLOCKS = [
+  { id: "purification-hint", label: "정화 의식 단서", condition: { stigma: 3 } },
+  { id: "guardian-vow", label: "방어/보존 분기", condition: { stigma: 10 } },
+  { id: "white-rite", label: "낙인 정화 의식", condition: { stigma: 20 } },
+  { id: "true-normal-gate", label: "정상 축 심화 분기", condition: { stigma: 30 } },
+  { id: "defilement-hint", label: "훼손 의식 단서", condition: { brand: 3 } },
+  { id: "black-bargain", label: "악성 거래 분기", condition: { brand: 10 } },
+  { id: "slaughter-threshold", label: "몰살/변질 진입 분기", condition: { brand: 20 } },
+  { id: "altered-crown-gate", label: "악성 축 심화 분기", condition: { brand: 30 } },
+  { id: "observer-ledger", label: "중립 관측 단서", condition: { stigma: 5, brand: 5 } },
+  { id: "dual-rite", label: "성흔/낙인 반전 의식", condition: { stigma: 10, brand: 10 } },
+  { id: "third-axis-gate", label: "제3축 분기 조건", condition: { stigma: 15, brand: 15 } },
+  { id: "closed-codex", label: "도감 완성 기록", condition: { total: 60 } },
+];
+
+const MARK_GROUPS = [
   {
-    id: "rose-thorn",
-    name: "장미가시의",
-    description: "다치면 발동한다.",
-    trigger: "physical-damage",
+    affinity: "life",
+    capstoneCount: 3,
+    branch: { stigma: "warmth-rite", brand: "cold-hand-rite" },
+    stigma: ["따뜻한화로의 성흔", "빵부스러기의 성흔", "손바닥온기의 성흔"],
+    brand: ["식은화로의 낙인", "굶주린식탁의 낙인", "차가운손의 낙인"],
   },
   {
-    id: "nameless",
-    name: "망자의",
-    description: "사람이 사라지면 발동한다.",
-    trigger: "target-lost",
+    affinity: "record",
+    capstoneCount: 6,
+    branch: { stigma: "ledger-preserved", brand: "ledger-blackened" },
+    stigma: ["봉인장부의 성흔", "증언초의 성흔", "잉크눈물의 성흔"],
+    brand: ["찢긴장부의 낙인", "허위증언의 낙인", "검은잉크의 낙인"],
   },
   {
-    id: "burnt",
-    name: "그을린",
-    description: "물건이 망가지거나 사라지면 발동한다.",
-    trigger: "item-lost",
+    affinity: "knight",
+    capstoneCount: 10,
+    branch: { stigma: "watchman-bell", brand: "blood-watchman" },
+    stigma: ["백철검의 성흔", "방패기도의 성흔", "파수종의 성흔"],
+    brand: ["녹슨맹세의 낙인", "도망친방패의 낙인", "피묻은파수의 낙인"],
   },
   {
-    id: "underground",
-    name: "지하의",
-    description: "밤의 선택이 끝나면 발동한다.",
-    trigger: "night-cost",
+    affinity: "trade",
+    capstoneCount: 10,
+    branch: { stigma: "fair-bargain", brand: "sold-name" },
+    stigma: ["은계약의 성흔", "저울기도의 성흔", "선의상인의 성흔"],
+    brand: ["부정계약의 낙인", "깨진저울의 낙인", "매매된이름의 낙인"],
+  },
+  {
+    affinity: "mansion",
+    capstoneCount: 15,
+    branch: { stigma: "empty-room-key", brand: "open-empty-room" },
+    stigma: ["문지방빛의 성흔", "회랑나침의 성흔", "빈방열쇠의 성흔"],
+    brand: ["뒤집힌문패의 낙인", "굶주린회랑의 낙인", "열린빈방의 낙인"],
+  },
+  {
+    affinity: "shortcut",
+    capstoneCount: 15,
+    branch: { stigma: "ash-letter", brand: "false-letter" },
+    stigma: ["가는실의 성흔", "숨은문고리의 성흔", "잿빛편지의 성흔"],
+    brand: ["끊어진실의 낙인", "없는문고리의 낙인", "거짓편지의 낙인"],
+  },
+  {
+    affinity: "exorcism",
+    capstoneCount: 20,
+    branch: { stigma: "incense-ward", brand: "black-incense" },
+    stigma: ["소금원의 성흔", "종말기도의 성흔", "향연기의 성흔"],
+    brand: ["더러운소금의 낙인", "역기도의 낙인", "검은향연기의 낙인"],
+  },
+  {
+    affinity: "execution",
+    capstoneCount: 20,
+    branch: { stigma: "silent-axe", brand: "laughing-axe" },
+    stigma: ["참수선의 성흔", "마지막명령의 성흔", "무음도끼의 성흔"],
+    brand: ["빗나간칼날의 낙인", "무고한명령의 낙인", "웃는도끼의 낙인"],
+  },
+  {
+    affinity: "divine",
+    capstoneCount: 25,
+    branch: { stigma: "absolution-lance", brand: "banished-lance" },
+    stigma: ["새벽성배의 성흔", "흰촛농의 성흔", "면죄창의 성흔"],
+    brand: ["깨진성배의 낙인", "검은촛농의 낙인", "추방된창의 낙인"],
+  },
+  {
+    affinity: "suspicion",
+    capstoneCount: 30,
+    branch: { stigma: "doubting-eye", brand: "unclosing-eye" },
+    stigma: ["갈라진거울의 성흔", "발자국의 성흔", "의심하는눈의 성흔"],
+    brand: ["눈먼거울의 낙인", "지워진발자국의 낙인", "감지않는눈의 낙인"],
   },
 ];
 
-export const STIGMA_SUFFIXES = [
-  {
-    id: "rosary",
-    name: "로자리오",
-    description: "다음 턴 신성 +2.",
-    effect: { nextTurn: { divine: 2 } },
-  },
-  {
-    id: "sheath",
-    name: "검집",
-    description: "다음 육체 피해를 2 줄인다.",
-    effect: { guard: 2 },
-  },
-  {
-    id: "funeral-bell",
-    name: "장례식의 종",
-    description: "공포를 2 낮추고 사라진 대상을 기록한다.",
-    effect: { resources: { fear: -2 }, estate: { recordIntegrity: 2 } },
-  },
-  {
-    id: "black-key",
-    name: "검은 열쇠",
-    description: "저택의 이상 징후가 늘지만 잠긴 선택지가 나오기 쉬워진다.",
-    effect: { estate: { corruption: 2 }, unlockPressure: 2 },
-  },
-];
+function createMarkEffect(affinity, index, neutral = false) {
+  const statKey = TRAIT_STAT_KEYS[affinity];
+  const isCapstone = index === 2;
+  if (neutral) {
+    return {
+      carryEffect: { chance: isCapstone ? 1.2 : 0.7 },
+      equipEffect: { chance: isCapstone ? 4 : 2 },
+    };
+  }
+  return {
+    carryEffect: {
+      stat: { key: statKey, value: isCapstone ? 0.5 : 0.25 },
+      chance: isCapstone ? 1.1 : 0.5,
+    },
+    equipEffect: {
+      stat: { key: statKey, value: isCapstone ? 1.4 : 0.8 },
+      chance: isCapstone ? 6 : 3,
+    },
+  };
+}
+
+function createMark(group, kind, index) {
+  const isCapstone = index === 2;
+  const neutral = index === 1;
+  const effects = createMarkEffect(group.affinity, index, neutral);
+  return {
+    id: `${kind}-${group.affinity}-${index + 1}`,
+    kind,
+    affinity: group.affinity,
+    name: group[kind][index],
+    tier: isCapstone ? "capstone" : "base",
+    polarity: neutral ? "neutral" : "route",
+    description: `${TRAIT_META[group.affinity].label} 선택에 반응한다. ${neutral ? "중립 효과는 루트 반전에 흔들리지 않는다." : "루트가 뒤집히면 이득과 손해가 반전된다."}`,
+    unlockCondition: isCapstone ? { kind, count: group.capstoneCount } : null,
+    branchUnlocks: isCapstone ? [group.branch[kind]] : [],
+    ...effects,
+  };
+}
+
+export const MARKS = MARK_GROUPS.flatMap((group) => [
+  ...[0, 1, 2].map((index) => createMark(group, "stigma", index)),
+  ...[0, 1, 2].map((index) => createMark(group, "brand", index)),
+]);
+
+export const LEGACY_STIGMA_MARK_MAP = {
+  "rose-thorn": "stigma-life-1",
+  nameless: "brand-record-1",
+  burnt: "brand-mansion-1",
+  underground: "stigma-mansion-1",
+  rosary: "stigma-divine-1",
+  sheath: "stigma-knight-1",
+  "funeral-bell": "stigma-record-1",
+  "black-key": "brand-shortcut-1",
+};
+
+export function getMark(markId) {
+  return MARKS.find((mark) => mark.id === markId);
+}
+
+export function getMarkCounts(markIds = []) {
+  return markIds.reduce((counts, markId) => {
+    const mark = getMark(markId);
+    if (!mark) return counts;
+    counts.total += 1;
+    counts[mark.kind] += 1;
+    counts.affinity[mark.affinity] = (counts.affinity[mark.affinity] ?? 0) + 1;
+    return counts;
+  }, { total: 0, stigma: 0, brand: 0, affinity: {} });
+}
+
+export function getUnlockedBranchKeys(markIds = []) {
+  const counts = getMarkCounts(markIds);
+  const countUnlocks = MARK_BRANCH_UNLOCKS
+    .filter((unlock) => Object.entries(unlock.condition).every(([key, value]) => {
+      if (key === "total") return counts.total >= value;
+      return (counts[key] ?? 0) >= value;
+    }))
+    .map((unlock) => unlock.id);
+  const markUnlocks = markIds
+    .map((markId) => getMark(markId))
+    .flatMap((mark) => mark?.branchUnlocks ?? []);
+  return [...new Set([...countUnlocks, ...markUnlocks])];
+}
+
+export function isMarkCollectionUnlocked(mark, markIds = []) {
+  if (!mark?.unlockCondition) return true;
+  const counts = getMarkCounts(markIds);
+  return counts[mark.unlockCondition.kind] >= mark.unlockCondition.count;
+}
 
 export const PASSIVES = [
   {

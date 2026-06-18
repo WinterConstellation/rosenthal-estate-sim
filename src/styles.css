@@ -1718,7 +1718,7 @@ button:focus-visible {
 
 .rules-modal header button,
 .loadout-section button,
-.stigma-loadout button {
+.mark-card button {
   border: 1px solid var(--line);
   padding: 9px 12px;
   color: var(--ink);
@@ -1775,36 +1775,106 @@ button:focus-visible {
 }
 
 .loadout-list small,
-.stigma-loadout small {
+.mark-card small {
   color: var(--muted);
   font-size: 0.58rem;
   line-height: 1.55;
 }
 
 .loadout-list .is-equipped,
-.stigma-loadout .is-equipped {
+.mark-card.is-equipped {
   border-color: var(--gold);
   color: #5b4211;
   background: color-mix(in srgb, var(--panel) 72%, #d7b353);
 }
 
 .theme-night .loadout-list .is-equipped,
-.theme-night .stigma-loadout .is-equipped {
+.theme-night .mark-card.is-equipped {
   color: #efd789;
 }
 
-.stigma-loadout {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+.mark-summary,
+.mark-branch-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
   margin-top: 12px;
 }
 
-.stigma-loadout > div {
-  display: grid;
-  gap: 7px;
+.mark-summary span,
+.mark-branch-list span {
   border: 1px solid var(--line);
+  padding: 6px 8px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--panel) 90%, var(--accent));
+  font-size: 0.58rem;
+}
+
+.mark-branch-list small {
+  color: var(--muted);
+  font-size: 0.58rem;
+}
+
+.mark-codex {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mark-card {
+  display: grid;
+  gap: 9px;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
   padding: 12px;
+  background: color-mix(in srgb, var(--panel) 94%, var(--accent));
+}
+
+.mark-card--stigma {
+  border-left-color: rgba(78, 111, 168, 0.72);
+}
+
+.mark-card--brand {
+  border-left-color: rgba(142, 35, 43, 0.78);
+}
+
+.mark-card.is-locked {
+  opacity: 0.54;
+  filter: grayscale(0.45);
+}
+
+.mark-card.is-carried:not(.is-equipped) {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+}
+
+.mark-card > div:first-child,
+.mark-card__effects {
+  display: grid;
+  gap: 4px;
+}
+
+.mark-card span {
+  color: var(--accent);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.mark-card strong {
+  font-family: "Gowun Batang", serif;
+  font-size: 0.82rem;
+}
+
+.mark-card__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.mark-card__actions button {
+  flex: 1;
+  padding: 7px 8px;
+  font-size: 0.58rem;
 }
 
 .rules-modal .character-panel {
@@ -2037,7 +2107,7 @@ button:focus-visible {
 
   .rules-modal__guide,
   .loadout-list,
-  .stigma-loadout {
+  .mark-codex {
     grid-template-columns: 1fr;
   }
 }

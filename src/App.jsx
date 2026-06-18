@@ -46,15 +46,20 @@ import {
   saveAuto,
   saveManual,
 } from "./engine/saveManager.js";
-import { getEffectiveChoiceChance, getJob, getPassive, getStigmaName, resolveChoice, truncateToTenth } from "./engine/rulesEngine.js";
+import { getEffectiveChoiceChance, getJob, getMarkName, getPassive, resolveChoice, truncateToTenth } from "./engine/rulesEngine.js";
 import {
   HORROR_DERIVED_META,
   HORROR_TRAIT_META,
+  MARK_BRANCH_UNLOCKS,
+  MARK_LOADOUT_LIMIT,
+  MARKS,
   PASSIVES,
   RESOURCE_META,
-  STIGMA_PREFIXES,
-  STIGMA_SUFFIXES,
   TRAIT_META,
+  getMark,
+  getMarkCounts,
+  getUnlockedBranchKeys,
+  isMarkCollectionUnlocked,
 } from "./rules/systemRules.js";
 import {
   DAY_INTERLUDES,
@@ -308,6 +313,65 @@ function displaySignedTenth(value) {
 
 function displayChancePercent(chance) {
   return displayInteger((Number(chance) || 0) * 100);
+}
+
+const MARK_KIND_LABELS = {
+  stigma: "성흔",
+  brand: "낙인",
+};
+
+function getOwnedMarkIds(game) {
+  return uniqueValues([...(game.meta?.ownedMarkIds ?? []), ...(game.ownedMarkIds ?? [])]);
+}
+
+function getLoadoutMarkIds(game) {
+  const equippedMarkId = getEquippedMarkId(game);
+  const ownedMarkIds = getOwnedMarkIds(game);
+  return uniqueValues(game.loadoutMarkIds ?? game.meta?.loadoutMarkIds ?? [])
+    .filter((id) => ownedMarkIds.includes(id) && id !== equippedMarkId)
+    .slice(0, MARK_LOADOUT_LIMIT);
+}
+
+function getEquippedMarkId(game) {
+  return Object.prototype.hasOwnProperty.call(game, "equippedMarkId")
+    ? game.equippedMarkId
+    : game.meta?.equippedMarkId ?? null;
+}
+
+function getMarkEffectSign(game, mark) {
+  if (!mark || mark.polarity === "neutral") return 1;
+  const favoredKind = game.route === "altered" ? "brand" : "stigma";
+  return mark.kind === favoredKind ? 1 : -1;
+}
+
+function describeMarkEffect(game, mark, slot = "carry") {
+  const effect = slot === "equip" ? mark?.equipEffect : mark?.carryEffect;
+  if (!mark || !effect) return "효과 없음";
+  const sign = getMarkEffectSign(game, mark);
+  const parts = [];
+  if (effect.stat?.key) {
+    parts.push(`${LABELS[effect.stat.key] ?? effect.stat.key} ${displaySignedTenth(effect.stat.value * sign)}`);
+  }
+  if (effect.chance) {
+    parts.push(`성공률 ${displaySignedTenth(effect.chance * sign)}%`);
+  }
+  Object.entries(effect.resources ?? {}).forEach(([key, value]) => {
+    parts.push(`${LABELS[key] ?? key} ${displaySignedTenth(value * sign)}`);
+  });
+  Object.entries(effect.estate ?? {}).forEach(([key, value]) => {
+    parts.push(`${LABELS[key] ?? key} ${displaySignedTenth(value * sign)}`);
+  });
+  return parts.join(" · ") || "분기 조건";
+}
+
+function getMarkUnlockText(mark) {
+  if (!mark?.unlockCondition) return "기본 수집 대상";
+  return `${MARK_KIND_LABELS[mark.unlockCondition.kind]} ${mark.unlockCondition.count}개 수집 후 해방`;
+}
+
+function getBranchUnlockLabels(markIds) {
+  const keys = getUnlockedBranchKeys(markIds);
+  return keys.map((key) => MARK_BRANCH_UNLOCKS.find((item) => item.id === key) ?? { id: key, label: key });
 }
 
 function getTransformedCompanionCount(game) {
@@ -1350,6 +1414,9 @@ function CharacterPanel({ game }) {
     .sort((left, right) => right[1] - left[1])
     .slice(0, 4);
   const job = getJob(game);
+  const equippedMarkId = getEquippedMarkId(game);
+  const equippedMark = getMark(equippedMarkId);
+  const loadoutMarkIds = getLoadoutMarkIds(game);
 
   return (
     <aside className="character-panel">
@@ -1384,8 +1451,9 @@ function CharacterPanel({ game }) {
         {game.jobId && <small>{job?.title}</small>}
       </div>
       <div className="rule-block">
-        <span className="eyebrow">성흔</span>
-        <strong>{game.stigma?.prefixId ? getStigmaName(game) : "아직 남지 않음"}</strong>
+        <span className="eyebrow">표식</span>
+        <strong>{equippedMark ? getMarkName(equippedMark.id) : "장착 없음"}</strong>
+        <small>{loadoutMarkIds.length} / {MARK_LOADOUT_LIMIT} 휴대 · {equippedMark ? MARK_KIND_LABELS[equippedMark.kind] : "성흔/낙인 선택 가능"}</small>
       </div>
       <div className="rule-block">
         <span className="eyebrow">패시브 스킬</span>
@@ -1678,10 +1746,13 @@ function SaveModal({ game, onClose, onLoad }) {
   );
 }
 
-function RulesModal({ game, tutorial, onClose, onTogglePassive, onEquipStigma }) {
+function RulesModal({ game, tutorial, onClose, onTogglePassive, onToggleMarkLoadout, onEquipMark }) {
   const ownedPassives = game.ownedPassiveIds ?? game.passiveIds ?? [];
-  const ownedPrefixes = game.meta?.ownedStigmaPrefixIds ?? game.ownedStigmaPrefixIds ?? (game.stigma?.prefixId ? [game.stigma.prefixId] : []);
-  const ownedSuffixes = game.meta?.ownedStigmaSuffixIds ?? game.ownedStigmaSuffixIds ?? (game.stigma?.suffixId ? [game.stigma.suffixId] : []);
+  const ownedMarkIds = getOwnedMarkIds(game);
+  const loadoutMarkIds = getLoadoutMarkIds(game);
+  const equippedMarkId = getEquippedMarkId(game);
+  const markCounts = getMarkCounts(ownedMarkIds);
+  const branchUnlocks = getBranchUnlockLabels(ownedMarkIds);
   const traitProgress = game.meta?.traitProgress ?? {};
   const totalTraitLevel = Object.values(traitProgress).reduce((sum, item) => sum + (item.level ?? 0), 0);
   const endingRecords = Object.values(game.meta?.endingRecords ?? {}).sort((left, right) => right.lastCycle - left.lastCycle);
@@ -1772,26 +1843,63 @@ function RulesModal({ game, tutorial, onClose, onTogglePassive, onEquipStigma })
           </div>
         </section>
 
-        <section className="loadout-section">
-          <span className="eyebrow">성흔 장착</span>
-          <p>획득한 접두 성흔과 접미 성흔을 각각 하나씩 장착한다.</p>
-          <div className="stigma-loadout">
-            <div>
-              <strong>접두</strong>
-              {ownedPrefixes.length === 0 && <small>아직 획득하지 않음</small>}
-              {ownedPrefixes.map((id) => {
-                const stigma = STIGMA_PREFIXES.find((item) => item.id === id);
-                return <button className={game.stigma?.prefixId === id ? "is-equipped" : ""} type="button" key={id} onClick={() => onEquipStigma("prefixId", id)} title={stigma?.description}>{stigma?.name}</button>;
-              })}
-            </div>
-            <div>
-              <strong>접미</strong>
-              {ownedSuffixes.length === 0 && <small>아직 획득하지 않음</small>}
-              {ownedSuffixes.map((id) => {
-                const stigma = STIGMA_SUFFIXES.find((item) => item.id === id);
-                return <button className={game.stigma?.suffixId === id ? "is-equipped" : ""} type="button" key={id} onClick={() => onEquipStigma("suffixId", id)} title={stigma?.description}>{stigma?.name}</button>;
-              })}
-            </div>
+        <section className="loadout-section mark-section">
+          <div>
+            <span className="eyebrow">장비 / 도감</span>
+            <strong>{markCounts.total} / {MARKS.length}</strong>
+          </div>
+          <p>도감 보유만으로는 효과가 적용되지 않는다. 이번 회차에 휴대하는 {MARK_LOADOUT_LIMIT}개와 장착한 1개만 선택 계산에 반영된다.</p>
+          <div className="mark-summary">
+            <span>성흔 {markCounts.stigma} / 30</span>
+            <span>낙인 {markCounts.brand} / 30</span>
+            <span>휴대 {loadoutMarkIds.length} / {MARK_LOADOUT_LIMIT}</span>
+            <span>장착 {equippedMarkId ? getMarkName(equippedMarkId) : "없음"}</span>
+          </div>
+          <div className="mark-branch-list">
+            {branchUnlocks.length === 0 ? (
+              <small>아직 해방된 분기 키가 없다.</small>
+            ) : branchUnlocks.map((unlock) => <span key={unlock.id}>{unlock.label}</span>)}
+          </div>
+          <div className="mark-codex">
+            {MARKS.map((mark) => {
+              const owned = ownedMarkIds.includes(mark.id);
+              const unlocked = isMarkCollectionUnlocked(mark, ownedMarkIds);
+              const carried = loadoutMarkIds.includes(mark.id);
+              const equipped = equippedMarkId === mark.id;
+              const unavailable = !owned;
+              return (
+                <article
+                  className={[
+                    "mark-card",
+                    `mark-card--${mark.kind}`,
+                    owned ? "is-owned" : "is-locked",
+                    equipped ? "is-equipped" : "",
+                    carried ? "is-carried" : "",
+                  ].filter(Boolean).join(" ")}
+                  key={mark.id}
+                >
+                  <div>
+                    <span>{MARK_KIND_LABELS[mark.kind]} · {TRAIT_META[mark.affinity]?.label}</span>
+                    <strong>{owned ? mark.name : unlocked ? "미획득 표식" : "미해금 표식"}</strong>
+                    <small>{owned ? mark.description : getMarkUnlockText(mark)}</small>
+                  </div>
+                  {owned && (
+                    <div className="mark-card__effects">
+                      <small>휴대: {describeMarkEffect(game, mark, "carry")}</small>
+                      <small>장착: {describeMarkEffect(game, mark, "equip")}</small>
+                    </div>
+                  )}
+                  <div className="mark-card__actions">
+                    <button type="button" disabled={unavailable || equipped} onClick={() => onToggleMarkLoadout(mark.id)}>
+                      {carried ? "휴대 해제" : "휴대"}
+                    </button>
+                    <button type="button" disabled={unavailable} onClick={() => onEquipMark(equipped ? null : mark.id)}>
+                      {equipped ? "장착 해제" : "장착"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
 
@@ -2251,19 +2359,47 @@ function App() {
     });
   };
 
-  const equipStigma = (slot, stigmaId) => {
+  const toggleMarkLoadout = (markId) => {
     setGame((current) => {
-      const owned = slot === "prefixId"
-        ? current.meta?.ownedStigmaPrefixIds ?? current.ownedStigmaPrefixIds ?? []
-        : current.meta?.ownedStigmaSuffixIds ?? current.ownedStigmaSuffixIds ?? [];
-      if (!owned.includes(stigmaId)) return current;
-      const stigma = { ...current.stigma, [slot]: stigmaId };
+      const ownedMarkIds = getOwnedMarkIds(current);
+      const equippedMarkId = getEquippedMarkId(current);
+      if (!ownedMarkIds.includes(markId) || equippedMarkId === markId) return current;
+      const currentLoadout = getLoadoutMarkIds(current);
+      const loadoutMarkIds = currentLoadout.includes(markId)
+        ? currentLoadout.filter((id) => id !== markId)
+        : currentLoadout.length >= MARK_LOADOUT_LIMIT
+          ? currentLoadout
+          : [...currentLoadout, markId];
       return {
         ...current,
-        stigma,
+        loadoutMarkIds,
         meta: {
           ...current.meta,
-          equippedStigma: { ...(current.meta?.equippedStigma ?? {}), ...stigma },
+          ownedMarkIds,
+          loadoutMarkIds,
+          equippedMarkId,
+          unlockedBranchKeys: getUnlockedBranchKeys(ownedMarkIds),
+        },
+      };
+    });
+  };
+
+  const equipMark = (markId) => {
+    setGame((current) => {
+      const ownedMarkIds = getOwnedMarkIds(current);
+      if (markId && !ownedMarkIds.includes(markId)) return current;
+      const equippedMarkId = markId ?? null;
+      const loadoutMarkIds = getLoadoutMarkIds(current).filter((id) => id !== equippedMarkId);
+      return {
+        ...current,
+        equippedMarkId,
+        loadoutMarkIds,
+        meta: {
+          ...current.meta,
+          ownedMarkIds,
+          loadoutMarkIds,
+          equippedMarkId,
+          unlockedBranchKeys: getUnlockedBranchKeys(ownedMarkIds),
         },
       };
     });
@@ -2716,7 +2852,8 @@ function App() {
           tutorial={tutorialPrompt}
           onClose={closeRules}
           onTogglePassive={togglePassive}
-          onEquipStigma={equipStigma}
+          onToggleMarkLoadout={toggleMarkLoadout}
+          onEquipMark={equipMark}
         />
       )}
       {saveOpen && <SaveModal game={game} onClose={() => setSaveOpen(false)} onLoad={loadSlot} />}

@@ -1,210 +1,112 @@
 # 핑퐁 파일 정리 및 실제 수정 내역
 
-사용자의 요청에 의해 이 파일의 이전 핑퐁 내용은 수시로 삭제한다.
+사용자의 요청에 의해 이 파일의 이전 핑퐁 내용은 삭제했다.
 이 문서는 실제 코드 수정 내역과 다음 작업자가 알아야 할 판단만 남긴다.
 
 ## 최신 작업 보고
 
-기준 시각: 2026-06-18 17:39 KST
+기준 시각: 2026-06-18 18:42 KST
 
-### 반영된 커밋
+### 반영 의도
 
-- `6b539d7` `Split UI phase presets`
-  - 낮/밤 UI를 `calm` / `anomaly` / `critical` 단계로 분리했다.
-  - 기본 밤은 푸른 `night-calm` 배경으로 이동했다.
-  - 기존 붉은 밤은 `night-anomaly` / `night-critical` 계열로 이동했다.
-- `69f7d70` `Normalize line endings`
-  - 이전 커밋에서 섞인 줄바꿈을 LF로 정규화했다.
-  - 기능 변경은 없다.
-- 이번 작업
-  - 개발자툴에 `UI preset` 미리보기 선택을 추가했다.
-  - 개발자툴에 `glyph format` 강제 선택을 추가했다.
-  - 두 기능 모두 저장 데이터는 바꾸지 않는 화면 표시 override다.
-- 이번 작업 추가
-  - 개발자툴에 `Horror State Preset` 버튼을 추가했다.
-  - 공포/오염/진실/변질 상태를 빠르게 만들고 기존 파생 공포 계산을 다시 태운다.
-  - `reset visible horror`는 공포 수치와 개발자 preview/강제 눈 표시를 함께 낮춘다.
+- 기존 접두/접미 성흔 조합은 이후 확장에 불리하므로 단일 수집 아이템 구조로 바꿨다.
+- 성흔과 낙인을 같은 계열의 "표식"으로 두되, 루트에 따라 이득/손해가 반전되도록 했다.
+- 영구 도감 수집과 실제 선택 계산 효과를 분리했다.
+- 도감 전체 보유만으로는 효과가 적용되지 않는다. 진행불가 방지를 위해 이번 회차에 휴대하거나 장착한 표식만 계산에 들어간다.
+- 수집 개수 N개를 목표로 삼을 수 있도록 분기 키와 capstone 표식을 해방하는 구조를 추가했다.
 
-## 현재 구현 상태
+### 완성된 구조
 
-### `src/App.jsx`
+- `MARKS`
+  - 성흔 30개, 낙인 30개를 생성한다.
+  - 각 표식은 `kind`, `affinity`, `tier`, `polarity`, `carryEffect`, `equipEffect`, `unlockCondition`, `branchUnlocks`를 가진다.
+  - 각 성향마다 성흔 3개, 낙인 3개가 있다.
+  - 각 성향의 세 번째 표식은 `capstone`이며, 해당 종류의 수집 개수가 일정 기준을 넘어야 획득 후보가 된다.
+- `meta`
+  - `ownedMarkIds`: 영구 도감 보유 목록
+  - `loadoutMarkIds`: 이번 회차 휴대 목록, 최대 10개
+  - `equippedMarkId`: 장착 표식 1개
+  - `unlockedBranchKeys`: 수집 개수에 따라 열린 분기 키
+- 현재 회차 state
+  - `ownedMarkIds`, `loadoutMarkIds`, `equippedMarkId`를 직접 들고 있다.
+  - 저장 시 `syncMetaFromRun`이 meta로 병합한다.
+- 기존 저장 마이그레이션
+  - `ownedStigmaPrefixIds`, `ownedStigmaSuffixIds`, `equippedStigma`는 `LEGACY_STIGMA_MARK_MAP`으로 새 표식 id에 합쳐진다.
 
-- `resolveUiPresentation(game, effectiveIsNight, horrorDirector)`를 추가했다.
-- 반환 구조는 다음 기준이다.
-  - `timePhase`: `day` / `night`
-  - `uiStage`: `calm` / `anomaly` / `critical`
-  - `preset`: `day-calm`, `day-anomaly`, `day-critical`, `night-calm`, `night-anomaly`, `night-critical`
-  - `glyphFormat`: 현재 UI 단계에 맞는 글리프 서식
-  - `allowHorrorLayers`: calm 단계에서는 공포 레이어를 숨기기 위한 플래그
-- `applyUiPresentationToHorrorDirector`를 추가했다.
-  - `glyphAtmosphere`는 calm 단계에서도 유지한다.
-  - `textMist`, `staticRows`, `textEyes`는 `allowHorrorLayers`가 true일 때만 켠다.
-- 이상현상 판정 기준은 현재 임시값이다.
-  - `corruption >= 22`
-  - `fear >= 28`
-  - `intrusionPressure >= 18`
-  - `monsterization >= 18`
-  - `truthDiscovered`
-  - `route === "altered"`
-  - 변이 동료 존재
-- 임계치 판정 기준도 현재 임시값이다.
-  - `corruption >= 58`
-  - `fear >= 65`
-  - `intrusionPressure >= 55`
-  - `monsterization >= 55`
-  - 눈동자 강도 `>= 0.68`
-  - `escape-transformed-choice`
-  - `record-stop`
-- 밤이라는 이유만으로 `anomaly`가 되지는 않게 했다.
-- `SceneImage`는 `preset`을 받아 장면 class를 추가한다.
-- `night-calm`에서는 장면 문구가 푸른 밤 분위기에 맞게 바뀐다.
-- 개발자툴 전용 `applyDeveloperUiOverrides`를 추가했다.
-  - `UI preset`이 `auto`가 아니면 `day/night`와 `calm/anomaly/critical` 프리셋을 로컬 state로 강제한다.
-  - `glyph format`이 `auto`가 아니면 글리프 서식만 별도로 강제한다.
-  - `critical` 프리셋 미리보기에서는 저장값을 바꾸지 않고 렌더링 직전 director에만 최소 강도를 보강해 static row와 눈 레이어를 확인할 수 있게 한다.
-  - 예전에 제거한 떠다니는 문장 레이어(`textMist`)는 강제로 되살리지 않는다.
-  - 실제 저장 데이터, 진행도, 이벤트 스크립트는 바꾸지 않는다.
-- 기존 `force night preview`는 남겨두되, `UI preset`이 선택되면 그 값이 우선한다.
-- 개발자툴 전용 `applyDeveloperHorrorPresetToGame`을 추가했다.
-  - 버튼은 현재 회차의 개발자 테스트용 state만 바꾼다.
-  - `syncDeveloperHorrorState`를 재사용해 `derivedHorror`, `revealedHorrorTraits`, `revealedHorrorStates`를 다시 계산한다.
-  - `critical` 프리셋은 첫 생존 동행자가 있으면 테스트용으로 `transformed` 상태로 바꿔 눈/임계 UI를 확인하기 쉽게 한다.
-  - `reset visible horror`는 동행자 변질 상태도 생존 상태로 되돌리고, 개발자 preview select와 eye override를 끈다.
+### 효과 적용 원칙
 
-### `src/styles.css`
+- `route !== "altered"`
+  - 성흔은 이득
+  - 낙인은 손해
+- `route === "altered"`
+  - 낙인은 이득
+  - 성흔은 손해
+- `polarity: "neutral"` 표식은 루트 반전 영향을 받지 않는다.
+- 휴대 표식은 약한 효과를 준다.
+  - 휴대 스탯 보정 합계는 ±3으로 제한한다.
+  - 휴대 성공률 보정 합계는 ±12%로 제한한다.
+- 장착 표식은 강한 효과를 준다.
+  - 장착 성공률 보정은 ±8%로 제한한다.
+  - 장착 표식은 휴대 목록에서 제외된다.
+- 표식 효과는 관련 성향 선택에 반응한다.
+  - 예: `life` 표식은 생활 성향 선택에 반응한다.
+  - 일부 위험 선택은 기사도/처형/구마/의심 표식에도 반응한다.
 
-- `.theme-night`는 밤 공통 변수만 담당하게 조정했다.
-- `.theme-night-calm`을 추가했다.
-  - 푸르스름한 밤 배경
-  - 푸른 빛무리 계열 accent
-  - 붉은 공포 레이어 없음
-- `.theme-night-anomaly`와 `.theme-night-critical`을 추가했다.
-  - 기존 붉은 밤 배경은 여기로 이동했다.
-- `.estate-scene--night-calm` 계열은 푸른 shade/filter를 사용한다.
-- `.estate-scene--night-anomaly` / `.estate-scene--night-critical`은 기존 붉은 shade/filter를 사용한다.
-- `.theme-night-calm .glyph-atmosphere-canvas`는 낮보다 어둡고 푸른 분위기로 보이게 opacity만 조정했다.
+### 수집 N개별 해방
 
-## 글리프 분위기 서식 현황
+- 성흔 3개: `purification-hint`
+- 성흔 10개: `guardian-vow`
+- 성흔 20개: `white-rite`
+- 성흔 30개: `true-normal-gate`
+- 낙인 3개: `defilement-hint`
+- 낙인 10개: `black-bargain`
+- 낙인 20개: `slaughter-threshold`
+- 낙인 30개: `altered-crown-gate`
+- 성흔 5개 + 낙인 5개: `observer-ledger`
+- 성흔 10개 + 낙인 10개: `dual-rite`
+- 성흔 15개 + 낙인 15개: `third-axis-gate`
+- 전체 60개: `closed-codex`
 
-- `day-glow`: 낮의 따뜻한 빛무리
-- `night-blue-glow`: 평화로운 밤의 푸른 빛무리
-- `night-red-rain`: 이상현상 밤의 붉은 글자비
-- `critical-corruption`: 임계치 근접/오염 계열 글리프
+### UI 상태
 
-## 완료된 것
+- 규칙 모달 안에 `장비 / 도감` 섹션을 추가했다.
+- 표시 항목:
+  - 전체 수집률
+  - 성흔/낙인 수집률
+  - 휴대 10칸 현황
+  - 현재 장착 표식
+  - 해방된 분기 키
+  - 보유/미보유/미해금 표식 카드
+  - 휴대 효과와 장착 효과 요약
+- 오른쪽 캐릭터 패널은 현재 장착 표식과 휴대 수만 간략히 보여준다.
 
-- 기본 밤 `night-calm` 생성
-- 기본 밤 푸른 배경 적용
-- 기본 밤에서 공포 UI 숨김
-- 기존 붉은 밤을 `night-anomaly` / `night-critical` 쪽으로 이동
-- UI 단계 director 추가
-- `glyphFormat`을 UI 단계에 맞게 연결
-- 줄바꿈 LF 정규화
-- 개발자툴 `UI preset` 미리보기 추가
-- 개발자툴 `glyph format` 강제 선택 추가
-- 개발자툴 `Horror State Preset` 버튼 추가
+### 로컬에서 확인해야 하는 것
 
-## 아직 하지 않은 것
+- 기존 저장을 불러왔을 때 과거 성흔이 새 표식으로 변환되는지 확인한다.
+- 도감 보유만으로 효과가 적용되지 않는지 확인한다.
+- 휴대 10개 제한이 지켜지는지 확인한다.
+- 장착한 표식이 휴대 목록에서 빠지는지 확인한다.
+- 장착 해제 후 장착 없음 상태가 유지되는지 확인한다.
+- 정상 축에서 성흔이 이득/낙인이 손해로 보이는지 확인한다.
+- `altered` 진입 후 낙인이 이득/성흔이 손해로 반전되는지 확인한다.
+- 관련 성향 선택에서 성공률/스탯 변화에 표식 효과가 붙는지 확인한다.
+- 수집 개수에 따라 분기 키가 표시되는지 확인한다.
 
-- `night-critical`의 구체적인 전용 연출은 아직 만들지 않았다.
-- 밸런스, 저장 구조, 선택지 데이터, 이벤트 스크립트는 건드리지 않았다.
-- 로컬 빌드/실행 검증은 하지 않았다. 사용자가 로컬에서 직접 확인하기로 했다.
-- 낮 `day-anomaly` / `day-critical`의 상세 시각 효과는 최소 연결만 되어 있고, 별도 디자인은 아직 없다.
+### 검증 메모
 
-## 개발자툴 확장 계획
+- 사용자가 로컬 실행 검증을 진행하기로 했으므로 `npm run build`, `npm run verify`는 실행하지 않았다.
+- 로컬 번들 Node로 다음 파일의 문법만 확인했다.
+  - `src/rules/systemRules.js`
+  - `src/engine/rulesEngine.js`
+  - `src/engine/rosenthalEngine.js`
+- JSX 전체 빌드는 생략했다.
 
-목표: 개발자툴을 단순 수치 편집기가 아니라 화면 테스트 조종석으로 확장한다.
-지나친 방어적 코딩보다 구현도를 우선하고, 사용자가 직접 눈으로 확인할 수 있는 화면 변화를 먼저 만든다.
+### 수정 파일
 
-### 1차 구현: UI Preview 섹션
-
-구현 완료.
-
-- 선택값: `auto`, `day-calm`, `day-anomaly`, `day-critical`, `night-calm`, `night-anomaly`, `night-critical`
-- 실제 저장 데이터는 바꾸지 않는다.
-- 로컬 state로만 화면 표시를 override한다.
-- 기존 `force night preview`보다 상위 개념으로 본다.
-- 이 기능으로 배경, theme class, 공포 레이어 표시 여부, 글리프 서식이 한 번에 확인되어야 한다.
-
-### 2차 구현: Glyph Format Override
-
-구현 완료. UI 프리셋과 별개로 글리프 서식만 강제 확인하는 기능이다.
-
-- 선택값: `auto`, `day-glow`, `night-blue-glow`, `night-red-rain`, `critical-corruption`
-- 실제 저장 데이터는 바꾸지 않는다.
-- 사용자가 랙, 눈 피로, 밀도, 분위기를 직접 확인하기 위한 기능이다.
-- 성능 판단은 사용자가 로컬에서 직접 테스트한다.
-
-### 3차 구현: Horror State Preset 버튼
-
-구현 완료. 숫자를 하나씩 입력하지 않고 장면 상태를 빠르게 만들기 위한 버튼이다.
-
-후보:
-
-- `calm baseline`
-- `mild anomaly`
-- `high fear`
-- `high corruption`
-- `truth discovered`
-- `altered route`
-- `critical`
-- `reset visible horror`
-
-주의:
-
-- 기존 `syncDeveloperHorrorState` 흐름을 재사용한다.
-- 과한 예외 처리보다 실제 테스트 가능한 상태 전환을 우선한다.
-
-### 4차 구현: 제한적 Phase Jump
-
-처음부터 모든 phase를 지원하지 않는다.
-부속 데이터가 적고 안전한 phase부터 추가한다.
-
-1차 후보:
-
-- `day`
-- `nightfall-transition`
-- `day-eight`
-- `record-stop`
-- `ending`
-
-보류:
-
-- `night-companion`
-- `night-direction`
-- `expedition`
-- `finale`
-
-보류 이유: 탐사/동행자/진행도 등 부속 데이터가 필요해서 잘못 점프하면 화면만 깨질 수 있다.
-
-### 5차 구현: 빠른 상태 조작
-
-8일차 분기와 결산 확인용이다.
-
-- `day`
-- `dayTurn`
-- `route`: `normal` / `altered` / `none`
-- `sacrificeCount`
-- `truthDiscovered`
-
-### 이후 후보
-
-- companion 상태 편집: `alive`, `dead`, `missing`, `transformed`
-- debug snapshot 복사 버튼
-- 낮 `day-anomaly` / `day-critical` 전용 표현 조정
-- `night-critical` 전용 연출
-
-## 주의 사항
-
-- 이전 PowerShell CPU 문제는 원격 파일 내용 문제가 아니라, 커밋 생성용 로컬 임시 스크립트가 큰 파일을 JSON 직렬화하려다 발생한 문제다.
-- 해당 임시 스크립트는 레포에 올라가지 않았다.
-- 이후 큰 파일 원격 커밋 시 PowerShell `ConvertTo-Json`으로 파일 전체를 포장하지 말 것.
-- 로컬 테스트/빌드/검증은 사용자가 직접 진행한다.
-- 개발자툴 확장은 저장 구조와 엔진 규칙을 건드리지 않는 선에서 먼저 진행한다.
-
-## 다음 구현 후보
-
-1. 사용자가 로컬에서 확인한 뒤 `night-calm` 색감과 빛무리 밀도를 조정한다.
-2. `anomaly` / `critical` 임계값을 플레이 감각에 맞게 조정한다.
-3. 낮 `day-anomaly` / `day-critical` 전용 표현을 추가한다.
-4. 사용자가 별도 안내하면 `night-critical` 전용 연출을 만든다.
+- `src/rules/systemRules.js`
+- `src/engine/rulesEngine.js`
+- `src/engine/rosenthalEngine.js`
+- `src/App.jsx`
+- `src/styles.css`
+- `docs/pingpong.txt`
+- `docs/work_log.txt`

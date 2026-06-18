@@ -39,3 +39,8 @@
 - 작업 요약: 개발자툴에 공포 상태 프리셋 버튼을 추가했다.
 - 수정 파일: `src/App.jsx`, `src/styles.css`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 비고: 로컬 빌드/검증은 사용자가 직접 진행하기로 했으므로 실행하지 않았다.
+
+2026-06-18 18:42 KST
+- 작업 요약: 성흔/낙인을 단일 표식 수집 시스템으로 재구성하고 도감, 휴대, 장착, 분기 해방 구조를 추가했다.
+- 수정 파일: `src/rules/systemRules.js`, `src/engine/rulesEngine.js`, `src/engine/rosenthalEngine.js`, `src/App.jsx`, `src/styles.css`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 비고: 로컬 빌드/검증은 사용자가 직접 진행하기로 했으므로 실행하지 않았다.

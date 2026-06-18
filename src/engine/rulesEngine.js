@@ -2,12 +2,15 @@ import {
   EFFECT_ORDER,
   HIDDEN_RUN_RULES,
   JOBS,
+  MARK_LOADOUT_LIMIT,
+  MARKS,
   PASSIVES,
-  STIGMA_PREFIXES,
-  STIGMA_SUFFIXES,
   STAT_META,
   TITLES,
   TRAIT_META,
+  TRAIT_STAT_KEYS,
+  getMark,
+  isMarkCollectionUnlocked,
 } from "../rules/systemRules.js";
 import { DAY_ACTIONS, NIGHT_CHOICES } from "../rules/tutorialRules.js";
 import { createRunSeed, seededPick, seededRank, seededValue } from "./seed.js";
@@ -17,6 +20,9 @@ const EMPTY_TRAITS = Object.fromEntries(Object.keys(TRAIT_META).map((key) => [ke
 const CHANCE_PENALTY_PHASES = new Set(["night", "event"]);
 const MIN_SEED_GROWTH_MULTIPLIER = 0.1;
 const MAX_SEED_GROWTH_MULTIPLIER = 2;
+const MARK_LOADOUT_STAT_CAP = 3;
+const MARK_LOADOUT_CHANCE_CAP = 12;
+const MARK_EQUIPPED_CHANCE_CAP = 8;
 
 function asNumber(value, fallback = 0) {
   const numeric = Number(value);
@@ -37,6 +43,103 @@ function clampNumber(value, lower, upper) {
 
 function positiveNumber(value) {
   return Math.max(asNumber(value), 0);
+}
+
+function uniqueValues(values = []) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function getMarkRouteSign(game, mark) {
+  if (!mark || mark.polarity === "neutral") return 1;
+  const favoredKind = game?.route === "altered" ? "brand" : "stigma";
+  return mark.kind === favoredKind ? 1 : -1;
+}
+
+function markMatchesChoice(mark, choice = {}) {
+  if (!mark) return false;
+  const traitValue = choice.traits?.[mark.affinity]
+    ?? choice.success?.traits?.[mark.affinity]
+    ?? choice.effects?.traits?.[mark.affinity]
+    ?? 0;
+  if (traitValue > 0) return true;
+  if (choice.category === mark.affinity) return true;
+  if (isDangerChoice(choice) && ["execution", "knight", "exorcism", "suspicion"].includes(mark.affinity)) return true;
+  return false;
+}
+
+function getActiveMarkEntries(game = {}, choice = {}) {
+  const equippedMarkId = Object.prototype.hasOwnProperty.call(game, "equippedMarkId")
+    ? game.equippedMarkId
+    : game.meta?.equippedMarkId ?? null;
+  const loadoutMarkIds = uniqueValues(game.loadoutMarkIds ?? game.meta?.loadoutMarkIds ?? [])
+    .filter((id) => id !== equippedMarkId)
+    .slice(0, MARK_LOADOUT_LIMIT);
+  const loadout = loadoutMarkIds
+    .map((id) => getMark(id))
+    .filter((mark) => markMatchesChoice(mark, choice))
+    .map((mark) => ({
+      mark,
+      effect: mark.carryEffect ?? {},
+      slot: "loadout",
+      sign: getMarkRouteSign(game, mark),
+    }));
+  const equippedMark = getMark(equippedMarkId);
+  const equipped = equippedMark && markMatchesChoice(equippedMark, choice)
+    ? [{
+        mark: equippedMark,
+        effect: equippedMark.equipEffect ?? {},
+        slot: "equipped",
+        sign: getMarkRouteSign(game, equippedMark),
+      }]
+    : [];
+  return [...loadout, ...equipped];
+}
+
+function getMarkChanceAdjustment(game, choice) {
+  let loadout = 0;
+  let equipped = 0;
+  getActiveMarkEntries(game, choice).forEach((entry) => {
+    const value = asNumber(entry.effect.chance) * entry.sign;
+    if (entry.slot === "equipped") equipped += value;
+    else loadout += value;
+  });
+  return roundToTenth(
+    clampNumber(loadout, -MARK_LOADOUT_CHANCE_CAP, MARK_LOADOUT_CHANCE_CAP)
+    + clampNumber(equipped, -MARK_EQUIPPED_CHANCE_CAP, MARK_EQUIPPED_CHANCE_CAP),
+  );
+}
+
+function addDelta(target, key, value) {
+  if (!key || value === 0) return;
+  target[key] = (target[key] ?? 0) + value;
+}
+
+function applyMarkOutcomeEffects(game, choice, deltas, trace) {
+  const loadoutStatDelta = {};
+  const equippedStatDelta = {};
+  let loadoutApplied = 0;
+  let equippedLabel = null;
+
+  getActiveMarkEntries(game, choice).forEach((entry) => {
+    const { effect, mark, sign, slot } = entry;
+    const statEffect = effect.stat;
+    if (statEffect?.key) {
+      const target = slot === "equipped" ? equippedStatDelta : loadoutStatDelta;
+      addDelta(target, statEffect.key, asNumber(statEffect.value) * sign);
+    }
+    Object.entries(effect.resources ?? {}).forEach(([key, value]) => addDelta(deltas.resourceDelta, key, asNumber(value) * sign));
+    Object.entries(effect.estate ?? {}).forEach(([key, value]) => addDelta(deltas.estateDelta, key, asNumber(value) * sign));
+    if (slot === "equipped") equippedLabel = mark.name;
+    else loadoutApplied += 1;
+  });
+
+  Object.entries(loadoutStatDelta).forEach(([key, value]) => {
+    addDelta(deltas.statDelta, key, clampNumber(value, -MARK_LOADOUT_STAT_CAP, MARK_LOADOUT_STAT_CAP));
+  });
+  Object.entries(equippedStatDelta).forEach(([key, value]) => addDelta(deltas.statDelta, key, value));
+
+  if (loadoutApplied > 0) trace.push(`휴대 표식 · ${loadoutApplied}개`);
+  if (equippedLabel) trace.push(`장착 표식 · ${equippedLabel}`);
 }
 
 function getEffectiveFearValue(game) {
@@ -79,6 +182,7 @@ export function getEffectiveChoiceChance(game, baseChance, choice = {}) {
     const pressureMultiplier = pressureRule?.modifier?.multiplier ?? 1;
     chancePercent -= getChoiceChancePressure(game) * pressureMultiplier;
   }
+  chancePercent += getMarkChanceAdjustment(game, choice);
   const finalChanceRule = getSeedChanceAdjustment(game, choice, "final-chance");
   if (finalChanceRule) chancePercent *= finalChanceRule.modifier.multiplier;
   return Number((clampNumber(roundToTenth(chancePercent), 0, 100) / 100).toFixed(3));
@@ -240,7 +344,9 @@ export function createInitialGame(seed = createRunSeed()) {
     stats: deriveStats(EMPTY_TRAITS),
     jobId: null,
     titles: [],
-    stigma: { prefixId: null, suffixId: null },
+    ownedMarkIds: [],
+    loadoutMarkIds: [],
+    equippedMarkId: null,
     passiveIds: seededRank(PASSIVES, `${seed}:passives`).slice(0, 3).map((item) => item.id),
     chosenDayActionIds: [],
     unlockedNightChoiceIds: [],
@@ -425,20 +531,43 @@ export function assessChoice(choice, resolved) {
   };
 }
 
-export function deriveStigma(game) {
-  let prefixId = "underground";
-  if (game.counters.physicalDamage > 0) prefixId = "rose-thorn";
-  else if (game.lostKind === "person") prefixId = "nameless";
-  else if (game.lostKind === "item") prefixId = "burnt";
+function getTopAffinity(game) {
+  const ranked = Object.entries(TRAIT_META)
+    .map(([key]) => ({ key, score: asNumber(game.traits?.[key]) }))
+    .sort((left, right) => right.score - left.score);
+  if ((ranked[0]?.score ?? 0) > 0) return ranked[0].key;
+  if ((game.estate?.corruption ?? 0) >= 30) return "suspicion";
+  if ((game.resources?.faith ?? 0) <= 10) return "divine";
+  return "mansion";
+}
 
-  const suffixScores = [
-    { id: "rosary", score: (game.traits.divine ?? 0) + (game.traits.exorcism ?? 0) },
-    { id: "sheath", score: (game.traits.execution ?? 0) + (game.traits.knight ?? 0) },
-    { id: "funeral-bell", score: (game.traits.record ?? 0) + (game.traits.life ?? 0) },
-    { id: "black-key", score: (game.traits.shortcut ?? 0) + (game.traits.suspicion ?? 0) },
-  ].sort((left, right) => right.score - left.score);
+function getPreferredMarkKind(game) {
+  if (game.route === "altered") return "brand";
+  if ((game.sacrificeCount ?? 0) >= 2) return "brand";
+  if ((game.estate?.corruption ?? 0) >= 35) return "brand";
+  if ((game.resources?.fear ?? 0) >= 45) return "brand";
+  return "stigma";
+}
 
-  return { prefixId, suffixId: suffixScores[0].id };
+export function deriveMark(game) {
+  const ownedMarkIds = uniqueValues([...(game.meta?.ownedMarkIds ?? []), ...(game.ownedMarkIds ?? [])]);
+  const preferredKind = getPreferredMarkKind(game);
+  const preferredAffinity = getTopAffinity(game);
+  const seed = `${game.runRngSeed ?? game.runSeed}:mark:${game.day}:${game.history?.length ?? 0}`;
+  const pick = (kind, affinity) => {
+    const candidates = MARKS.filter((mark) => (
+      mark.kind === kind
+      && (!affinity || mark.affinity === affinity)
+      && !ownedMarkIds.includes(mark.id)
+      && isMarkCollectionUnlocked(mark, ownedMarkIds)
+    ));
+    return seededRank(candidates, `${seed}:${kind}:${affinity ?? "any"}`)[0] ?? null;
+  };
+  return pick(preferredKind, preferredAffinity)
+    ?? pick(preferredKind)
+    ?? pick(preferredKind === "stigma" ? "brand" : "stigma", preferredAffinity)
+    ?? pick(preferredKind === "stigma" ? "brand" : "stigma")
+    ?? null;
 }
 
 function applyPassive(passiveId, context, trace, slot) {
@@ -512,6 +641,8 @@ export function resolveChoice(game, choice) {
     const displayedPressure = Math.trunc(pressure * (pressureRule?.modifier?.multiplier ?? 1));
     if (displayedPressure > 0) trace.push(`\uacf5\ud3ec/\uc774\uc0c1\ud604\uc0c1 \u00b7 \uc131\uacf5\ub960 -${displayedPressure}%`);
     if (pressureRule) trace.push(`성인의 달 · ${pressureRule.text}`);
+    const markChance = getMarkChanceAdjustment(game, choice);
+    if (markChance !== 0) trace.push(`표식 · 성공률 ${markChance > 0 ? "+" : ""}${markChance.toFixed(1)}%`);
     const finalChanceRule = getSeedChanceAdjustment(game, choice, "final-chance");
     if (finalChanceRule) trace.push(`성인의 달 · ${finalChanceRule.text}`);
   }
@@ -519,7 +650,7 @@ export function resolveChoice(game, choice) {
   Object.entries(game.nextTurn).forEach(([key, value]) => {
     traitDelta[key] = (traitDelta[key] ?? 0) + value;
   });
-  if (Object.keys(game.nextTurn).length > 0) trace.push("이전 성흔");
+  if (Object.keys(game.nextTurn).length > 0) trace.push("이전 표식");
   if (Object.keys(traitDelta).length > 0) trace.push("성향");
 
   const npcId = outcome.npcId ?? (outcome.kind === "person" ? outcome.target : null);
@@ -539,22 +670,8 @@ export function resolveChoice(game, choice) {
     trace.push("칭호 · 결정을 미룬 자");
   }
 
-  const prefix = STIGMA_PREFIXES.find((item) => item.id === game.stigma.prefixId);
-  const suffix = STIGMA_SUFFIXES.find((item) => item.id === game.stigma.suffixId);
-  const triggered = prefix?.trigger === outcome.event || (prefix?.trigger === "night-cost" && game.phase === "night");
   const nextTurn = {};
-  if (triggered && suffix) {
-    trace.push(`성흔 · ${prefix.name} ${suffix.name}`);
-    Object.entries(suffix.effect.resources ?? {}).forEach(([key, value]) => {
-      resourceDelta[key] = (resourceDelta[key] ?? 0) + value;
-    });
-    Object.entries(suffix.effect.estate ?? {}).forEach(([key, value]) => {
-      estateDelta[key] = (estateDelta[key] ?? 0) + value;
-    });
-    Object.entries(suffix.effect.nextTurn ?? {}).forEach(([key, value]) => {
-      nextTurn[key] = (nextTurn[key] ?? 0) + value;
-    });
-  }
+  applyMarkOutcomeEffects(game, outcome, { resourceDelta, estateDelta, statDelta }, trace);
 
   game.passiveIds.forEach((passiveId, index) => {
     applyPassive(passiveId, { resourceDelta, estateDelta, choice: outcome }, trace, `패시브 ${index + 1}`);
@@ -603,7 +720,21 @@ export function resolveChoice(game, choice) {
     effectiveChance,
     result: outcome.result,
     trace: EFFECT_ORDER.filter((layer) => trace.some((entry) => (
-      entry.startsWith(layer === "trait" ? "성향" : layer === "job" ? "직업" : layer === "title" ? "칭호" : layer.startsWith("passive") ? `패시브 ${layer.at(-1)}` : "성흔")
+      entry.startsWith(
+        layer === "trait"
+          ? "성향"
+          : layer === "job"
+            ? "직업"
+            : layer === "title"
+              ? "칭호"
+              : layer === "mark-loadout"
+                ? "휴대 표식"
+                : layer === "mark-equipped"
+                  ? "장착 표식"
+                  : layer.startsWith("passive")
+                    ? `패시브 ${layer.at(-1)}`
+                    : "표식",
+      )
     ))),
     traceLabels: trace,
   };
@@ -639,11 +770,8 @@ export function getEstateState(game) {
   };
 }
 
-export function getStigmaName(game) {
-  if (!game.stigma.prefixId || !game.stigma.suffixId) return "없음";
-  const prefix = STIGMA_PREFIXES.find((item) => item.id === game.stigma.prefixId);
-  const suffix = STIGMA_SUFFIXES.find((item) => item.id === game.stigma.suffixId);
-  return `${prefix?.name ?? "알 수 없는"} ${suffix?.name ?? "성흔"}`;
+export function getMarkName(markId) {
+  return getMark(markId)?.name ?? "없음";
 }
 
 export function getPassive(passiveId) {

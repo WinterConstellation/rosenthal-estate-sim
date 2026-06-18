@@ -13,21 +13,25 @@ import { getSaintSeed, getSeedGrowthMultipliers, getSeedTrait } from "../data/sa
 import {
   HORROR_DERIVED_META,
   HORROR_TRAIT_META,
+  LEGACY_STIGMA_MARK_MAP,
+  MARK_LOADOUT_LIMIT,
   PASSIVES,
   STAT_META,
   TRAIT_META,
+  getMark,
+  getUnlockedBranchKeys,
 } from "../rules/systemRules.js";
 import {
   clampMap,
+  deriveMark,
   deriveStats,
-  deriveStigma,
   getJob,
-  getStigmaName,
+  getMarkName,
   resolveChoice,
 } from "./rulesEngine.js";
 import { createRunSeed, seededPick, seededRank, seededValue } from "./seed.js";
 
-export const GAME_VERSION = 11;
+export const GAME_VERSION = 12;
 
 const CATEGORY_TRAITS = {
   gathering: { life: 2, trade: 1 },
@@ -127,6 +131,25 @@ function uniqueIds(values = []) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function normalizeMarkIds(values = []) {
+  return uniqueIds(values).filter((id) => getMark(id));
+}
+
+function getLegacyMarkIds(meta = {}) {
+  return normalizeMarkIds([
+    ...(meta?.ownedStigmaPrefixIds ?? []).map((id) => LEGACY_STIGMA_MARK_MAP[id]),
+    ...(meta?.ownedStigmaSuffixIds ?? []).map((id) => LEGACY_STIGMA_MARK_MAP[id]),
+    LEGACY_STIGMA_MARK_MAP[meta?.equippedStigma?.prefixId],
+    LEGACY_STIGMA_MARK_MAP[meta?.equippedStigma?.suffixId],
+  ]);
+}
+
+function getStateEquippedMarkId(state = {}, meta = {}) {
+  return Object.prototype.hasOwnProperty.call(state, "equippedMarkId")
+    ? state.equippedMarkId
+    : meta.equippedMarkId ?? null;
+}
+
 export function normalizeProgressMeta(meta = {}) {
   const traitProgress = createEmptyTraitProgress();
   Object.entries(meta?.traitProgress ?? {}).forEach(([key, value]) => {
@@ -138,14 +161,21 @@ export function normalizeProgressMeta(meta = {}) {
     };
   });
 
-  const ownedStigmaPrefixIds = uniqueIds([
-    ...(meta?.ownedStigmaPrefixIds ?? []),
-    meta?.equippedStigma?.prefixId,
+  const legacyMarkIds = getLegacyMarkIds(meta);
+  const ownedMarkIds = normalizeMarkIds([
+    ...(meta?.ownedMarkIds ?? []),
+    ...legacyMarkIds,
+    meta?.equippedMarkId,
+    ...(meta?.loadoutMarkIds ?? []),
   ]);
-  const ownedStigmaSuffixIds = uniqueIds([
-    ...(meta?.ownedStigmaSuffixIds ?? []),
-    meta?.equippedStigma?.suffixId,
-  ]);
+  const legacyEquippedMarkId = LEGACY_STIGMA_MARK_MAP[meta?.equippedStigma?.suffixId]
+    ?? LEGACY_STIGMA_MARK_MAP[meta?.equippedStigma?.prefixId]
+    ?? null;
+  const requestedEquippedMarkId = meta?.equippedMarkId ?? legacyEquippedMarkId;
+  const equippedMarkId = ownedMarkIds.includes(requestedEquippedMarkId) ? requestedEquippedMarkId : null;
+  const loadoutMarkIds = normalizeMarkIds(meta?.loadoutMarkIds ?? [])
+    .filter((id) => ownedMarkIds.includes(id) && id !== equippedMarkId)
+    .slice(0, MARK_LOADOUT_LIMIT);
   const endingRecords = {};
   Object.entries(meta?.endingRecords ?? {}).forEach(([key, record]) => {
     if (!record) return;
@@ -163,33 +193,33 @@ export function normalizeProgressMeta(meta = {}) {
   return {
     cycle: Math.max(1, Math.floor(Number(meta?.cycle) || 1)),
     traitProgress,
-    ownedStigmaPrefixIds,
-    ownedStigmaSuffixIds,
-    equippedStigma: {
-      prefixId: ownedStigmaPrefixIds.includes(meta?.equippedStigma?.prefixId) ? meta.equippedStigma.prefixId : null,
-      suffixId: ownedStigmaSuffixIds.includes(meta?.equippedStigma?.suffixId) ? meta.equippedStigma.suffixId : null,
-    },
+    ownedMarkIds,
+    loadoutMarkIds,
+    equippedMarkId,
+    unlockedBranchKeys: uniqueIds([
+      ...(meta?.unlockedBranchKeys ?? []),
+      ...getUnlockedBranchKeys(ownedMarkIds),
+    ]),
     endingRecords,
   };
 }
 
 export function syncMetaFromRun(state = {}) {
   const meta = normalizeProgressMeta(state.meta);
-  const ownedStigmaPrefixIds = uniqueIds([
-    ...meta.ownedStigmaPrefixIds,
-    ...(state.ownedStigmaPrefixIds ?? []),
-    state.stigma?.prefixId,
+  const ownedMarkIds = normalizeMarkIds([
+    ...meta.ownedMarkIds,
+    ...(state.ownedMarkIds ?? []),
+    state.equippedMarkId,
+    ...(state.loadoutMarkIds ?? []),
   ]);
-  const ownedStigmaSuffixIds = uniqueIds([
-    ...meta.ownedStigmaSuffixIds,
-    ...(state.ownedStigmaSuffixIds ?? []),
-    state.stigma?.suffixId,
-  ]);
-  const equippedStigma = {
-    prefixId: state.stigma?.prefixId ?? meta.equippedStigma.prefixId,
-    suffixId: state.stigma?.suffixId ?? meta.equippedStigma.suffixId,
-  };
-  return normalizeProgressMeta({ ...meta, ownedStigmaPrefixIds, ownedStigmaSuffixIds, equippedStigma });
+  const requestedEquippedMarkId = Object.prototype.hasOwnProperty.call(state, "equippedMarkId")
+    ? state.equippedMarkId
+    : meta.equippedMarkId;
+  const equippedMarkId = ownedMarkIds.includes(requestedEquippedMarkId) ? requestedEquippedMarkId : null;
+  const loadoutMarkIds = normalizeMarkIds(state.loadoutMarkIds ?? meta.loadoutMarkIds)
+    .filter((id) => ownedMarkIds.includes(id) && id !== equippedMarkId)
+    .slice(0, MARK_LOADOUT_LIMIT);
+  return normalizeProgressMeta({ ...meta, ownedMarkIds, loadoutMarkIds, equippedMarkId });
 }
 
 export function applyTraitExperience(meta, traitDelta = {}) {
@@ -381,11 +411,11 @@ export function createNewRun({ second = new Date().getSeconds(), runRngSeed = cr
     affinities: {},
     jobId: null,
     titles: [],
-    stigma: { ...progressMeta.equippedStigma },
+    ownedMarkIds: progressMeta.ownedMarkIds,
+    loadoutMarkIds: progressMeta.loadoutMarkIds,
+    equippedMarkId: progressMeta.equippedMarkId,
     ownedPassiveIds,
     passiveIds: ownedPassiveIds.slice(0, 3),
-    ownedStigmaPrefixIds: [],
-    ownedStigmaSuffixIds: [],
     nextTurn: {},
     counters: { choices: 0, forfeits: 0, physicalDamage: 0 },
     lostKind: null,
@@ -854,28 +884,31 @@ export function chooseFinaleOption(state, currentFinale, option) {
 
 function assignFirstNightBuild(state) {
   const job = getJob(state);
-  const stigma = deriveStigma(state);
+  const mark = deriveMark(state);
   const isFirstJob = !state.jobId;
-  const ownedStigmaPrefixIds = stigma.prefixId
-    ? [...new Set([...(state.ownedStigmaPrefixIds ?? []), stigma.prefixId])]
-    : state.ownedStigmaPrefixIds ?? [];
-  const ownedStigmaSuffixIds = stigma.suffixId
-    ? [...new Set([...(state.ownedStigmaSuffixIds ?? []), stigma.suffixId])]
-    : state.ownedStigmaSuffixIds ?? [];
-  const newPrefix = stigma.prefixId && !(state.ownedStigmaPrefixIds ?? []).includes(stigma.prefixId);
-  const newSuffix = stigma.suffixId && !(state.ownedStigmaSuffixIds ?? []).includes(stigma.suffixId);
+  const previousOwnedMarkIds = uniqueIds([...(state.meta?.ownedMarkIds ?? []), ...(state.ownedMarkIds ?? [])]);
+  const newMark = mark && !previousOwnedMarkIds.includes(mark.id);
+  const ownedMarkIds = newMark ? uniqueIds([...previousOwnedMarkIds, mark.id]) : previousOwnedMarkIds;
+  const equippedMarkId = getStateEquippedMarkId(state, state.meta);
+  const currentLoadout = uniqueIds(state.loadoutMarkIds ?? state.meta?.loadoutMarkIds ?? [])
+    .filter((id) => ownedMarkIds.includes(id) && id !== equippedMarkId)
+    .slice(0, MARK_LOADOUT_LIMIT);
+  const loadoutMarkIds = newMark && currentLoadout.length < MARK_LOADOUT_LIMIT
+    ? uniqueIds([...currentLoadout, mark.id]).slice(0, MARK_LOADOUT_LIMIT)
+    : currentLoadout;
   const nextState = {
     ...state,
     jobId: state.jobId ?? job.id,
-    stigma: state.stigma?.prefixId ? state.stigma : stigma,
-    ownedStigmaPrefixIds,
-    ownedStigmaSuffixIds,
+    ownedMarkIds,
+    loadoutMarkIds,
+    equippedMarkId,
     pendingResult: {
       ...state.pendingResult,
       notices: [
         ...(state.pendingResult?.notices ?? []),
         ...(isFirstJob ? ["직업 · " + job.name] : []),
-        ...(newPrefix || newSuffix ? ["성흔 · " + getStigmaName({ ...state, stigma })] : []),
+        ...(newMark ? ["표식 획득 · " + getMarkName(mark.id)] : []),
+        ...(newMark && loadoutMarkIds.includes(mark.id) ? ["휴대 목록 자동 등록"] : []),
       ],
     },
   };
@@ -1138,6 +1171,11 @@ export function getNpcSpeaker(state, npcId) {
 export function refreshSeedState(state) {
   if (state?.specialSeedId === undefined || state?.specialSeedId === null) return state;
   const seed = getSaintSeed(state.specialSeedId);
+  const meta = normalizeProgressMeta(state.meta);
+  const ownedMarkIds = normalizeMarkIds([...(meta.ownedMarkIds ?? []), ...(state.ownedMarkIds ?? [])]);
+  const equippedMarkId = ownedMarkIds.includes(getStateEquippedMarkId(state, meta))
+    ? getStateEquippedMarkId(state, meta)
+    : null;
   const phase = state.phase === "daybreak-transition"
     ? state.transitionTargetPhase ?? "day"
     : state.phase;
@@ -1145,7 +1183,12 @@ export function refreshSeedState(state) {
   const derivedHorror = deriveHorrorState({ ...state, horrorTraits });
   return {
     ...state,
-    meta: normalizeProgressMeta(state.meta),
+    meta,
+    ownedMarkIds,
+    loadoutMarkIds: normalizeMarkIds(state.loadoutMarkIds ?? meta.loadoutMarkIds)
+      .filter((id) => ownedMarkIds.includes(id) && id !== equippedMarkId)
+      .slice(0, MARK_LOADOUT_LIMIT),
+    equippedMarkId,
     phase,
     transitionTargetPhase: state.phase === "daybreak-transition" ? null : state.transitionTargetPhase,
     specialSeedName: seed.name,
