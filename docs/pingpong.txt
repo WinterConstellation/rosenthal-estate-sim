@@ -194,3 +194,29 @@
 - 추가 방어: `npm.cmd run verify`가 표식 총량, 성향별 분포, 분기 조건 도달 가능성, 전체 보유 시 unlock key 해방 여부를 검증한다.
 - 제외: 인코딩 깨진 백업 문서 변경과 표식과 무관한 `src/App.jsx` 글리프 diff는 반영하지 않았다.
 - 확인: `npm.cmd run verify`, `npm.cmd run build` 통과.
+2026-06-19 02:12 KST
+- 배경 글자 낙하 효과는 최적화 대신 제거로 전환했다.
+- `src/App.jsx`: `glyphAtmosphere`, `GlyphAtmosphereCanvas`, 글리프 텍스처 생성 유틸, 개발자 패널의 글리프 형식 선택을 제거했다.
+- `index.html`: `src/glyph-fall-fix.css` 로드를 제거했다.
+- `src/styles.css`: `.glyph-atmosphere-canvas` 스타일과 reduced-motion 예외를 제거했다.
+- `src/glyph-fall-fix.css` 삭제.
+- 남긴 연출: `HorrorTextEyes`, `textMist`, `staticRows` 경로는 유지.
+- 확인: `npm.cmd run verify`, `npm.cmd run build` 통과.
+2026-06-19 02:33 KST
+- 올바른 원 스레드: `019edbca-56b3-7683-a100-70d2ed7a4ff6`(`핑퐁 파일 정리 및 이름 변경`)를 확인했다.
+- 가져온 UI 결정: 기본 밤은 `night-calm` 푸른 안정 배경이고, 붉은 밤은 `night-anomaly`/`night-critical` 이후 위험 신호로만 사용한다.
+- 가져온 초반 튜토리얼 흐름: 1일차 낮은 영지 경영 튜토리얼 고정, 2일차 낮은 같은 구조의 약한 변주, 일반적 최초 균열은 3일차 시작쯤으로 둔다.
+- 메인 스토리는 1일차부터 깔리지만, 플레이어에게는 초반 영지 경영 튜토리얼처럼 보이게 한다.
+- 최신 상태 보정: 해당 스레드의 글리프 분위기/override 내용은 02:12 KST 배경 글자 낙하 효과 제거 이후 폐기된 구현으로 보고 되살리지 않는다.
+2026-06-19 02:40 KST - 기록 누락 보강
+- 2026-06-18 15:26 이후 커밋 히스토리를 다시 대조했다. 중요한 변경 중 일부가 작업 당시 `docs/work_log.txt`/`docs/pingpong.txt`에 같이 남지 않았거나 사후 기록만 남아 있었다.
+- 보강 대상:
+  - `6b539d7`: UI 단계 프리셋 분리.
+  - `74bc97d`, `f79d487`, `a3bb756`: 개발자·관리자 UI 라벨 한국어 정리 시도와 최종 `dev` 라벨 복원.
+  - `817abd2`: `scripts/verify-game.mjs`의 mark-only 검증 스키마 반영.
+  - `87843de`, `0da0d97`, `8a89b27`, `a3b581c`: 글리프 낙하 방향 CSS 추가/로드, 텍스처 스크롤 캔버스 숨김 시도, 아래 방향 흐름 복원.
+- 현재 코드 기준 주의: 글리프 낙하 효과는 2026-06-19 02:12 작업에서 제거되었으므로 위 글리프 수정 흐름은 현재 구현 상태가 아니라 히스토리 추적용 기록이다.
+2026-06-19 02:34 KST
+- DEV 패널의 `눈 깜빡임 연속 표시` 문구와 실제 `burst` 동작 불일치를 보정했다.
+- `src/App.jsx`: 라벨을 `눈 깜빡임 폭주`로 변경하고, `burst`가 켜졌을 때 실제 blink 예약 간격도 짧아지도록 `getMarenolBlink`를 조정했다.
+- 확인: `npm.cmd run verify`, `npm.cmd run build` 통과.

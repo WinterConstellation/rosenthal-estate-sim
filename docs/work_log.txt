@@ -113,3 +113,23 @@
 - 작업: 로컬 백업 브랜치의 성흔/낙인 도합 100개 카탈로그 작업을 검토해 신규 표식만 선별 반영하고, 도달 불가능했던 75/100/200 기반 분기 조건을 현재 총량에 맞게 보정했다.
 - 검증: `scripts/verify-game.mjs`에 표식 총량, 성향별 분포, 분기 해방 조건 도달 가능성 검증을 추가했다.
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-19 02:12 KST
+- 작업: 렉 유발 배경 글자 낙하 효과를 제거했다. `GlyphAtmosphereCanvas`, `glyphAtmosphere` 상태, 글리프 형식 개발자 옵션, 전용 CSS 로드를 삭제했다.
+- 수정 파일: `src/App.jsx`, `src/styles.css`, `index.html`, `src/glyph-fall-fix.css`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-19 02:40 KST
+- 사후 보강: 2026-06-18 15:26 이후 커밋 히스토리와 문서 기록을 대조해, 당시 기록이 빠졌거나 불완전했던 작업 묶음을 정리했다.
+- 누락/불완전 기록: `6b539d7` UI 단계 프리셋 분리, `74bc97d`/`f79d487`/`a3bb756` 개발자·관리자 UI 라벨 정리 및 `dev` 라벨 복원, `817abd2` mark-only 검증 스키마 반영, `87843de`/`0da0d97`/`8a89b27`/`a3b581c` 글리프 낙하 방향 CSS 로드·숨김·복원 수정 흐름.
+- 주의: 위 글리프 낙하 수정 흐름은 2026-06-19 02:12 작업에서 배경 글자 낙하 효과 자체를 제거하면서 현재 코드에서는 남지 않는다.
+
+2026-06-19 02:33 KST
+- 작업: 올바른 이전 스레드 `019edbca-56b3-7683-a100-70d2ed7a4ff6`의 UI 단계/초반 튜토리얼 인계 내용을 확인해 `docs/pingpong.txt`에 현재 기준으로 가져왔다.
+- 핵심: 기본 밤은 `night-calm` 푸른 안정 배경으로 두고, 붉은 밤은 `night-anomaly`/`night-critical` 이후 위험 신호로만 사용한다. 1일차 낮은 튜토리얼 고정, 2일차 낮은 약한 변주, 일반적 최초 균열은 3일차 시작쯤으로 둔다.
+- 보정: 해당 스레드의 글리프 분위기/override 내용은 02:12 KST 제거 작업 이후 폐기된 구현으로 보고 되살리지 않았다.
+
+2026-06-19 02:34 KST
+- 작업: DEV 패널의 `눈 깜빡임 연속 표시` 라벨과 실제 `burst` 동작 불일치를 보정했다.
+- 수정: 라벨을 `눈 깜빡임 폭주`로 변경하고, `burst`가 켜졌을 때 실제 blink 예약 간격이 짧아지도록 `getMarenolBlink`를 조정했다.
+- 확인: `npm.cmd run verify`, `npm.cmd run build`

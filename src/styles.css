@@ -1150,25 +1150,9 @@ button:focus-visible {
 }
 
 .horror-text-overlay__mist,
-.horror-text-overlay__static,
-.glyph-atmosphere-canvas {
+.horror-text-overlay__static {
   position: absolute;
   inset: 0;
-}
-
-.glyph-atmosphere-canvas {
-  width: 100%;
-  height: 100%;
-  opacity: 0.72;
-  mix-blend-mode: screen;
-}
-
-.theme-night .glyph-atmosphere-canvas {
-  opacity: 1;
-}
-
-.theme-night-calm .glyph-atmosphere-canvas {
-  opacity: 0.76;
 }
 
 .horror-text-eyes {
@@ -2133,7 +2117,6 @@ button:focus-visible {
     transition-duration: 1ms !important;
   }
 
-  .glyph-atmosphere-canvas,
   .horror-text-overlay__static {
     display: none;
   }
