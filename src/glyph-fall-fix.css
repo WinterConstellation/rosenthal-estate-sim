@@ -1,3 +1,13 @@
 .glyph-atmosphere-canvas {
-  transform: scaleY(-1);
+  display: none !important;
+}
+
+.glyph-fall-particles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.78;
+  mix-blend-mode: screen;
+  pointer-events: none;
 }
