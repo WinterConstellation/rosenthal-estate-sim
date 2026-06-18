@@ -200,13 +200,15 @@ assert.equal(leveledStatResult.statDelta.health, -2);
 assert.ok(leveledStatResult.traceLabels.includes("성향 레벨 · 통찰 x1.6"));
 const nextCycleRun = advanceToNextCycle({
   ...deterministicA,
+  ownedMarkIds: ["stigma-life-1", "stigma-divine-1"],
+  loadoutMarkIds: [],
+  equippedMarkId: "stigma-divine-1",
   phase: "record-stop",
   route: "altered",
   truthFlags: { ...deterministicA.truthFlags, truthDiscovered: true },
-  meta: traitProgressResult.meta,
-  ownedStigmaPrefixIds: ["rose-thorn"],
-  ownedStigmaSuffixIds: ["rosary"],
-  stigma: { prefixId: "rose-thorn", suffixId: "rosary" },
+  meta: {
+    ...traitProgressResult.meta,
+  },
 }, { second: 1, runRngSeed: "next-cycle-check" });
 assert.equal(nextCycleRun.meta.cycle, 2);
 assert.deepEqual(nextCycleRun.meta.ownedMarkIds, ["stigma-life-1", "stigma-divine-1"]);
