@@ -4,3 +4,8 @@
 - 작업 요약: 루트 작업 규칙 파일을 추가하고 작업 기록 파일을 생성했다.
 - 수정 파일: `AGENTS.md`, `docs/work_log.txt`
 - 비고: 커밋 SHA는 커밋 생성 후 최종 보고에 포함한다.
+
+2026-06-18 15:15 KST
+- 작업 요약: 낮/밤 UI를 calm/anomaly/critical 단계로 분리하고 기본 밤을 푸른 calm 배경으로 조정했다.
+- 수정 파일: `src/App.jsx`, `src/styles.css`, `docs/work_log.txt`
+- 비고: 커밋 SHA는 커밋 생성 후 최종 보고에 포함한다.

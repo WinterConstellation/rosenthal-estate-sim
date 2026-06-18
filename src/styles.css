@@ -123,11 +123,31 @@ button:focus-visible {
   --muted: #898c88;
   --line: rgba(220, 215, 204, 0.14);
   --panel: rgba(17, 20, 23, 0.96);
-  --accent: #af5454;
+  --accent: #84aee6;
   color: var(--ink);
+}
+
+.app-shell.theme-night-calm {
+  --accent: #84aee6;
+  background:
+    radial-gradient(circle at 80% 0%, rgba(89, 136, 198, 0.22), transparent 34%),
+    radial-gradient(circle at 22% 18%, rgba(188, 211, 244, 0.12), transparent 28%),
+    linear-gradient(145deg, #101825, #070b12);
+}
+
+.app-shell.theme-night-anomaly,
+.app-shell.theme-night-critical {
+  --accent: #af5454;
   background:
     radial-gradient(circle at 80% 0%, rgba(99, 21, 25, 0.24), transparent 32%),
     linear-gradient(145deg, #15181c, #080a0c);
+}
+
+.app-shell.theme-night-critical {
+  background:
+    radial-gradient(circle at 72% 4%, rgba(158, 19, 31, 0.3), transparent 35%),
+    radial-gradient(circle at 18% 70%, rgba(93, 12, 18, 0.22), transparent 42%),
+    linear-gradient(145deg, #171518, #070809);
 }
 
 .topbar {
@@ -191,6 +211,14 @@ button:focus-visible {
 }
 
 .theme-night .dream-mark {
+  color: rgba(221, 238, 255, 0.8);
+  text-shadow:
+    0 0 18px rgba(88, 145, 216, 0.34),
+    0 2px 22px rgba(0, 0, 0, 0.76);
+}
+
+.theme-night-anomaly .dream-mark,
+.theme-night-critical .dream-mark {
   color: rgba(255, 232, 222, 0.78);
   text-shadow:
     0 0 18px rgba(176, 43, 52, 0.42),
@@ -458,6 +486,12 @@ button:focus-visible {
 }
 
 .theme-night .sacrifice-counter {
+  color: #bad8ff;
+  background: rgba(30, 64, 104, 0.28);
+}
+
+.theme-night-anomaly .sacrifice-counter,
+.theme-night-critical .sacrifice-counter {
   color: #e3a2a5;
   background: rgba(96, 14, 20, 0.28);
 }
@@ -609,8 +643,13 @@ button:focus-visible {
 }
 
 .estate-scene--night .estate-scene__image {
-  filter: brightness(0.36) saturate(0.62) contrast(1.12);
+  filter: brightness(0.48) saturate(0.74) contrast(1.05) hue-rotate(8deg);
   transform: scale(1.018);
+}
+
+.estate-scene--night-anomaly .estate-scene__image,
+.estate-scene--night-critical .estate-scene__image {
+  filter: brightness(0.36) saturate(0.62) contrast(1.12);
 }
 
 .estate-scene__shade {
@@ -622,8 +661,22 @@ button:focus-visible {
 
 .estate-scene--night .estate-scene__shade {
   background:
+    radial-gradient(circle at 70% 26%, rgba(108, 159, 222, 0.12) 0 14%, rgba(4, 10, 20, 0.48) 58%),
+    linear-gradient(180deg, rgba(16, 27, 45, 0.38), rgba(4, 8, 16, 0.86));
+}
+
+.estate-scene--night-anomaly .estate-scene__shade,
+.estate-scene--night-critical .estate-scene__shade {
+  background:
     radial-gradient(circle at 73% 30%, rgba(91, 25, 31, 0.08) 0 12%, rgba(3, 4, 5, 0.62) 58%),
     linear-gradient(180deg, rgba(17, 20, 29, 0.48), rgba(3, 4, 5, 0.9));
+}
+
+.estate-scene--night-critical .estate-scene__shade {
+  background:
+    radial-gradient(circle at 54% 38%, rgba(159, 19, 32, 0.18), transparent 26%),
+    radial-gradient(circle at 73% 30%, rgba(91, 25, 31, 0.12) 0 12%, rgba(3, 4, 5, 0.68) 58%),
+    linear-gradient(180deg, rgba(22, 13, 18, 0.54), rgba(3, 4, 5, 0.92));
 }
 
 .estate-scene__caption {
@@ -1040,6 +1093,11 @@ button:focus-visible {
 }
 
 .theme-night .horror-text-overlay {
+  color: rgba(166, 205, 255, 0.46);
+}
+
+.theme-night-anomaly .horror-text-overlay,
+.theme-night-critical .horror-text-overlay {
   color: rgba(234, 65, 76, 0.58);
 }
 
@@ -1059,6 +1117,10 @@ button:focus-visible {
 
 .theme-night .glyph-atmosphere-canvas {
   opacity: 1;
+}
+
+.theme-night-calm .glyph-atmosphere-canvas {
+  opacity: 0.76;
 }
 
 .horror-text-eyes {

@@ -313,6 +313,76 @@ function resolveHorrorDirector(game, isNight) {
   };
 }
 
+const UI_PRESENTATION_GLYPH_FORMAT = {
+  "day-calm": "day-glow",
+  "day-anomaly": "day-glow",
+  "day-critical": "critical-corruption",
+  "night-calm": "night-blue-glow",
+  "night-anomaly": "night-red-rain",
+  "night-critical": "critical-corruption",
+};
+
+function resolveUiPresentation(game, isNight, horrorDirector) {
+  const fear = Number(game.derivedHorror?.effectiveFear ?? game.resources?.fear ?? 0) / 100;
+  const corruption = Number(game.estate?.corruption ?? 0) / 100;
+  const intrusion = Number(game.derivedHorror?.intrusionPressure ?? 0) / 100;
+  const monsterization = Number(game.derivedHorror?.monsterization ?? 0) / 100;
+  const transformedCount = getTransformedCompanionCount(game);
+  const timePhase = isNight ? "night" : "day";
+  const hasAnomaly =
+    corruption >= 0.22 ||
+    fear >= 0.28 ||
+    intrusion >= 0.18 ||
+    monsterization >= 0.18 ||
+    transformedCount > 0 ||
+    game.truthFlags?.truthDiscovered ||
+    game.route === "altered";
+  const isCritical =
+    corruption >= 0.58 ||
+    fear >= 0.65 ||
+    intrusion >= 0.55 ||
+    monsterization >= 0.55 ||
+    (horrorDirector?.textEyes?.intensity ?? 0) >= 0.68 ||
+    game.phase === "escape-transformed-choice" ||
+    game.phase === "record-stop";
+  const uiStage = isCritical ? "critical" : hasAnomaly ? "anomaly" : "calm";
+  const preset = `${timePhase}-${uiStage}`;
+
+  return {
+    timePhase,
+    uiStage,
+    preset,
+    glyphFormat: UI_PRESENTATION_GLYPH_FORMAT[preset] ?? (isNight ? "night-blue-glow" : "day-glow"),
+    allowHorrorLayers: uiStage !== "calm",
+  };
+}
+
+function applyUiPresentationToHorrorDirector(director, presentation) {
+  return {
+    ...director,
+    glyphAtmosphere: {
+      ...director.glyphAtmosphere,
+      enabled: true,
+      format: presentation.glyphFormat,
+      intensity: presentation.timePhase === "night"
+        ? Math.max(0.2, director.glyphAtmosphere.intensity)
+        : Math.max(0.22, director.glyphAtmosphere.intensity),
+    },
+    textMist: {
+      ...director.textMist,
+      enabled: presentation.allowHorrorLayers && director.textMist.enabled,
+    },
+    staticRows: {
+      ...director.staticRows,
+      enabled: presentation.allowHorrorLayers && director.staticRows.enabled,
+    },
+    textEyes: {
+      ...director.textEyes,
+      enabled: presentation.allowHorrorLayers && director.textEyes.enabled,
+    },
+  };
+}
+
 function pseudoNoise(value) {
   const n = Math.sin(value * 127.1 + 311.7) * 43758.5453;
   return n - Math.floor(n);
@@ -1024,15 +1094,21 @@ function ResourceCard({ statKey, value, isNight, revealed }) {
   );
 }
 
-function SceneImage({ isNight, estateState }) {
+function SceneImage({ isNight, estateState, preset }) {
+  const sceneClass = [
+    "estate-scene",
+    isNight ? "estate-scene--night" : "estate-scene--day",
+    preset ? `estate-scene--${preset}` : null,
+  ].filter(Boolean).join(" ");
+  const isCalmNight = preset === "night-calm";
   return (
-    <section className={`estate-scene ${isNight ? "estate-scene--night" : ""}`}>
+    <section className={sceneClass}>
       <img className="estate-scene__image" src="./assets/eldroa-estate-day.jpg" alt={isNight ? "밤의 로젠탈 영지" : "낮의 로젠탈 영지"} />
       <div className="estate-scene__shade" />
       <div className="estate-scene__caption">
         <span>영지의 취급 · {estateState.name}</span>
-        <strong>{isNight ? "문이 열려 있다" : "아무 일도 일어나지 않았다"}</strong>
-        <p>{isNight ? "저택의 불이 대부분 꺼져 있다." : "영지는 평온하다."}</p>
+        <strong>{isCalmNight ? "푸른 불빛이 남아 있다" : isNight ? "문이 열려 있다" : "아무 일도 일어나지 않았다"}</strong>
+        <p>{isCalmNight ? "저택은 조용하지만 아직 무너지지 않았다." : isNight ? "저택의 불이 대부분 꺼져 있다." : "영지는 평온하다."}</p>
       </div>
     </section>
   );
@@ -1845,10 +1921,12 @@ function App() {
   const isNight = isNightDisplayPhase(game);
   const effectiveIsNight = isNight || (developerMode && developerNightPreview);
   const horrorDirector = resolveHorrorDirector(game, effectiveIsNight);
+  const uiPresentation = resolveUiPresentation(game, effectiveIsNight, horrorDirector);
+  const stagedHorrorDirector = applyUiPresentationToHorrorDirector(horrorDirector, uiPresentation);
   const visibleHorrorDirector = developerMode && eyeOverride.forceEyes
     ? {
-        ...horrorDirector,
-        intensity: Math.max(horrorDirector.intensity, eyeOverride.intensity),
+        ...stagedHorrorDirector,
+        intensity: Math.max(stagedHorrorDirector.intensity, eyeOverride.intensity),
         textEyes: {
           enabled: true,
           intensity: eyeOverride.intensity,
@@ -1857,7 +1935,7 @@ function App() {
           variant: eyeOverride.variant,
         },
       }
-    : horrorDirector;
+    : stagedHorrorDirector;
   const estateState = getEstatePresentation(game, effectiveIsNight);
   const animate = (id, action) => {
     if (selectedId) return;
@@ -2288,9 +2366,14 @@ function App() {
       ? `${game.expedition.stepIndex + 1} / ${game.expedition.totalSteps}`
       : "—";
   const headerTitle = effectiveIsNight ? `${game.day}번째 밤` : `기록 ${game.day}일차`;
+  const appShellClass = [
+    "app-shell",
+    effectiveIsNight ? "theme-night" : "theme-day",
+    `theme-${uiPresentation.preset}`,
+  ].join(" ");
 
   return (
-    <main className={`app-shell ${effectiveIsNight ? "theme-night" : "theme-day"}`}>
+    <main className={appShellClass}>
       <HorrorTextOverlay game={game} isNight={effectiveIsNight} director={visibleHorrorDirector} />
       <header className="topbar">
         <div className="dream-mark" aria-hidden="true">{game.day}번째 꿈 - {game.day}번째 밤</div>
@@ -2332,7 +2415,7 @@ function App() {
 
       <div className="dashboard">
         <div className="estate-column">
-          <SceneImage isNight={effectiveIsNight} estateState={estateState} />
+          <SceneImage isNight={effectiveIsNight} estateState={estateState} preset={uiPresentation.preset} />
           <section className={`estate-report estate-report--${estateState.tone}`}>
             <div>
               <span className="eyebrow">영지 상태</span>
