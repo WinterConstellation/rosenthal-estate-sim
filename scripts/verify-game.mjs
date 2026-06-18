@@ -50,9 +50,12 @@ import {
   HORROR_DERIVED_META,
   HORROR_TRAIT_META,
   LEGACY_STIGMA_MARK_MAP,
+  AFFINITY_MARK_GROUPS,
+  MARK_BRANCH_UNLOCKS,
   STANDALONE_MARKS,
   MARKS,
   getMark,
+  getUnlockedBranchKeys,
   isMarkObtainable,
 } from "../src/rules/systemRules.js";
 
@@ -169,15 +172,54 @@ const standaloneStigmaCount = STANDALONE_MARKS.filter((mark) => mark.kind === "s
 const standaloneBrandCount = STANDALONE_MARKS.filter((mark) => mark.kind === "brand").length;
 const markIds = MARKS.map((mark) => mark.id);
 const uniqueMarkIds = new Set(markIds);
-assert.ok(markCounts.total >= 66);
-assert.ok(markCounts.stigma >= 33);
-assert.ok(markCounts.brand >= 33);
+const markBranchUnlockIds = MARK_BRANCH_UNLOCKS.map((unlock) => unlock.id);
+assert.equal(markCounts.total, 100);
+assert.equal(markCounts.stigma, 50);
+assert.equal(markCounts.brand, 50);
 assert.equal(markIds.length, uniqueMarkIds.size);
+assert.equal(markBranchUnlockIds.length, new Set(markBranchUnlockIds).size, "표식 분기 해방 id 중복 없음");
 assert.equal(standaloneMarkCount, STANDALONE_MARKS.length);
+assert.equal(standaloneMarkCount, 6);
+assert.equal(affinityMarkCount, 94);
 assert.equal(affinityMarkCount, markCounts.total - standaloneMarkCount);
 assert.equal(markCounts.stigma + markCounts.brand, markCounts.total, "성흔/낙인 합계 일치");
-assert.ok(standaloneStigmaCount >= 3, "단독 성흔 샘플은 최소 3개");
-assert.ok(standaloneBrandCount >= 3, "단독 낙인 샘플은 최소 3개");
+assert.equal(standaloneStigmaCount, 3, "단독 성흔 샘플은 3개");
+assert.equal(standaloneBrandCount, 3, "단독 낙인 샘플은 3개");
+assert.equal(AFFINITY_MARK_GROUPS.length, 10);
+assert.deepEqual(
+  AFFINITY_MARK_GROUPS.map((group) => [group.affinity, group.stigma.length, group.brand.length]),
+  [
+    ["life", 5, 5],
+    ["record", 5, 5],
+    ["knight", 5, 5],
+    ["trade", 5, 5],
+    ["mansion", 5, 5],
+    ["shortcut", 5, 5],
+    ["exorcism", 5, 5],
+    ["execution", 4, 4],
+    ["divine", 4, 4],
+    ["suspicion", 4, 4],
+  ],
+);
+assert.ok(AFFINITY_MARK_GROUPS.every((group) => group.stigma[2]?.tier === "capstone" && group.brand[2]?.tier === "capstone"));
+assert.ok(AFFINITY_MARK_GROUPS.every((group) => (
+  group.stigma.slice(3).every((mark) => mark.tier === "base")
+  && group.brand.slice(3).every((mark) => mark.tier === "base")
+)));
+MARK_BRANCH_UNLOCKS.forEach((unlock) => {
+  Object.entries(unlock.condition).forEach(([key, value]) => {
+    assert.ok(
+      value <= markCounts[key],
+      `${unlock.id} 해방 조건 ${key}:${value}은 현재 표식 총량 ${markCounts[key]} 안에서 도달 가능해야 함`,
+    );
+  });
+});
+assert.deepEqual(
+  new Set(getUnlockedBranchKeys(MARKS.map((mark) => mark.id))),
+  new Set(MARK_BRANCH_UNLOCKS.map((unlock) => unlock.id).concat(
+    AFFINITY_MARK_GROUPS.flatMap((group) => [group.branch.stigma, group.branch.brand]),
+  )),
+);
 assert.ok(MARKS.every((mark) => (
   mark.id
   && mark.kind

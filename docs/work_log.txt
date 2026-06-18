@@ -108,3 +108,8 @@
 - 작업: 기존 `GlyphAtmosphereCanvas`의 위쪽 스크롤을 화면상 아래쪽 낙하로 보이게 하기 위해 전용 CSS를 추가하고 `index.html`에서 로드했다.
 - 수정 파일: `src/glyph-fall-fix.css`, `index.html`, `docs/work_log.txt`
 - 확인: 원격 파일 반영 확인. 이 환경에서는 로컬 `npm.cmd run verify`, `npm.cmd run build`를 실행할 수 없었다.
+
+2026-06-19 02:06 KST
+- 작업: 로컬 백업 브랜치의 성흔/낙인 도합 100개 카탈로그 작업을 검토해 신규 표식만 선별 반영하고, 도달 불가능했던 75/100/200 기반 분기 조건을 현재 총량에 맞게 보정했다.
+- 검증: `scripts/verify-game.mjs`에 표식 총량, 성향별 분포, 분기 해방 조건 도달 가능성 검증을 추가했다.
+- 확인: `npm.cmd run verify`, `npm.cmd run build`

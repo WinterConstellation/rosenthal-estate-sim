@@ -174,3 +174,23 @@
 - `drawImage`는 레이어당 2회(`drawImage` 총 6회)만 사용.
 - `effect.intensity`를 텍스처 재생성 트리거에서 분리.
 - 변경 기록 반영: `docs/work_log.txt`.
+
+2026-06-19 02:06 KST
+- 성흔/낙인 표식 복구 검토. 로컬에는 `backup/codex-local-broken-20260619-013147` 브랜치가 남아 있었고, 그 안의 `fdee63c Add mark catalog to 100 total`이 성흔/낙인 도합 100개 작업이었다.
+- 그대로 반영하면 안 되는 상태였다. 해당 작업은 표식 총합을 100개(성흔 50, 낙인 50)로 바꾸면서도 `MARK_BRANCH_UNLOCKS` 일부 조건을 성흔 75/100, 낙인 75/100, 성흔100+낙인100, total 200 전제에 남겨 두고 있었다. 즉 코드가 빌드되어도 일부 분기 키는 현재 카탈로그에서 영원히 열리지 않는 구조였다.
+- `docs/work_log.txt` 쪽에는 이전 작업 중 인코딩 깨짐이 섞여 있었으므로 백업 커밋의 문서 변경은 그대로 가져오지 않았다.
+- `src/App.jsx`에는 표식 복구와 무관한 글리프 설정 삭제 diff가 잠깐 섞였으나 범위 밖 변경으로 판단해 되돌렸다.
+- 반영한 것: `src/rules/systemRules.js`의 신규 성향형 표식 34개, 성흔/낙인 도합 100개 구조, `src/rules/README.md`의 총합 100개 설명, `scripts/verify-game.mjs`의 엄격한 검증.
+- 보정한 것: 분기 해방 조건을 현재 최대치 안에서 도달 가능하도록 성흔/낙인 단독 축은 3/10/20/30/40/50, 혼합 축은 25+25 및 50+50, 전체 완결은 total 100으로 정리했다.
+- 추가 방어: `npm.cmd run verify`가 이제 `MARK_BRANCH_UNLOCKS` 조건이 현재 표식 총량보다 큰 경우 실패한다. 전체 표식을 보유했을 때 모든 count 기반 분기와 capstone branch key가 실제로 해방되는지도 검증한다.
+- 검토 결과: 기존 저장 마이그레이션(`LEGACY_STIGMA_MARK_MAP`), 획득 후보 필터(`isMarkCollectionUnlockedForCandidate`, `isMarkObtainable`), 도감 UI의 `MARKS.length` 기반 분모와 충돌하지 않음.
+- 확인: `npm.cmd run verify`, `npm.cmd run build` 통과.
+
+2026-06-19 02:08 KST - GPT 확인용 요약
+- 성흔/낙인 복구 대상은 백업 브랜치 `backup/codex-local-broken-20260619-013147`의 `fdee63c Add mark catalog to 100 total`이었다.
+- 핵심 문제: 표식은 도합 100개로 바뀌었는데 분기 조건 일부가 75/100/200 기준으로 남아 있어 그대로 쓰면 도달 불가능한 unlock key가 생겼다.
+- 최종 반영: 성향형 신규 표식 34개를 넣어 MARKS=100, 성흔=50, 낙인=50으로 정리했다.
+- 최종 보정: MARK_BRANCH_UNLOCKS는 성흔/낙인 3/10/20/30/40/50, 혼합 25+25 및 50+50, 전체 total 100으로 맞췄다.
+- 추가 방어: `npm.cmd run verify`가 표식 총량, 성향별 분포, 분기 조건 도달 가능성, 전체 보유 시 unlock key 해방 여부를 검증한다.
+- 제외: 인코딩 깨진 백업 문서 변경과 표식과 무관한 `src/App.jsx` 글리프 diff는 반영하지 않았다.
+- 확인: `npm.cmd run verify`, `npm.cmd run build` 통과.
