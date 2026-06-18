@@ -322,6 +322,9 @@ const UI_PRESENTATION_GLYPH_FORMAT = {
   "night-critical": "critical-corruption",
 };
 
+const DEV_UI_PRESET_OPTIONS = ["auto", "day-calm", "day-anomaly", "day-critical", "night-calm", "night-anomaly", "night-critical"];
+const DEV_GLYPH_FORMAT_OPTIONS = ["auto", "day-glow", "night-blue-glow", "night-red-rain", "critical-corruption"];
+
 function resolveUiPresentation(game, isNight, horrorDirector) {
   const fear = Number(game.derivedHorror?.effectiveFear ?? game.resources?.fear ?? 0) / 100;
   const corruption = Number(game.estate?.corruption ?? 0) / 100;
@@ -357,16 +360,49 @@ function resolveUiPresentation(game, isNight, horrorDirector) {
   };
 }
 
+function getDeveloperPreviewIntensity(uiStage) {
+  if (uiStage === "critical") return 0.72;
+  if (uiStage === "anomaly") return 0.42;
+  return 0.18;
+}
+
+function applyDeveloperUiOverrides(presentation, uiPreset, glyphFormat) {
+  const preset = uiPreset === "auto" ? presentation.preset : uiPreset;
+  const [timePhase = presentation.timePhase, uiStage = presentation.uiStage] = preset.split("-");
+  const isDeveloperPreview = uiPreset !== "auto";
+  const resolvedGlyphFormat = glyphFormat === "auto"
+    ? UI_PRESENTATION_GLYPH_FORMAT[preset] ?? presentation.glyphFormat
+    : glyphFormat;
+  const previewIntensity = isDeveloperPreview ? getDeveloperPreviewIntensity(uiStage) : 0;
+
+  return {
+    ...presentation,
+    timePhase,
+    uiStage,
+    preset,
+    glyphFormat: resolvedGlyphFormat,
+    allowHorrorLayers: uiStage !== "calm",
+    previewIntensity,
+    previewStaticRows: isDeveloperPreview && uiStage === "critical",
+    previewTextEyes: isDeveloperPreview && uiStage === "critical",
+  };
+}
+
 function applyUiPresentationToHorrorDirector(director, presentation) {
+  const intensity = Math.max(director.intensity, presentation.previewIntensity ?? 0);
+  const eyeIntensity = presentation.previewTextEyes
+    ? Math.max(director.textEyes.intensity, 0.72)
+    : director.textEyes.intensity;
   return {
     ...director,
+    intensity,
     glyphAtmosphere: {
       ...director.glyphAtmosphere,
       enabled: true,
       format: presentation.glyphFormat,
       intensity: presentation.timePhase === "night"
-        ? Math.max(0.2, director.glyphAtmosphere.intensity)
-        : Math.max(0.22, director.glyphAtmosphere.intensity),
+        ? Math.max(0.2, intensity)
+        : Math.max(0.22, intensity),
     },
     textMist: {
       ...director.textMist,
@@ -374,11 +410,19 @@ function applyUiPresentationToHorrorDirector(director, presentation) {
     },
     staticRows: {
       ...director.staticRows,
-      enabled: presentation.allowHorrorLayers && director.staticRows.enabled,
+      enabled: presentation.allowHorrorLayers && (director.staticRows.enabled || presentation.previewStaticRows),
+      rows: director.staticRows.rows?.length
+        ? director.staticRows.rows
+        : HORROR_STATIC_ROWS.slice(0, 2),
     },
     textEyes: {
       ...director.textEyes,
-      enabled: presentation.allowHorrorLayers && director.textEyes.enabled,
+      enabled: presentation.allowHorrorLayers && (director.textEyes.enabled || presentation.previewTextEyes),
+      intensity: eyeIntensity,
+      count: presentation.previewTextEyes
+        ? Math.max(director.textEyes.count, 3)
+        : director.textEyes.count,
+      burst: director.textEyes.burst || presentation.previewTextEyes,
     },
   };
 }
@@ -1800,18 +1844,44 @@ function DeveloperEyeSection({ eyeOverride, onChange }) {
   );
 }
 
-function DeveloperPreviewSection({ nightPreview, onNightPreviewChange }) {
+function DeveloperPreviewSection({
+  nightPreview,
+  uiPreset,
+  glyphFormat,
+  onNightPreviewChange,
+  onUiPresetChange,
+  onGlyphFormatChange,
+}) {
   return (
     <section className="developer-section">
       <h3>preview</h3>
+      <div className="developer-preview-grid">
+        <label>
+          <span>UI preset</span>
+          <select value={uiPreset} onChange={(event) => onUiPresetChange(event.target.value)}>
+            {DEV_UI_PRESET_OPTIONS.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>glyph format</span>
+          <select value={glyphFormat} onChange={(event) => onGlyphFormatChange(event.target.value)}>
+            {DEV_GLYPH_FORMAT_OPTIONS.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </label>
+      </div>
       <label className="developer-toggle">
         <input
           type="checkbox"
           checked={nightPreview}
           onChange={(event) => onNightPreviewChange(event.target.checked)}
         />
-        <span>force night preview</span>
+        <span>force night preview legacy</span>
       </label>
+      <small>preset/glyph overrides are visual only and do not touch save data.</small>
     </section>
   );
 }
@@ -1820,9 +1890,13 @@ function DeveloperPanel({
   game,
   eyeOverride,
   nightPreview,
+  uiPreset,
+  glyphFormat,
   onClose,
   onEyeOverrideChange,
   onNightPreviewChange,
+  onUiPresetChange,
+  onGlyphFormatChange,
   onSetMapValue,
   onSetTraitProgress,
   onTogglePassiveOwned,
@@ -1838,7 +1912,14 @@ function DeveloperPanel({
         <button type="button" onClick={onClose}>close</button>
       </header>
 
-      <DeveloperPreviewSection nightPreview={nightPreview} onNightPreviewChange={onNightPreviewChange} />
+      <DeveloperPreviewSection
+        nightPreview={nightPreview}
+        uiPreset={uiPreset}
+        glyphFormat={glyphFormat}
+        onNightPreviewChange={onNightPreviewChange}
+        onUiPresetChange={onUiPresetChange}
+        onGlyphFormatChange={onGlyphFormatChange}
+      />
       <DeveloperEyeSection eyeOverride={eyeOverride} onChange={onEyeOverrideChange} />
       <DeveloperNumberSection
         title="stats"
@@ -1899,6 +1980,8 @@ function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [developerMode, setDeveloperMode] = useState(shouldOpenDeveloperMode);
   const [developerNightPreview, setDeveloperNightPreview] = useState(false);
+  const [developerUiPreset, setDeveloperUiPreset] = useState("auto");
+  const [developerGlyphFormat, setDeveloperGlyphFormat] = useState("auto");
   const [eyeOverride, setEyeOverride] = useState({
     forceEyes: false,
     intensity: 0.72,
@@ -1919,9 +2002,16 @@ function App() {
   }, [game.day, game.phase, game.tutorialSummarySeen, showStart]);
 
   const isNight = isNightDisplayPhase(game);
-  const effectiveIsNight = isNight || (developerMode && developerNightPreview);
+  const selectedUiPreset = developerMode ? developerUiPreset : "auto";
+  const selectedGlyphFormat = developerMode ? developerGlyphFormat : "auto";
+  const presetNightOverride = selectedUiPreset === "auto" ? null : selectedUiPreset.startsWith("night-");
+  const effectiveIsNight = presetNightOverride ?? (isNight || (developerMode && developerNightPreview));
   const horrorDirector = resolveHorrorDirector(game, effectiveIsNight);
-  const uiPresentation = resolveUiPresentation(game, effectiveIsNight, horrorDirector);
+  const uiPresentation = applyDeveloperUiOverrides(
+    resolveUiPresentation(game, effectiveIsNight, horrorDirector),
+    selectedUiPreset,
+    selectedGlyphFormat,
+  );
   const stagedHorrorDirector = applyUiPresentationToHorrorDirector(horrorDirector, uiPresentation);
   const visibleHorrorDirector = developerMode && eyeOverride.forceEyes
     ? {
@@ -2096,15 +2186,21 @@ function App() {
           onNew={newGame}
           onToggleDeveloper={() => setDeveloperMode((current) => !current)}
         />
-        {developerMode && (developerNightPreview || eyeOverride.forceEyes) && <HorrorTextOverlay game={game} isNight={effectiveIsNight} director={visibleHorrorDirector} />}
+        {developerMode && (developerNightPreview || eyeOverride.forceEyes || developerUiPreset !== "auto" || developerGlyphFormat !== "auto") && (
+          <HorrorTextOverlay game={game} isNight={effectiveIsNight} director={visibleHorrorDirector} />
+        )}
         {developerMode && (
           <DeveloperPanel
             game={game}
             eyeOverride={eyeOverride}
             nightPreview={developerNightPreview}
+            uiPreset={developerUiPreset}
+            glyphFormat={developerGlyphFormat}
             onClose={() => setDeveloperMode(false)}
             onEyeOverrideChange={(patch) => setEyeOverride((current) => ({ ...current, ...patch }))}
             onNightPreviewChange={setDeveloperNightPreview}
+            onUiPresetChange={setDeveloperUiPreset}
+            onGlyphFormatChange={setDeveloperGlyphFormat}
             onSetMapValue={setDeveloperMapValue}
             onSetTraitProgress={setDeveloperTraitProgress}
             onTogglePassiveOwned={toggleDeveloperPassiveOwned}
@@ -2454,9 +2550,13 @@ function App() {
           game={game}
           eyeOverride={eyeOverride}
           nightPreview={developerNightPreview}
+          uiPreset={developerUiPreset}
+          glyphFormat={developerGlyphFormat}
           onClose={() => setDeveloperMode(false)}
           onEyeOverrideChange={(patch) => setEyeOverride((current) => ({ ...current, ...patch }))}
           onNightPreviewChange={setDeveloperNightPreview}
+          onUiPresetChange={setDeveloperUiPreset}
+          onGlyphFormatChange={setDeveloperGlyphFormat}
           onSetMapValue={setDeveloperMapValue}
           onSetTraitProgress={setDeveloperTraitProgress}
           onTogglePassiveOwned={toggleDeveloperPassiveOwned}

@@ -29,3 +29,8 @@
 - 작업 요약: 개발자툴 확장 계획을 `docs/pingpong.txt`에 정리했다.
 - 수정 파일: `docs/pingpong.txt`, `docs/work_log.txt`
 - 비고: 커밋 SHA는 커밋 생성 후 최종 보고에 포함한다.
+
+2026-06-18 16:17 KST
+- 작업 요약: 개발자툴에 UI 프리셋 미리보기와 글리프 서식 강제 선택을 추가했다.
+- 수정 파일: `src/App.jsx`, `src/styles.css`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 비고: 로컬 빌드/검증은 사용자가 직접 진행하기로 했으므로 실행하지 않았다.
