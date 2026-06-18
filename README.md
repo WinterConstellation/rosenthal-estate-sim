@@ -22,6 +22,17 @@ npm ci
 npm start
 ```
 
+## 구조 메모
+
+- `src/App.jsx`: 게임 화면, 상태 흐름, 주요 UI/연출 연결부입니다.
+- `src/styles.css`: 전체 화면 스타일과 낮/밤/공포 연출 스타일입니다.
+- `src/data/`: 선택지, 이벤트, 시드, 성흔 등 게임 내용 데이터입니다.
+- `src/engine/`: 선택 결과 계산, 규칙 처리, 저장/마이그레이션, 시드 처리를 둡니다.
+- `src/rules/`: 규칙/튜토리얼 표시용 문서와 시스템 규칙입니다.
+- `reference/isolated/`: 본편에 바로 붙이지 않는 시각 효과와 렌더링 실험을 분리해 둡니다.
+- `scripts/`: 검증과 Windows 빌드 보조 스크립트입니다.
+- `electron/`: Windows 실행 파일용 Electron 진입점입니다.
+
 ## 배포
 
 - `main` 브랜치에 푸시하면 GitHub Pages 웹 버전을 자동으로 갱신합니다.
