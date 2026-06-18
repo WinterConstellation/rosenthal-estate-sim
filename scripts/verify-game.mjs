@@ -147,7 +147,9 @@ assert.deepEqual(deterministicA.derivedHorror, deriveHorrorState(deterministicA)
 assert.deepEqual(deterministicA.revealedHorrorTraits, []);
 assert.deepEqual(deterministicA.revealedHorrorStates, []);
 assert.equal(Object.keys(deterministicA.meta.traitProgress).length, 10);
-assert.deepEqual(deterministicA.meta.equippedStigma, { prefixId: null, suffixId: null });
+assert.deepEqual(deterministicA.meta.ownedMarkIds, []);
+assert.deepEqual(deterministicA.meta.loadoutMarkIds, []);
+assert.equal(deterministicA.meta.equippedMarkId, null);
 const horrorTraitAction = DAY_ACTIONS.find((action) => action.id === "count-rooms");
 const horrorTraitResult = chooseDayAction({ ...deterministicA, phase: "day" }, horrorTraitAction);
 assert.equal(horrorTraitResult.horrorTraits.intrusion, 1);
@@ -207,9 +209,9 @@ const nextCycleRun = advanceToNextCycle({
   stigma: { prefixId: "rose-thorn", suffixId: "rosary" },
 }, { second: 1, runRngSeed: "next-cycle-check" });
 assert.equal(nextCycleRun.meta.cycle, 2);
-assert.deepEqual(nextCycleRun.stigma, { prefixId: "rose-thorn", suffixId: "rosary" });
-assert.ok(nextCycleRun.meta.ownedStigmaPrefixIds.includes("rose-thorn"));
-assert.ok(nextCycleRun.meta.ownedStigmaSuffixIds.includes("rosary"));
+assert.deepEqual(nextCycleRun.meta.ownedMarkIds, ["stigma-life-1", "stigma-divine-1"]);
+assert.deepEqual(nextCycleRun.meta.loadoutMarkIds, []);
+assert.equal(nextCycleRun.meta.equippedMarkId, "stigma-divine-1");
 assert.equal(nextCycleRun.meta.endingRecords["record-stop:altered:truth"].count, 1);
 assert.equal(nextCycleRun.meta.endingRecords["record-stop:altered:truth"].lastCycle, 1);
 assert.equal(deterministicA.ownedPassiveIds.length, 5);
@@ -385,7 +387,9 @@ const seedRuleGame = (trait, phase = "day") => ({
   specialSeedGrowthMultipliers: {},
   passiveIds: [],
   titles: [],
-  stigma: { prefixId: null, suffixId: null },
+  ownedMarkIds: [],
+  loadoutMarkIds: [],
+  equippedMarkId: null,
   nextTurn: {},
   history: [],
   runSeed: "seed-rule-check",

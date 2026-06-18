@@ -110,3 +110,11 @@
 - `src/styles.css`
 - `docs/pingpong.txt`
 - `docs/work_log.txt`
+
+2026-06-18 19:52 KST
+- 진행 내용: 구시대 성흔 검증 제거 후 새 mark 메타 기반 검증 정리, 모바일 topbar 레이아웃 패치, README 규칙 문구 정비.
+- 반영 파일:
+  - `scripts/verify-game.mjs`
+  - `src/styles.css`
+  - `src/rules/README.md`
+- 주의: 기존 마이그레이션(LEGACY_STIGMA_MARK_MAP) 경로는 유지하되, verify 기대값을 새 mark 메타 기준으로 통일.
