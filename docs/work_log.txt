@@ -19,3 +19,8 @@
 - 작업 요약: UI 단계 분리 작업 내용을 핑퐁 파일에 최신 상태로 정리했다.
 - 수정 파일: `docs/intro_horror_ui_direction_for_gpt.txt`, `docs/work_log.txt`
 - 비고: 커밋 SHA는 커밋 생성 후 최종 보고에 포함한다.
+
+2026-06-18 15:59 KST
+- 작업 요약: 핑퐁 파일을 `docs/pingpong.txt`로 이름 변경하고 루트 작업 규칙에 새 경로를 명시했다.
+- 수정 파일: `AGENTS.md`, `docs/pingpong.txt`, `docs/intro_horror_ui_direction_for_gpt.txt`, `docs/work_log.txt`
+- 비고: 커밋 SHA는 커밋 생성 후 최종 보고에 포함한다.
