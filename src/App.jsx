@@ -416,7 +416,2000 @@ function getHorrorIntensity(game, isNight) {
   return clamp01(fear * 0.28 + horrorPressure * 0.18 + corruption * 0.34 + (isNight ? 0.14 : 0) + phasePressure + routePressure + transformedPressure + truthPressure + sacrificePressure);
 }
 
-function resolveHorrorDirector(game, isN۞���$z{-���jםitle={stage.title}
+function resolveHorrorDirector(game, isNight) {
+  const intensity = getHorrorIntensity(game, isNight);
+  const fear = Number(game.derivedHorror?.effectiveFear ?? game.resources?.fear ?? 0) / 100;
+  const corruption = Number(game.estate?.corruption ?? 0) / 100;
+  const intrusion = Number(game.derivedHorror?.intrusionPressure ?? 0) / 100;
+  const monsterization = Number(game.derivedHorror?.monsterization ?? 0) / 100;
+  const transformedCount = getTransformedCompanionCount(game);
+  const nightPressure = isHorrorNightPressure(game);
+  const truthPressure = game.truthFlags?.truthDiscovered ? 0.16 : 0;
+  const routePressure = game.route === "altered" ? 0.18 : 0;
+  const transformedPressure = Math.min(0.22, transformedCount * 0.07);
+  const eyeIntensity = clamp01(corruption * 0.42 + fear * 0.22 + intrusion * 0.24 + monsterization * 0.18 + transformedPressure + truthPressure + routePressure + (nightPressure ? 0.16 : 0));
+  const daytimeBreach = !isNight && (corruption >= 0.22 || fear >= 0.28 || intrusion >= 0.18 || monsterization >= 0.18 || transformedCount > 0 || game.truthFlags?.truthDiscovered || game.route === "altered");
+  const textEyesEnabled = eyeIntensity >= (isNight ? 0.2 : 0.3) || (daytimeBreach && eyeIntensity >= 0.2);
+
+  return {
+    intensity,
+    textMist: {
+      enabled: HORROR_FLOATING_TEXT_ENABLED && isNight && intensity >= 0.12,
+      intensity,
+      fragmentCount: Math.min(8, Math.max(3, Math.round(3 + intensity * 5))),
+    },
+    staticRows: {
+      enabled: isNight && intensity >= 0.58,
+      rows: HORROR_STATIC_ROWS.slice(0, intensity >= 0.78 ? 3 : 2),
+    },
+    textEyes: {
+      enabled: textEyesEnabled,
+      intensity: eyeIntensity,
+      count: Math.min(5, Math.max(1, Math.round(1 + eyeIntensity * 4))),
+      burst: eyeIntensity >= 0.68 || game.phase === "escape-transformed-choice" || game.phase === "record-stop",
+      variant: game.route === "altered" || transformedCount > 0 ? "eye1" : "sleepy1",
+    },
+  };
+}
+
+const DEV_UI_PRESET_OPTIONS = ["auto", "day-calm", "day-anomaly", "day-critical", "night-calm", "night-anomaly", "night-critical"];
+const DEV_UI_PRESET_LABELS = {
+  auto: "자동",
+  "day-calm": "주간 안정",
+  "day-anomaly": "주간 이상",
+  "day-critical": "주간 위기",
+  "night-calm": "야간 안정",
+  "night-anomaly": "야간 이상",
+  "night-critical": "야간 위기",
+};
+const DEV_EYE_VARIANT_LABELS = {
+  sleepy1: "졸린 눈",
+  eye1: "일반 눈",
+};
+const DEV_HORROR_PRESETS = [
+  {
+    id: "calm-baseline",
+    label: "안정 베이스",
+    description: "낮은 공포, 안정한 영지",
+    resources: { fear: 0 },
+    estate: { corruption: 0, recordIntegrity: 50 },
+    horrorTraits: {},
+    route: null,
+    truthDiscovered: false,
+  },
+  {
+    id: "mild-anomaly",
+    label: "약한 이상",
+    description: "이상 수위 초반",
+    resources: { fear: 30 },
+    estate: { corruption: 24, recordIntegrity: 44 },
+    horrorTraits: { intrusion: 8, omen: 6 },
+    route: null,
+    truthDiscovered: false,
+  },
+  {
+    id: "high-fear",
+    label: "공포 고조",
+    description: "공포 위주의 강한 압박",
+    resources: { fear: 70 },
+    estate: { corruption: 18, recordIntegrity: 40 },
+    horrorTraits: { madness: 14, haunting: 8, omen: 8 },
+    route: null,
+    truthDiscovered: false,
+  },
+  {
+    id: "high-corruption",
+    label: "오염 고조",
+    description: "영지 오염이 중심",
+    resources: { fear: 34 },
+    estate: { corruption: 66, recordIntegrity: 34 },
+    horrorTraits: { erosion: 18, mentalTaint: 14, intrusion: 10 },
+    route: null,
+    truthDiscovered: false,
+  },
+  {
+    id: "truth-discovered",
+    label: "진실 발현",
+    description: "진실 플래그와 압박",
+    resources: { fear: 36 },
+    estate: { corruption: 28, recordIntegrity: 38 },
+    horrorTraits: { intrusion: 12, nameDamage: 8 },
+    route: null,
+    truthDiscovered: true,
+  },
+  {
+    id: "altered-route",
+    label: "변질 진입",
+    description: "변질 경로 중심 이상",
+    resources: { fear: 42 },
+    estate: { corruption: 36, recordIntegrity: 36 },
+    horrorTraits: { erosion: 12, intrusion: 16, omen: 10 },
+    route: "altered",
+    truthDiscovered: false,
+  },
+  {
+    id: "critical",
+    label: "임계",
+    description: "눈/정적 임계치",
+    resources: { fear: 78 },
+    estate: { corruption: 70, recordIntegrity: 26 },
+    horrorTraits: { madness: 20, erosion: 28, mentalTaint: 24, intrusion: 24, nameDamage: 14, omen: 18 },
+    route: "altered",
+    truthDiscovered: true,
+    transformFirstCompanion: true,
+  },
+  {
+    id: "reset-visible-horror",
+    label: "공포 표시 리셋",
+    description: "공포 미리보기 상태 초기화",
+    resources: { fear: 0 },
+    estate: { corruption: 0, recordIntegrity: 50 },
+    horrorTraits: {},
+    route: null,
+    truthDiscovered: false,
+    resetCompanions: true,
+    clearRevealedHorror: true,
+    resetPreview: true,
+  },
+];
+
+function resolveUiPresentation(game, isNight, horrorDirector) {
+  const fear = Number(game.derivedHorror?.effectiveFear ?? game.resources?.fear ?? 0) / 100;
+  const corruption = Number(game.estate?.corruption ?? 0) / 100;
+  const intrusion = Number(game.derivedHorror?.intrusionPressure ?? 0) / 100;
+  const monsterization = Number(game.derivedHorror?.monsterization ?? 0) / 100;
+  const transformedCount = getTransformedCompanionCount(game);
+  const timePhase = isNight ? "night" : "day";
+  const hasAnomaly =
+    corruption >= 0.22 ||
+    fear >= 0.28 ||
+    intrusion >= 0.18 ||
+    monsterization >= 0.18 ||
+    transformedCount > 0 ||
+    game.truthFlags?.truthDiscovered ||
+    game.route === "altered";
+  const isCritical =
+    corruption >= 0.58 ||
+    fear >= 0.65 ||
+    intrusion >= 0.55 ||
+    monsterization >= 0.55 ||
+    (horrorDirector?.textEyes?.intensity ?? 0) >= 0.68 ||
+    game.phase === "escape-transformed-choice" ||
+    game.phase === "record-stop";
+  const uiStage = isCritical ? "critical" : hasAnomaly ? "anomaly" : "calm";
+  const preset = `${timePhase}-${uiStage}`;
+
+  return {
+    timePhase,
+    uiStage,
+    preset,
+    allowHorrorLayers: uiStage !== "calm",
+  };
+}
+
+function getDeveloperPreviewIntensity(uiStage) {
+  if (uiStage === "critical") return 0.72;
+  if (uiStage === "anomaly") return 0.42;
+  return 0.18;
+}
+
+function applyDeveloperUiOverrides(presentation, uiPreset) {
+  const preset = uiPreset === "auto" ? presentation.preset : uiPreset;
+  const [timePhase = presentation.timePhase, uiStage = presentation.uiStage] = preset.split("-");
+  const isDeveloperPreview = uiPreset !== "auto";
+  const previewIntensity = isDeveloperPreview ? getDeveloperPreviewIntensity(uiStage) : 0;
+
+  return {
+    ...presentation,
+    timePhase,
+    uiStage,
+    preset,
+    allowHorrorLayers: uiStage !== "calm",
+    previewIntensity,
+    previewStaticRows: isDeveloperPreview && uiStage === "critical",
+    previewTextEyes: isDeveloperPreview && uiStage === "critical",
+  };
+}
+
+function applyUiPresentationToHorrorDirector(director, presentation) {
+  const intensity = Math.max(director.intensity, presentation.previewIntensity ?? 0);
+  const eyeIntensity = presentation.previewTextEyes
+    ? Math.max(director.textEyes.intensity, 0.72)
+    : director.textEyes.intensity;
+  return {
+    ...director,
+    intensity,
+    textMist: {
+      ...director.textMist,
+      enabled: presentation.allowHorrorLayers && director.textMist.enabled,
+    },
+    staticRows: {
+      ...director.staticRows,
+      enabled: presentation.allowHorrorLayers && (director.staticRows.enabled || presentation.previewStaticRows),
+      rows: director.staticRows.rows?.length
+        ? director.staticRows.rows
+        : HORROR_STATIC_ROWS.slice(0, 2),
+    },
+    textEyes: {
+      ...director.textEyes,
+      enabled: presentation.allowHorrorLayers && (director.textEyes.enabled || presentation.previewTextEyes),
+      intensity: eyeIntensity,
+      count: presentation.previewTextEyes
+        ? Math.max(director.textEyes.count, 3)
+        : director.textEyes.count,
+      burst: director.textEyes.burst || presentation.previewTextEyes,
+    },
+  };
+}
+
+function pseudoNoise(value) {
+  const n = Math.sin(value * 127.1 + 311.7) * 43758.5453;
+  return n - Math.floor(n);
+}
+
+function pickGlyph(list, seed) {
+  return list[Math.floor(pseudoNoise(seed) * list.length) % list.length];
+}
+
+function getTextEyeVariantId(variant) {
+  return variant === "wide" || variant === "eye1" ? "eye1" : "sleepy1";
+}
+
+function getMarenolEyeMaskLines(variantId, nx, ax, ry, lidScale) {
+  if (variantId === "eye1") {
+    const almond = ry * Math.pow(1 - Math.pow(ax, 1.52), 0.53) * lidScale;
+    const upperBias = 1 + 0.1 * Math.sin((nx + 0.2) * Math.PI);
+    const lowerBias = 0.85 + 0.11 * Math.cos((nx - 0.1) * Math.PI);
+    return {
+      upper: -almond * upperBias,
+      lower: almond * lowerBias,
+    };
+  }
+
+  const almond = ry * Math.pow(1 - Math.pow(ax, 1.34), 0.62) * lidScale;
+  const sleepyDrop = ry * (0.1 + 0.025 * Math.sin((nx - 0.2) * Math.PI));
+  return {
+    upper: -almond * (0.4 + 0.05 * Math.sin((nx + 0.15) * Math.PI)) + sleepyDrop,
+    lower: almond * (0.72 + 0.04 * Math.cos((nx - 0.1) * Math.PI)) + sleepyDrop * 0.1,
+  };
+}
+
+function getMarenolEyeLidBandY(variantId, ry, shape, lidScale, side) {
+  if (variantId === "eye1") {
+    return side < 0
+      ? -ry * shape * lidScale
+      : ry * 0.88 * shape * lidScale;
+  }
+
+  return side < 0
+    ? -ry * 0.42 * shape * lidScale + ry * 0.1
+    : ry * 0.72 * shape * lidScale + ry * 0.02;
+}
+
+function pickRuntimeGlyph(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function getMarenolBlink(blinkState, time, reduceMotion, burst = false) {
+  if (reduceMotion) return 0;
+  if (blinkState.burstMode !== burst) {
+    blinkState.burstMode = burst;
+    blinkState.nextBlink = 0;
+    blinkState.until = 0;
+  }
+  if (!blinkState.nextBlink) {
+    blinkState.nextBlink = burst
+      ? time + 240 + Math.random() * 520
+      : time + 5000 + Math.random() * 7000;
+  }
+  if (time >= blinkState.nextBlink) {
+    blinkState.startedAt = time;
+    blinkState.duration = burst
+      ? 70 + Math.random() * 90
+      : 135 + Math.random() * 100;
+    blinkState.until = time + blinkState.duration;
+    blinkState.nextBlink = burst
+      ? blinkState.until + 360 + Math.random() * 820
+      : blinkState.until + 5000 + Math.random() * 7000;
+  }
+  if (!blinkState.until || time > blinkState.until) return 0;
+  const phase = (time - blinkState.startedAt) / Math.max(1, blinkState.duration);
+  return Math.sin(clampRange(phase, 0, 1) * Math.PI);
+}
+
+function getMarenolEyeMetrics(layout, width, height) {
+  const rx = Math.min(width * layout.rx, 360) * layout.s;
+  const ry = Math.min(height * layout.ry, 142) * layout.s;
+  return {
+    cx: width * layout.x,
+    cy: height * layout.y,
+    rx,
+    ry,
+    cell: clampRange((Math.min(width, height) / 98) * Math.max(0.82, layout.s), 5, 7),
+  };
+}
+
+function stampMarenolEyeFromBuffer(ctx, sourceCanvas, width, height, dpr, layout) {
+  const source = getMarenolEyeMetrics(HORROR_EYE_SINGLE_LAYOUT, width, height);
+  const dest = getMarenolEyeMetrics(layout, width, height);
+  const sourcePad = Math.max(source.rx * 0.18, 36);
+  const destPad = Math.max(dest.rx * 0.18, 36);
+  const sourceW = (source.rx + sourcePad) * 2;
+  const sourceH = source.ry * 4.1;
+  const destW = (dest.rx + destPad) * 2;
+  const destH = dest.ry * 4.1;
+
+  ctx.save();
+  ctx.translate(dest.cx, dest.cy);
+  ctx.rotate((layout.r * Math.PI) / 180);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, dest.rx + destPad, dest.ry * 1.62, 0, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.drawImage(
+    sourceCanvas,
+    Math.max(0, (source.cx - sourceW / 2) * dpr),
+    Math.max(0, (source.cy - sourceH / 2) * dpr),
+    Math.min(sourceW * dpr, sourceCanvas.width),
+    Math.min(sourceH * dpr, sourceCanvas.height),
+    -destW / 2,
+    -destH / 2,
+    destW,
+    destH
+  );
+  ctx.restore();
+}
+
+function drawMarenolLidGlyphBand(ctx, variantId, rx, ry, lidScale, blink, time, side, reduceMotion) {
+  const localTime = reduceMotion ? 0 : time * 0.001;
+  const sampleCount = 112;
+  const band = variantId === "eye1" ? (side < 0 ? 7 : 5) : (side < 0 ? 9 : 4);
+  const baseSize = clampRange(Math.min(rx, ry) / 18, 5, 8);
+
+  for (let i = 0; i <= sampleCount; i += 1) {
+    const p = i / sampleCount;
+    const nx = -1 + p * 2;
+    const endFade = Math.pow(1 - Math.abs(nx), 0.28);
+    const shape = Math.pow(
+      1 - Math.abs(nx),
+      variantId === "eye1" ? (side < 0 ? 0.52 : 0.55) : (side < 0 ? 0.58 : 0.64)
+    );
+    const x = nx * rx;
+    const curveY = getMarenolEyeLidBandY(variantId, ry, shape, lidScale, side);
+    const skip = pseudoNoise(i * 8.31 + side * 19.7) < 0.18 + blink * 0.18;
+    if (skip || endFade < 0.22) continue;
+
+    for (let layer = 0; layer < band; layer += 1) {
+      const seed = i * 17.13 + layer * 23.9 + side * 41.7;
+      const n1 = pseudoNoise(seed + Math.floor(localTime * 9));
+      const n2 = pseudoNoise(seed + 5.2);
+      const n3 = pseudoNoise(seed + 9.9);
+      const inward = variantId === "eye1"
+        ? (side < 0 ? layer * 3.5 : -layer * 3.3)
+        : (side < 0 ? layer * 2.7 : -layer * 2.2);
+      const torn = Math.sin(nx * 9.2 + layer * 1.7 + localTime * 1.8) *
+        (variantId === "eye1" ? 3.2 : (side < 0 ? 2.6 : 1.8));
+      const y = curveY + inward + (n1 - 0.5) * 13 + torn;
+      const xJitter = (n2 - 0.5) * 12 + Math.sin(localTime * 2.4 + seed) * 1.8;
+      const alpha = variantId === "eye1"
+        ? (0.06 + (band - layer) / band * 0.21 + n3 * 0.15) * endFade
+        : (0.05 + (band - layer) / band * (side < 0 ? 0.19 : 0.12) + n3 * 0.1) * endFade;
+      const red = Math.floor((variantId === "eye1" ? 126 : 98) + n1 * (variantId === "eye1" ? 114 : 86));
+      const size = baseSize + n2 * 5 + (layer === 0 ? 1.5 : 0);
+
+      ctx.font = `${layer < 2 ? 700 : 400} ${size}px Consolas, "Courier New", monospace`;
+      ctx.fillStyle = `rgba(${red}, 0, ${Math.floor(n3 * 18)}, ${alpha})`;
+      ctx.fillText(pickRuntimeGlyph(HORROR_EYE_LID_GLYPHS), x + xJitter, y);
+    }
+  }
+}
+
+function drawMarenolLids(ctx, variantId, rx, ry, lidScale, blink, time, reduceMotion) {
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  drawMarenolLidGlyphBand(ctx, variantId, rx, ry, lidScale, blink, time, -1, reduceMotion);
+  drawMarenolLidGlyphBand(ctx, variantId, rx, ry, lidScale, blink, time, 1, reduceMotion);
+  ctx.restore();
+}
+
+function drawTextEye(ctx, layout, width, height, time, pointer, effect, index, reduceMotion, blinkState) {
+  const variantId = getTextEyeVariantId(effect.variant);
+  const { cx, cy, rx, ry, cell } = getMarenolEyeMetrics(layout, width, height);
+  const fontSize = cell * 1.24;
+  const lookX = pointer.x * rx * 0.045 + (reduceMotion ? 0 : Math.sin(time * 0.0011 + index * 0.41) * 7 * layout.s);
+  const lookY = pointer.y * ry * 0.06 + (reduceMotion ? 0 : Math.cos(time * 0.0014 + index * 0.37) * 4 * layout.s);
+  const irisR = Math.min(rx, ry) * 0.56;
+  const pupilR = irisR * 0.39;
+  const blink = getMarenolBlink(blinkState, time, reduceMotion, effect.burst);
+  const lidScale = 1 - blink * 0.93;
+  const burstJitter = effect.burst && !reduceMotion
+    ? Math.sin(time * 0.026 + index * 0.43) * (2.2 + effect.intensity * 4.2) * layout.s
+    : 0;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate((layout.r * Math.PI) / 180);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `${fontSize}px Consolas, "Courier New", monospace`;
+  ctx.globalCompositeOperation = "screen";
+
+  const jitterAmp = reduceMotion ? 0 : 1.15;
+  for (let y = -ry; y <= ry; y += cell * 1.12) {
+    for (let x = -rx; x <= rx; x += cell) {
+      const nx = x / rx;
+      const ax = Math.abs(nx);
+      if (ax > 1) continue;
+
+      const lines = getMarenolEyeMaskLines(variantId, nx, ax, ry, lidScale);
+      const upperLine = lines.upper;
+      const lowerLine = lines.lower;
+      if (y < upperLine || y > lowerLine) continue;
+
+      const px = x - lookX;
+      const py = y - lookY;
+      const dist = Math.hypot(px, py);
+      const edge = Math.min(y - upperLine, lowerLine - y);
+      const scar = Math.sin(x * 0.073 + y * 0.031 + time * 0.003);
+      if (scar > 0.88 && edge < cell * 8) continue;
+
+      const noise = Math.sin(x * 0.11 + y * 0.17 + time * 0.004) * 0.5 + 0.5;
+      let char = pickRuntimeGlyph(HORROR_EYE_GLYPHS);
+      let color = "rgba(118, 16, 16, 0.44)";
+
+      if (edge < cell * 3.2) {
+        char = pickRuntimeGlyph(HORROR_EYE_EDGE_GLYPHS);
+        color = `rgba(202, 0, 0, ${0.27 + noise * 0.34})`;
+      }
+
+      if (dist < irisR) {
+        const ring = dist / irisR;
+        char = pickRuntimeGlyph(HORROR_EYE_IRIS_GLYPHS);
+        const red = Math.floor(160 + 70 * (1 - ring));
+        const green = Math.floor(8 + 20 * (1 - ring));
+        color = `rgba(${red}, ${green}, ${Math.floor(18 + noise * 26)}, ${0.52 + noise * 0.38})`;
+
+        const spoke = Math.abs(Math.sin(Math.atan2(py, px) * 18 + time * 0.0013));
+        if (spoke > 0.86 && ring > 0.34) {
+          char = pickRuntimeGlyph(["/", "\\", "|"]);
+          color = `rgba(255, 34, 46, ${0.58 + noise * 0.3})`;
+        }
+      }
+
+      if (dist < pupilR) {
+        const inner = dist / pupilR;
+        char = pickRuntimeGlyph([" ", ".", "`"]);
+        color = `rgba(${Math.floor(12 + noise * 15)}, 0, 0, ${0.86 - inner * 0.25})`;
+      }
+
+      const highlightOne = Math.hypot(px + irisR * 0.32, py + irisR * 0.38);
+      const highlightTwo = Math.hypot(px - irisR * 0.18, py + irisR * 0.2);
+      if (highlightOne < irisR * 0.13 || highlightTwo < irisR * 0.07) {
+        char = pickRuntimeGlyph(["*", "+", "."]);
+        color = `rgba(255, 214, 222, ${0.8 + noise * 0.18})`;
+      }
+
+      const jitterX = jitterAmp * Math.sin(time * 0.012 + x * 0.23 + y * 0.11) + burstJitter;
+      const jitterY = jitterAmp * Math.cos(time * 0.011 + x * 0.08 - y * 0.19) - burstJitter * 0.35;
+      ctx.fillStyle = color;
+      ctx.fillText(char, x + jitterX, y + jitterY);
+    }
+  }
+
+  drawMarenolLids(ctx, variantId, rx, ry, lidScale, blink, time, reduceMotion);
+  ctx.restore();
+}
+
+function HorrorTextEyes({ effect }) {
+  const canvasRef = useRef(null);
+  const blinkStatesRef = useRef([]);
+
+  useEffect(() => {
+    if (!effect.enabled) return undefined;
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return undefined;
+    const eyeBuffer = document.createElement("canvas");
+    const eyeBufferCtx = eyeBuffer.getContext("2d", { alpha: true });
+    if (!eyeBufferCtx) return undefined;
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const pointer = { x: 0, y: 0 };
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let frameId = 0;
+    let lastDraw = 0;
+    let visible = !document.hidden;
+
+    const resize = () => {
+      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      width = Math.floor(window.innerWidth);
+      height = Math.floor(window.innerHeight);
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      eyeBuffer.width = canvas.width;
+      eyeBuffer.height = canvas.height;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      eyeBufferCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      eyeBufferCtx.imageSmoothingEnabled = false;
+    };
+    const move = (event) => {
+      pointer.x = clampRange((event.clientX / Math.max(1, width) - 0.5) * 2, -1, 1);
+      pointer.y = clampRange((event.clientY / Math.max(1, height) - 0.5) * 2, -1, 1);
+    };
+    const visibility = () => {
+      visible = !document.hidden;
+    };
+    const frameInterval = effect.burst ? 72 : (effect.count > 1 ? 110 : 82);
+    const draw = (time) => {
+      if (!visible) {
+        frameId = requestAnimationFrame(draw);
+        return;
+      }
+      if (!reduceMotion && time - lastDraw < frameInterval) {
+        frameId = requestAnimationFrame(draw);
+        return;
+      }
+      lastDraw = time;
+      ctx.clearRect(0, 0, width, height);
+      const eyeCount = clampRange(effect.count, 1, HORROR_EYE_LAYOUTS.length);
+      if (!blinkStatesRef.current[0]) blinkStatesRef.current[0] = {};
+      if (eyeCount > 1) {
+        eyeBufferCtx.clearRect(0, 0, width, height);
+        drawTextEye(eyeBufferCtx, HORROR_EYE_SINGLE_LAYOUT, width, height, time, pointer, effect, 0, reduceMotion, blinkStatesRef.current[0]);
+        HORROR_EYE_LAYOUTS.slice(0, eyeCount).forEach((layout) => {
+          stampMarenolEyeFromBuffer(ctx, eyeBuffer, width, height, dpr, layout);
+        });
+      } else {
+        drawTextEye(ctx, HORROR_EYE_SINGLE_LAYOUT, width, height, time, pointer, effect, 0, reduceMotion, blinkStatesRef.current[0]);
+      }
+      if (!reduceMotion) frameId = requestAnimationFrame(draw);
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+    window.addEventListener("pointermove", move);
+    document.addEventListener("visibilitychange", visibility);
+    draw(performance.now());
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", resize);
+      window.removeEventListener("pointermove", move);
+      document.removeEventListener("visibilitychange", visibility);
+    };
+  }, [effect.burst, effect.count, effect.enabled, effect.intensity, effect.variant]);
+
+  if (!effect.enabled) return null;
+  return <canvas className="horror-text-eyes" ref={canvasRef} style={{ "--horror-eye-strength": effect.intensity.toFixed(2) }} aria-hidden="true" />;
+}
+
+function HorrorTextOverlay({ game, isNight, director: directorOverride }) {
+  const director = directorOverride ?? resolveHorrorDirector(game, isNight);
+  if (!director.textMist.enabled && !director.staticRows.enabled && !director.textEyes.enabled) return null;
+
+  const intensity = director.intensity;
+
+  return (
+    <div
+      className="horror-text-overlay"
+      style={{ "--horror-strength": intensity.toFixed(2) }}
+      aria-hidden="true"
+    >
+      <HorrorTextEyes effect={director.textEyes} />
+      {director.textMist.enabled && (
+        <div className="horror-text-overlay__mist">
+          {HORROR_FRAGMENTS.slice(0, director.textMist.fragmentCount).map((text, index) => {
+            const layout = HORROR_FRAGMENT_LAYOUTS[index % HORROR_FRAGMENT_LAYOUTS.length];
+            return (
+              <span
+                className={"horror-fragment " + (index % 3 !== 0 ? "horror-fragment--eaten" : "")}
+                data-text={text}
+                key={text + "-" + index}
+                style={{
+                  "--x": layout.x + "%",
+                  "--y": layout.y + "%",
+                  "--scale": layout.s,
+                  "--rotate": layout.r + "deg",
+                  "--delay": layout.d + "s",
+                }}
+              >
+                {text}
+              </span>
+            );
+          })}
+        </div>
+      )}
+      {director.staticRows.enabled && (
+        <div className="horror-text-overlay__static">
+          {director.staticRows.rows.map((row, index) => (
+            <span
+              key={row + "-" + index}
+              style={{
+                "--y": 18 + index * 18 + "%",
+                "--delay": index * -0.9 + "s",
+                "--duration": 2.7 + index * 0.35 + "s",
+              }}
+            >
+              {row}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const RESOURCE_DETAILS = {
+  food: "영지 주민이 먹을 식량의 비축 상태.",
+  timber: "수리와 난방에 사용하는 목재의 비축 상태.",
+  silver: "거래와 영지 운영에 사용하는 은화.",
+  salt: "악한 것을 봉쇄하고 정화하는 데 사용하는 축성 소금.",
+  population: "현재 영지에 속한 사람의 수.",
+  faith: "영지 공동체가 유지하는 신앙의 상태.",
+  fear: "영지 전체에 쌓인 공포. 높을수록 일상이 흔들린다.",
+};
+
+const ESTATE_DETAILS = {
+  stability: "영지의 질서와 일상이 유지되는 정도.",
+  trust: "주민들이 영주의 선택을 신뢰하는 정도.",
+  recordIntegrity: "장부와 증언이 서로 모순 없이 남아 있는 정도.",
+  corruption: "저택과 영지에 퍼진 비정상적인 징후.",
+  missing: "돌아오지 않은 사람의 수.",
+};
+
+function getChangeDetail(change) {
+  if (change.group === "능력치") return STAT_DETAILS[change.key];
+  if (change.group === "성향") return TRAIT_DETAILS[change.key];
+  if (change.group === "공포 특성") return HORROR_TRAIT_META[change.key]?.detail;
+  if (change.group === "자원") return RESOURCE_DETAILS[change.key];
+  if (change.group === "영지") return ESTATE_DETAILS[change.key];
+  return undefined;
+}
+
+function resourceStage(key, value) {
+  const amount = Math.max(0, Math.min(value ?? 0, 100));
+  if (key === "fear") {
+    if (amount <= 20) return "평온";
+    if (amount <= 40) return "불안";
+    if (amount <= 60) return "공포";
+    if (amount <= 80) return "패닉";
+    return "붕괴 직전";
+  }
+  if (amount <= 20) return "고갈";
+  if (amount <= 40) return "부족함";
+  if (amount <= 60) return "보통";
+  if (amount <= 80) return "넉넉함";
+  return "풍족함";
+}
+
+function resourceTone(key, value) {
+  const amount = Math.max(0, Math.min(value ?? 0, 100));
+  if (key === "fear") {
+    if (amount <= 20) return "good";
+    if (amount <= 40) return "neutral";
+    if (amount <= 60) return "warning";
+    if (amount <= 80) return "danger";
+    return "critical";
+  }
+  if (amount <= 20) return "critical";
+  if (amount <= 40) return "danger";
+  if (amount <= 60) return "neutral";
+  if (amount <= 80) return "good";
+  return "abundant";
+}
+
+function hasFinalConsonant(text) {
+  const code = text.at(-1)?.charCodeAt(0);
+  return code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 !== 0;
+}
+
+function joinLabels(labels) {
+  if (labels.length <= 1) return labels[0] ?? "";
+  return labels.map((label, index) => (
+    index === labels.length - 1 ? label : `${label}${hasFinalConsonant(label) ? "과" : "와"}`
+  )).join(" ");
+}
+
+function objectPhrase(labels) {
+  const text = joinLabels(labels);
+  return `${text}${hasFinalConsonant(text) ? "을" : "를"}`;
+}
+
+function subjectPhrase(labels) {
+  const text = joinLabels(labels);
+  return `${text}${hasFinalConsonant(text) ? "이" : "가"}`;
+}
+
+function describeEffects(effects = {}) {
+  const entries = Object.entries(effects).flatMap(([group, values]) =>
+    Object.entries(values ?? {}).map(([key, value]) => ({
+      group,
+      key,
+      value,
+      label: LABELS[key] ?? TRAIT_META[key]?.label ?? key,
+    })),
+  );
+  const positive = entries.filter((entry) => entry.value > 0);
+  const negative = entries.filter((entry) => entry.value < 0);
+  const sentences = [];
+  if (positive.length > 0) {
+    const recovery = positive.filter((entry) => ["health", "stamina"].includes(entry.key));
+    const gains = positive.filter((entry) => !["health", "stamina"].includes(entry.key));
+    if (recovery.length > 0) sentences.push(`${objectPhrase(recovery.map((entry) => entry.label))} 회복한다.`);
+    if (gains.length > 0) sentences.push(`${objectPhrase(gains.map((entry) => entry.label))} 늘린다.`);
+  }
+  if (negative.length > 0) {
+    const large = negative.filter((entry) => Math.abs(entry.value) >= 4);
+    const ordinary = negative.filter((entry) => Math.abs(entry.value) < 4);
+    if (large.length > 0) sentences.push(`${objectPhrase(large.map((entry) => entry.label))} 크게 소모한다.`);
+    if (ordinary.length > 0) sentences.push(`${subjectPhrase(ordinary.map((entry) => entry.label))} 감소한다.`);
+  }
+  return sentences.join(" ");
+}
+
+function describeChoice(choice) {
+  if (choice.tooltip) return choice.tooltip;
+  const categoryLead = {
+    gathering: "영지의 물자를 확보하거나 정리한다.",
+    interaction: "인물과 대화하며 관계와 영지 상태에 영향을 준다.",
+    investigation: "단서와 기록을 조사한다.",
+    training: "훈련을 통해 능력치를 높인다.",
+    rest: "휴식을 통해 몸을 회복한다.",
+    other: "일반 업무 밖의 행동을 시도한다.",
+  }[choice.category];
+  const effectText = describeEffects(choice.effects ?? choice.success);
+  const failureText = describeEffects(choice.failure);
+  if (failureText) {
+    return [categoryLead, effectText && `성공하면 ${effectText}`, `실패하면 ${failureText}`].filter(Boolean).join(" ");
+  }
+  return [categoryLead, effectText, choice.detail ?? choice.preview, "결과는 선택한 뒤 확인할 수 있다."].filter(Boolean).join(" ");
+}
+
+function getEstatePresentation(game, isNight) {
+  if ((game.estate?.corruption ?? 0) >= 60) {
+    return { name: "위험구역", tone: "danger", script: "사람들은 아직 일상을 지키고 있다. 저택은 더 이상 그들을 흉내 내지 않는다." };
+  }
+  if ((game.estate?.trust ?? 0) <= 20 || (game.estate?.stability ?? 0) <= 20) {
+    return { name: "흔들리는 영지", tone: "danger", script: "보고는 늦어지고, 닫힌 문 안에서 낮은 목소리가 오래 이어진다." };
+  }
+  if (isNight) {
+    return { name: "밤의 로젠탈", tone: "night", script: "저택의 불이 대부분 꺼졌다. 지하로 이어지는 문만 열려 있다." };
+  }
+  if ((game.estate?.trust ?? 0) >= 65 && (game.estate?.stability ?? 0) >= 65) {
+    return { name: "평화로운 영지", tone: "good", script: "사람들은 맡은 일을 마치고 당신의 다음 결정을 기다린다." };
+  }
+  return { name: "일반 영지", tone: "neutral", script: "로젠탈은 평온하다. 적어도, 해가 떠 있는 동안에는." };
+}
+
+function ResourceCard({ statKey, value, isNight, revealed }) {
+  const meta = RESOURCE_META[statKey];
+  const tone = resourceTone(statKey, value);
+  return (
+    <article className={`resource-card resource-card--${statKey} resource-card--${tone}`} title={`${meta.label}의 현재 상태를 다섯 단계로 표시한다.`}>
+      <span>{meta.icon}</span>
+      <small>{meta.label}</small>
+      <strong>{revealed ? resourceStage(statKey, value) : "?"}</strong>
+      <em>{isNight ? "밤에는 보고가 올라오지 않는다" : revealed ? "현재 장부 기록" : "첫날 장부 확인 전"}</em>
+    </article>
+  );
+}
+
+function SceneImage({ isNight, estateState, preset }) {
+  const sceneClass = [
+    "estate-scene",
+    isNight ? "estate-scene--night" : "estate-scene--day",
+    preset ? `estate-scene--${preset}` : null,
+  ].filter(Boolean).join(" ");
+  const isCalmNight = preset === "night-calm";
+  return (
+    <section className={sceneClass}>
+      <img className="estate-scene__image" src="./assets/eldroa-estate-day.jpg" alt={isNight ? "밤의 로젠탈 영지" : "낮의 로젠탈 영지"} />
+      <div className="estate-scene__shade" />
+      <div className="estate-scene__caption">
+        <span>영지의 취급 · {estateState.name}</span>
+        <strong>{isCalmNight ? "푸른 불빛이 남아 있다" : isNight ? "문이 열려 있다" : "아무 일도 일어나지 않았다"}</strong>
+        <p>{isCalmNight ? "저택은 조용하지만 아직 무너지지 않았다." : isNight ? "저택의 불이 대부분 꺼져 있다." : "영지는 평온하다."}</p>
+      </div>
+    </section>
+  );
+}
+
+function HorrorStatePanel({ game }) {
+  const revealedTraitKeys = (game.revealedHorrorTraits ?? [])
+    .filter((key) => HORROR_TRAIT_META[key] && (game.horrorTraits?.[key] ?? 0) > 0);
+  const revealedStateKeys = (game.revealedHorrorStates ?? [])
+    .filter((key) => HORROR_DERIVED_META[key] && (game.derivedHorror?.[key] ?? 0) > 0);
+
+  if (revealedTraitKeys.length === 0 && revealedStateKeys.length === 0) return null;
+
+  return (
+    <div className="rule-block horror-state-panel">
+      {revealedTraitKeys.length > 0 && (
+        <>
+          <span className="eyebrow">공포 특성</span>
+          <div className="horror-state-list">
+            {revealedTraitKeys.map((key) => (
+              <span className="horror-state-chip" key={key} title={HORROR_TRAIT_META[key].detail}>
+                {HORROR_TRAIT_META[key].label} {displayInteger(game.horrorTraits[key])}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+      {revealedStateKeys.length > 0 && (
+        <>
+          <span className="eyebrow">최종 상태</span>
+          <div className="horror-state-list horror-state-list--derived">
+            {revealedStateKeys.map((key) => (
+              <span className="horror-state-chip horror-state-chip--derived" key={key} title={HORROR_DERIVED_META[key].detail}>
+                {HORROR_DERIVED_META[key].label} {displayInteger(game.derivedHorror[key])}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function CharacterPanel({ game }) {
+  const companions = Object.values(game.companionStates ?? {});
+  const transformed = companions.filter((person) => person.status === "transformed").length;
+  const lost = companions.filter((person) => ["dead", "missing"].includes(person.status)).length;
+  const rankedTraits = Object.entries(game.traits ?? {})
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 4);
+  const job = getJob(game);
+  const equippedMarkId = getEquippedMarkId(game);
+  const equippedMark = getMark(equippedMarkId);
+  const loadoutMarkIds = getLoadoutMarkIds(game);
+
+  return (
+    <aside className="character-panel">
+      <div className="character-panel__head">
+        <div className="portrait-placeholder"><span>영주</span></div>
+        <div>
+          <span className="eyebrow">이번 기록</span>
+          <h2>{game.specialSeedName ?? "시작 전"}</h2>
+          <p>{game.specialSeedRule ?? "새 게임을 시작하면 기록이 정해진다."}</p>
+        </div>
+      </div>
+
+      <div className="stat-grid">
+        {Object.entries(game.stats ?? {}).map(([key, value]) => (
+          <div className={value < 0 ? "is-negative" : ""} key={key} title={STAT_DETAILS[key]}>
+            <span>{LABELS[key] ?? key}</span>
+            <strong>{displayTenth(game.displayStats?.[key] ?? value)}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="rule-block">
+        <span className="eyebrow">성향</span>
+        <div className="rule-chip-list">
+          {rankedTraits.map(([key, value]) => <span key={key} title={TRAIT_DETAILS[key]}>{TRAIT_META[key]?.label ?? key} {displayInteger(value)}</span>)}
+        </div>
+      </div>
+      <HorrorStatePanel game={game} />
+      <div className="rule-block">
+        <span className="eyebrow">직업</span>
+        <strong>{game.jobId ? job?.name : "아직 정해지지 않음"}</strong>
+        {game.jobId && <small>{job?.title}</small>}
+      </div>
+      <div className="rule-block">
+        <span className="eyebrow">표식</span>
+        <strong>{equippedMark ? getMarkName(equippedMark.id) : "장착 없음"}</strong>
+        <small>{loadoutMarkIds.length} / {MARK_LOADOUT_LIMIT} 휴대 · {equippedMark ? MARK_KIND_LABELS[equippedMark.kind] : "성흔/낙인 선택 가능"}</small>
+      </div>
+      <div className="rule-block">
+        <span className="eyebrow">패시브 스킬</span>
+        <ol className="passive-list">
+          {(game.passiveIds ?? []).map((id) => <li key={id} title={getPassive(id)?.description}><strong>{getPassive(id)?.name}</strong></li>)}
+        </ol>
+      </div>
+      <div className="rule-block">
+        <span className="eyebrow">사람들</span>
+        <small>영구 소실 {lost} · 변질 {transformed} · 유품 {game.keepsakes?.length ?? 0}</small>
+        <div className="roster-chips">
+          {companions.map((person) => (
+            <span className={`status-chip status-chip--${person.status}`} key={person.id} title={`${person.relation ?? person.reveal ?? "로젠탈의 주민"} · 현재 상태: ${STATUS_LABELS[person.status]}`}>
+              {displayCompanion(person)} · {STATUS_LABELS[person.status]}
+            </span>
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function normalizeDialogue(value, defaultSpeaker = "narration") {
+  const source = Array.isArray(value) ? value : [value];
+  return source
+    .flatMap((entry) => {
+      const text = typeof entry === "object" && entry !== null ? entry.text : entry;
+      const speaker = typeof entry === "object" && entry !== null
+        ? entry.speaker ?? defaultSpeaker
+        : defaultSpeaker;
+      return String(text ?? "")
+        .split(/\n\s*\n/)
+        .map((paragraph) => ({ text: paragraph.trim(), speaker }));
+    })
+    .filter((entry) => entry.text);
+}
+
+function resolveSpeakerLabel(speaker, game) {
+  if (speaker === "narration") return "들리지 않는 목소리";
+  if (speaker === "player") return "나";
+  if (!speaker || speaker === "unknown" || speaker === "*미정*") return "*미정*";
+  if (speaker.startsWith("npc:")) return getNpcSpeaker(game, speaker.slice(4));
+  return speaker;
+}
+
+function getSpeakerKind(speaker) {
+  if (speaker === "narration") return "narration";
+  if (speaker === "player") return "player";
+  if (speaker?.startsWith("npc:")) return "npc";
+  return "unknown";
+}
+
+function DialogueCard({ game, eyebrow, title, paragraphs, button, onContinue, danger = false }) {
+  const script = normalizeDialogue(paragraphs);
+  const scriptKey = script.map((line) => `${line.speaker}:${line.text}`).join("\u241e");
+  const [paragraphIndex, setParagraphIndex] = useState(0);
+
+  useEffect(() => {
+    setParagraphIndex(0);
+  }, [scriptKey]);
+
+  const currentIndex = Math.min(paragraphIndex, Math.max(script.length - 1, 0));
+  const hasNextParagraph = currentIndex < script.length - 1;
+  const currentLine = script[currentIndex];
+  const currentSpeaker = resolveSpeakerLabel(currentLine?.speaker, game);
+  const speakerKind = getSpeakerKind(currentLine?.speaker);
+
+  return (
+    <section className={`dialogue-card dialogue-card--speaker-${speakerKind} ${danger ? "dialogue-card--danger" : ""}`}>
+      <div className="dialogue-card__head">
+        <span>{eyebrow}</span>
+        <div className="dialogue-card__head-actions">
+          <span>{currentIndex + 1} / {script.length}</span>
+          {hasNextParagraph && (
+            <button className="dialogue-card__skip" type="button" onClick={() => setParagraphIndex(script.length - 1)}>
+              <span>스킵</span>
+            </button>
+          )}
+        </div>
+      </div>
+      {title && <h2 className="dialogue-card__title">{title}</h2>}
+      <strong className={`speaker-label speaker-label--${speakerKind} dialogue-card__speaker`}>{currentSpeaker}</strong>
+      <div className="dialogue-card__text">
+        {currentLine && <p key={`${scriptKey}-${currentIndex}`}>{currentLine.text}</p>}
+      </div>
+      <div className="dialogue-card__controls">
+        <button
+          type="button"
+          disabled={currentIndex === 0}
+          onClick={() => setParagraphIndex((index) => Math.max(index - 1, 0))}
+        >
+          이전으로
+        </button>
+        {hasNextParagraph ? (
+          <button type="button" onClick={() => setParagraphIndex((index) => index + 1)}>다음</button>
+        ) : (
+          button && <button type="button" onClick={onContinue}>{button}</button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SeedRevealModal({ name, rule, onContinue }) {
+  return (
+    <div className="seed-reveal-overlay">
+      <section className="seed-reveal-card">
+        <span className="eyebrow">이번 달의 이름</span>
+        <h2>{name}</h2>
+        <div className="seed-reveal-card__rule">
+          <small>공개된 특성</small>
+          <p>{rule}</p>
+        </div>
+        <button type="button" onClick={onContinue}>기록을 시작한다</button>
+      </section>
+    </div>
+  );
+}
+
+function ChoiceButton({ choice, onClick, selected, detail }) {
+  const unavailable = choice.available === false;
+  return (
+    <button
+      className={`choice choice--${choice.tone ?? "neutral"} ${selected ? "choice--selected" : ""} ${unavailable ? "choice--unavailable" : ""}`}
+      type="button"
+      disabled={selected || unavailable}
+      onClick={() => onClick(choice)}
+      title={unavailable ? choice.unavailableReason ?? "현재 선택할 수 없다" : describeChoice(choice)}
+    >
+      {choice.categoryLabel && <small>{choice.categoryLabel}</small>}
+      <strong>{choice.label ?? choice.title}</strong>
+      {(detail || unavailable) && <span>{unavailable ? choice.unavailableReason ?? "현재 선택할 수 없다" : detail}</span>}
+    </button>
+  );
+}
+
+function ChoicePanel({ game, eyebrow, title, text, choices, onChoose, selectedId, footer }) {
+  const paragraphs = normalizeDialogue(text);
+  const scriptKey = paragraphs.map((line) => `${line.speaker}:${line.text}`).join("\u241e");
+  const dialogueKey = `${eyebrow}\u241f${title}\u241f${scriptKey}`;
+  const [completedScriptKey, setCompletedScriptKey] = useState(null);
+  const dialogueComplete = paragraphs.length === 0 || completedScriptKey === dialogueKey;
+
+  return (
+    <>
+      <section className="choice-panel">
+        <header className="choice-panel__intro">
+          <span className="eyebrow">{eyebrow}</span>
+          <h2>{title}</h2>
+        </header>
+        {dialogueComplete ? (
+          <>
+          <div className={`choice-list ${selectedId ? "is-resolving" : ""}`}>
+            {choices.map((choice) => (
+              <ChoiceButton
+                key={choice.id}
+                choice={choice}
+                onClick={onChoose}
+                selected={Boolean(selectedId)}
+                detail={choice.detail ?? choice.preview}
+              />
+            ))}
+          </div>
+          {footer}
+          </>
+        ) : (
+          <div className="choice-panel__waiting">
+            <span>대화를 확인한 뒤 선택할 수 있다.</span>
+          </div>
+        )}
+      </section>
+      {!dialogueComplete && (
+        <DialogueCard
+          game={game}
+          eyebrow={eyebrow}
+          title={title}
+          paragraphs={paragraphs}
+          button="선택지를 확인한다"
+          onContinue={() => setCompletedScriptKey(dialogueKey)}
+        />
+      )}
+    </>
+  );
+}
+
+function ResultOverlay({ game, result, onContinue }) {
+  const paragraphs = normalizeDialogue(result?.result, result?.speaker ?? "narration");
+  const scriptKey = paragraphs.map((line) => `${line.speaker}:${line.text}`).join("\u241e");
+  const dialogueKey = `${result?.title ?? ""}\u241f${scriptKey}`;
+  const [completedScriptKey, setCompletedScriptKey] = useState(null);
+  const dialogueComplete = completedScriptKey === dialogueKey;
+  const changeGroups = [
+    { id: "stats", label: "주인공 능력치", changes: result?.changes?.filter((change) => change.group === "능력치") ?? [] },
+    { id: "resources", label: "영지 자원", changes: result?.changes?.filter((change) => change.group === "자원") ?? [] },
+    { id: "estate", label: "영지 상태", changes: result?.changes?.filter((change) => change.group === "영지") ?? [] },
+    { id: "traits", label: "성향", changes: result?.changes?.filter((change) => change.group === "성향") ?? [] },
+    { id: "horrorTraits", label: "공포 특성", changes: result?.changes?.filter((change) => change.group === "공포 특성") ?? [] },
+  ].filter((group) => group.changes.length > 0);
+
+  if (!result) return null;
+  if (!dialogueComplete && paragraphs.length > 0) {
+    return (
+      <DialogueCard
+        game={game}
+        eyebrow="선택의 결과"
+        title={result.title}
+        paragraphs={paragraphs}
+        button="선택의 결과 확인"
+        onContinue={() => setCompletedScriptKey(dialogueKey)}
+        danger={["danger", "lethal"].includes(result.tone)}
+      />
+    );
+  }
+
+  return (
+    <div className="overlay result-overlay">
+      <section className={`result-card result-card--${result.tone ?? "neutral"}`}>
+        <div className="result-card__head">
+          <span>선택의 결과</span>
+          <strong>{result.title}</strong>
+        </div>
+        <div className="result-card__summary">
+          <strong>{result.changes?.length > 0 ? `${result.changes.length}개 항목 변경` : "변화 없음"}</strong>
+        </div>
+        {result.notices?.length > 0 && (
+          <div className="notice-list">
+            {result.notices.map((notice, index) => <span key={`${notice}-${index}`}>{notice}</span>)}
+          </div>
+        )}
+        {changeGroups.length > 0 && (
+          <div className="change-groups">
+            {changeGroups.map((group) => (
+              <section className="change-group" key={group.id}>
+                <strong>{group.label}</strong>
+                <div className="change-list">
+                  {group.changes.map((change, index) => (
+                    <span
+                      className={change.delta < 0 ? "change--negative" : "change--positive"}
+                      key={`${change.group}-${change.key}-${index}`}
+                      title={getChangeDetail(change)}
+                    >
+                      {LABELS[change.key] ?? change.label} {displaySignedTenth(change.delta)}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+        <div className="result-card__controls">
+          <button type="button" onClick={onContinue}>확인</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SaveModal({ game, onClose, onLoad }) {
+  const [slots, setSlots] = useState(() => getSaveSlots());
+  const saveAllowed = canManualSave(game);
+  const saveSlot = (index) => {
+    saveManual(index, game);
+    setSlots(getSaveSlots());
+  };
+  return (
+    <div className="overlay overlay--top">
+      <section className="save-modal">
+        <header>
+          <div>
+            <span className="eyebrow">로컬 저장</span>
+            <h2>기록 보관함</h2>
+          </div>
+          <button type="button" onClick={onClose}>닫기</button>
+        </header>
+        <p>자동 저장은 선택 결과마다 갱신됩니다. 수동 저장은 하루가 시작될 때만 가능합니다.</p>
+        <div className="slot-list">
+          {slots.map((slot, index) => (
+            <article className="save-slot" key={index}>
+              <div>
+                <strong>수동 기록 {index + 1}</strong>
+                <span>{slot ? `${slot.state.day}일차 · ${slot.state.specialSeedName}` : "비어 있음"}</span>
+              </div>
+              <button type="button" disabled={!saveAllowed} onClick={() => saveSlot(index)}>저장</button>
+              <button type="button" disabled={!slot} onClick={() => onLoad(index)}>불러오기</button>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function RulesModal({ game, tutorial, onClose, onTogglePassive, onToggleMarkLoadout, onEquipMark }) {
+  const ownedPassives = game.ownedPassiveIds ?? game.passiveIds ?? [];
+  const ownedMarkIds = getOwnedMarkIds(game);
+  const loadoutMarkIds = getLoadoutMarkIds(game);
+  const equippedMarkId = getEquippedMarkId(game);
+  const markCounts = getMarkCounts(ownedMarkIds);
+  const markTotals = {
+    stigma: MARKS.filter((mark) => mark.kind === "stigma").length,
+    brand: MARKS.filter((mark) => mark.kind === "brand").length,
+  };
+  const branchUnlocks = getBranchUnlockLabels(ownedMarkIds);
+  const branchProgress = getMarkBranchProgress(ownedMarkIds);
+  const nextBranchGoals = getNextMarkBranchGoals(branchProgress);
+  const traitProgress = game.meta?.traitProgress ?? {};
+  const totalTraitLevel = Object.values(traitProgress).reduce((sum, item) => sum + (item.level ?? 0), 0);
+  const endingRecords = Object.values(game.meta?.endingRecords ?? {}).sort((left, right) => right.lastCycle - left.lastCycle);
+  return (
+    <div className="overlay overlay--top">
+      <section className="rules-modal">
+        <header>
+          <div>
+            <span className="eyebrow">{tutorial ? "튜토리얼 종료" : "규칙"}</span>
+            <h2>{tutorial ? "이제부터의 기록" : "로젠탈에서 살아남는 법"}</h2>
+          </div>
+          <button type="button" onClick={onClose}>닫기</button>
+        </header>
+
+        <div className="rules-modal__guide">
+          <article>
+            <strong>당신이 처한 상황</strong>
+            <p>당신은 매주 새 제물 후보에게 주어지는 로젠탈의 임시 영주 자리에 앉아 있다. 일곱째 밤까지 살아남으면 여덟째 날의 기록이 열린다.</p>
+          </article>
+          <article>
+            <strong>해야 할 것</strong>
+            <p>낮에는 영지를 관리하고 사람들을 알아간다. 밤에는 지하를 탐사하고, 귀환하기 전에 함께 내려간 사람에게 일어난 일을 책임져야 한다.</p>
+          </article>
+          <article>
+            <strong>성향</strong>
+            <p>성향은 선택의 누적 기록이다. 높은 성향은 관련 선택을 끌어오고 직업·성흔·사건의 조건을 바꾸지만, 숫자가 높다는 사실만으로 정답이 되지는 않는다.</p>
+          </article>
+        </div>
+
+        <section className="loadout-section">
+          <div>
+            <span className="eyebrow">성향 성장</span>
+            <strong>{totalTraitLevel} Lv</strong>
+          </div>
+          <p>관련 성향 선택으로 경험치를 얻고, 레벨은 같은 능력치의 양수·음수 스탯 변화를 10%씩 같은 방향으로 키운다.</p>
+          <div className="trait-progress-list">
+            {Object.entries(TRAIT_META).map(([key, trait]) => {
+              const progress = traitProgress[key] ?? { level: 0, xp: 0 };
+              const multiplier = 1 + (progress.level ?? 0) * 0.1;
+              return (
+                <article className="trait-progress-item" key={key}>
+                  <strong>{trait.label} Lv.{progress.level ?? 0}</strong>
+                  <span>{trait.stat} 변화 x{multiplier.toFixed(1)}</span>
+                  <small>{progress.level >= 10 ? "최대 레벨" : displayTenth(progress.xp ?? 0) + " / 10 xp"}</small>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="loadout-section">
+          <div>
+            <span className="eyebrow">엔딩 기록</span>
+            <strong>{endingRecords.length}</strong>
+          </div>
+          {endingRecords.length === 0 ? (
+            <p>아직 기록된 분기 엔딩이 없다.</p>
+          ) : (
+            <div className="ending-record-list">
+              {endingRecords.map((record) => (
+                <article className="ending-record-item" key={record.key}>
+                  <strong>{ENDING_LABELS[record.endingId] ?? record.endingId}</strong>
+                  <span>{ROUTE_LABELS[record.route] ?? record.route} · {record.truthDiscovered ? "진실 확인" : "진실 미확인"}</span>
+                  <small>{record.count}회 · 최초 {record.firstCycle}회차 · 최근 {record.lastCycle}회차</small>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="loadout-section">
+          <div>
+            <span className="eyebrow">패시브 장착</span>
+            <strong>{game.passiveIds?.length ?? 0} / 3</strong>
+          </div>
+          <p>보유한 패시브 가운데 세 개까지 직접 장착한다.</p>
+          <div className="loadout-list">
+            {ownedPassives.map((id) => {
+              const passive = PASSIVES.find((item) => item.id === id);
+              const active = game.passiveIds?.includes(id);
+              return (
+                <button className={active ? "is-equipped" : ""} type="button" key={id} onClick={() => onTogglePassive(id)} title={passive?.description}>
+                  <strong>{passive?.name}</strong>
+                  <small>{passive?.description}</small>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="loadout-section mark-section">
+          <div>
+            <span className="eyebrow">장비 / 도감</span>
+            <strong>{markCounts.total} / {MARKS.length}</strong>
+          </div>
+          <p>도감 보유만으로는 효과가 적용되지 않는다. 이번 회차에 휴대하는 {MARK_LOADOUT_LIMIT}개와 장착한 1개만 선택 계산에 반영된다.</p>
+          <div className="mark-summary">
+            <span>성흔 {markCounts.stigma} / {markTotals.stigma}</span>
+            <span>낙인 {markCounts.brand} / {markTotals.brand}</span>
+            <span>휴대 {loadoutMarkIds.length} / {MARK_LOADOUT_LIMIT}</span>
+            <span>장착 {equippedMarkId ? getMarkName(equippedMarkId) : "없음"}</span>
+          </div>
+          <div className="mark-branch-list">
+            <small>해방된 분기</small>
+            {branchUnlocks.length === 0 ? (
+              <small>아직 해방된 분기 키가 없다.</small>
+            ) : branchUnlocks.map((unlock) => <span key={unlock.id}>{unlock.label}</span>)}
+          </div>
+          <div className="mark-branch-list">
+            <small>다음 해방</small>
+            {nextBranchGoals.length === 0 ? (
+              <span>모든 수집 분기 해방</span>
+            ) : nextBranchGoals.map((unlock) => (
+              <span key={unlock.id}>{formatMarkBranchProgress(unlock)}</span>
+            ))}
+          </div>
+          <div className="mark-codex">
+            {MARKS.map((mark) => {
+              const owned = ownedMarkIds.includes(mark.id);
+              const unlocked = isMarkCollectionUnlocked(mark, ownedMarkIds);
+              const carried = loadoutMarkIds.includes(mark.id);
+              const equipped = equippedMarkId === mark.id;
+              const unavailable = !owned;
+              return (
+                <article
+                  className={[
+                    "mark-card",
+                    `mark-card--${mark.kind}`,
+                    owned ? "is-owned" : "is-locked",
+                    equipped ? "is-equipped" : "",
+                    carried ? "is-carried" : "",
+                  ].filter(Boolean).join(" ")}
+                  key={mark.id}
+                >
+                  <div>
+                    <span>
+                      {MARK_KIND_LABELS[mark.kind]} ·
+                      {" "}
+                      {mark.category === "standalone" ? "단독표식" : (TRAIT_META[mark.affinity]?.label ?? mark.affinity)}
+                    </span>
+                    <strong>{owned ? mark.name : unlocked ? "미획득 표식" : "미해금 표식"}</strong>
+                    <small>{owned ? mark.codexText : unlocked ? mark.sourceHint : getMarkUnlockText(mark)}</small>
+                  </div>
+                  {owned && (
+                    <div className="mark-card__effects">
+                      <small>휴대: {describeMarkEffect(game, mark, "carry")}</small>
+                      <small>장착: {describeMarkEffect(game, mark, "equip")}</small>
+                    </div>
+                  )}
+                  <div className="mark-card__actions">
+                    <button type="button" disabled={unavailable || equipped} onClick={() => onToggleMarkLoadout(mark.id)}>
+                      {carried ? "휴대 해제" : "휴대"}
+                    </button>
+                    <button type="button" disabled={unavailable} onClick={() => onEquipMark(equipped ? null : mark.id)}>
+                      {equipped ? "장착 해제" : "장착"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <CharacterPanel game={game} />
+      </section>
+    </div>
+  );
+}
+
+function TransitionOverlay({ onContinue }) {
+  return (
+    <div className="time-transition time-transition--nightfall">
+      <span className="time-transition__orb time-transition__sun" aria-hidden="true" />
+      <div className="time-transition__copy">
+        <span>저녁이 끝났다</span>
+        <h2>해가 떨어진다.</h2>
+        <p>마지막 햇빛이 사라지자 지하에서 문 두드리는 소리가 들린다.</p>
+        <button type="button" onClick={onContinue}>밤을 맞는다</button>
+      </div>
+    </div>
+  );
+}
+
+function StartScreen({ hasContinue, developerMode, onContinue, onNew, onToggleDeveloper }) {
+  return (
+    <div className="start-screen">
+      <img className="start-screen__image" src="./assets/eldroa-estate-day.jpg" alt="" />
+      <div className="start-screen__veil" />
+      <section>
+        <h1 style={{ marginBottom: "64px" }}>로젠탈 관리일지</h1>
+        <div>
+          {hasContinue && <button type="button" onClick={onContinue}>지난 꿈을 이어간다</button>}
+          <button type="button" onClick={onNew}>잠에서 깨어난다</button>
+          <button className={developerMode ? "is-active" : ""} type="button" onClick={onToggleDeveloper}>dev</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function DeveloperNumberSection({ title, keys, values, labelMap, onChange }) {
+  return (
+    <section className="developer-section">
+      <h3>{title}</h3>
+      <div className="developer-number-grid">
+        {keys.map((key) => (
+          <label key={key}>
+            <span>{getDeveloperLabel(key, labelMap)}</span>
+            <input
+              type="number"
+              step="1"
+              value={getDeveloperNumber(values?.[key])}
+              onChange={(event) => onChange(key, event.target.value)}
+            />
+          </label>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DeveloperTraitSection({ game, onSetTraitValue, onSetTraitProgress }) {
+  const traitProgress = game.meta?.traitProgress ?? {};
+  return (
+    <section className="developer-section">
+      <h3>특성</h3>
+      <div className="developer-trait-list">
+        {DEV_TRAIT_KEYS.map((key) => {
+          const progress = traitProgress[key] ?? { level: 0, xp: 0 };
+          return (
+            <article className="developer-trait-row" key={key}>
+              <strong>{getDeveloperLabel(key, TRAIT_META)}</strong>
+              <label>
+                <span>현재값</span>
+                <input
+                  type="number"
+                  step="1"
+                  value={getDeveloperNumber(game.traits?.[key])}
+                  onChange={(event) => onSetTraitValue(key, event.target.value)}
+                />
+              </label>
+              <label>
+                <span>레벨</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="1"
+                  value={getDeveloperNumber(progress.level)}
+                  onChange={(event) => onSetTraitProgress(key, "level", event.target.value)}
+                />
+              </label>
+              <label>
+                <span>경험치</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="9"
+                  step="1"
+                  value={getDeveloperNumber(progress.xp)}
+                  onChange={(event) => onSetTraitProgress(key, "xp", event.target.value)}
+                />
+              </label>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function DeveloperPassiveSection({ game, onToggleOwned, onToggleActive }) {
+  const ownedPassiveIds = game.ownedPassiveIds ?? [];
+  const activePassiveIds = game.passiveIds ?? [];
+  return (
+    <section className="developer-section">
+      <h3>패시브</h3>
+      <div className="developer-passive-list">
+        {PASSIVES.map((passive) => {
+          const owned = ownedPassiveIds.includes(passive.id);
+          const active = activePassiveIds.includes(passive.id);
+          return (
+            <article className="developer-passive-row" key={passive.id}>
+              <div>
+                <strong>{passive.name}</strong>
+                <small>{passive.description}</small>
+              </div>
+              <button className={owned ? "is-active" : ""} type="button" onClick={() => onToggleOwned(passive.id)}>
+                {owned ? "해제" : "획득"}
+              </button>
+              <button className={active ? "is-active" : ""} type="button" disabled={!owned && !active} onClick={() => onToggleActive(passive.id)}>
+                {active ? "비활성화" : "활성화"}
+              </button>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function DeveloperEyeSection({ eyeOverride, onChange }) {
+  return (
+    <section className="developer-section">
+      <h3>눈</h3>
+      <label className="developer-toggle">
+        <input
+          type="checkbox"
+          checked={eyeOverride.forceEyes}
+          onChange={(event) => onChange({ forceEyes: event.target.checked })}
+        />
+        <span>눈 캔버스 강제 표시</span>
+      </label>
+      <div className="developer-number-grid">
+        <label>
+          <span>강도</span>
+          <input
+            type="number"
+            min="0.2"
+            max="1"
+            step="0.05"
+            value={eyeOverride.intensity}
+            onChange={(event) => onChange({ intensity: clampRange(getDeveloperNumber(event.target.value), 0.2, 1) })}
+          />
+        </label>
+        <label>
+          <span>개수</span>
+          <input
+            type="number"
+            min="1"
+            max={HORROR_EYE_LAYOUTS.length}
+            step="1"
+            value={eyeOverride.count}
+            onChange={(event) => onChange({ count: Math.min(Math.max(Math.floor(getDeveloperNumber(event.target.value)), 1), HORROR_EYE_LAYOUTS.length) })}
+          />
+        </label>
+      </div>
+      <div className="developer-eye-row">
+        <label>
+          <span>종류</span>
+          <select value={getTextEyeVariantId(eyeOverride.variant)} onChange={(event) => onChange({ variant: event.target.value })}>
+            <option value="sleepy1">{DEV_EYE_VARIANT_LABELS.sleepy1}</option>
+            <option value="eye1">{DEV_EYE_VARIANT_LABELS.eye1}</option>
+          </select>
+        </label>
+        <label className="developer-toggle">
+          <input
+            type="checkbox"
+            checked={eyeOverride.burst}
+            onChange={(event) => onChange({ burst: event.target.checked })}
+          />
+          <span>눈 깜빡임 폭주</span>
+        </label>
+      </div>
+    </section>
+  );
+}
+
+function DeveloperPreviewSection({
+  nightPreview,
+  uiPreset,
+  onNightPreviewChange,
+  onUiPresetChange,
+}) {
+  return (
+    <section className="developer-section">
+      <h3>미리보기</h3>
+      <div className="developer-preview-grid">
+        <label>
+          <span>UI 프리셋</span>
+          <select value={uiPreset} onChange={(event) => onUiPresetChange(event.target.value)}>
+            {DEV_UI_PRESET_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {DEV_UI_PRESET_LABELS[option] ?? option}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <label className="developer-toggle">
+        <input
+          type="checkbox"
+          checked={nightPreview}
+          onChange={(event) => onNightPreviewChange(event.target.checked)}
+        />
+        <span>밤 화면으로 미리보기</span>
+      </label>
+      <small>선택한 UI 프리셋은 미리보기로만 반영되며, 저장 데이터에는 영향을 주지 않습니다.</small>
+    </section>
+  );
+}
+
+function DeveloperHorrorPresetSection({ onApplyPreset }) {
+  return (
+    <section className="developer-section">
+      <h3>공포 상태 프리셋</h3>
+      <div className="developer-preset-grid">
+        {DEV_HORROR_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            className={preset.resetPreview ? "is-danger" : ""}
+            onClick={() => onApplyPreset(preset.id)}
+          >
+            <span>{preset.label}</span>
+            <small>{preset.description}</small>
+          </button>
+        ))}
+      </div>
+      <small>버튼 적용은 현재 진행 중인 테스트 상태에만 반영되며 저장 데이터는 변경되지 않습니다.</small>
+    </section>
+  );
+}
+
+function DeveloperPanel({
+  game,
+  eyeOverride,
+  nightPreview,
+  uiPreset,
+  onClose,
+  onEyeOverrideChange,
+  onNightPreviewChange,
+  onUiPresetChange,
+  onApplyHorrorPreset,
+  onSetMapValue,
+  onSetTraitProgress,
+  onTogglePassiveOwned,
+  onTogglePassiveActive,
+}) {
+  return (
+    <aside className="developer-panel" aria-label="dev">
+      <header>
+        <div>
+          <strong>dev</strong>
+          <small>상태 편집</small>
+        </div>
+        <button type="button" onClick={onClose}>닫기</button>
+      </header>
+
+      <DeveloperPreviewSection
+        nightPreview={nightPreview}
+        uiPreset={uiPreset}
+        onNightPreviewChange={onNightPreviewChange}
+        onUiPresetChange={onUiPresetChange}
+      />
+      <DeveloperHorrorPresetSection onApplyPreset={onApplyHorrorPreset} />
+      <DeveloperEyeSection eyeOverride={eyeOverride} onChange={onEyeOverrideChange} />
+      <DeveloperNumberSection
+        title="스탯"
+        keys={DEV_STAT_KEYS}
+        values={game.stats}
+        onChange={(key, value) => onSetMapValue("stats", key, value)}
+      />
+      <DeveloperNumberSection
+        title="자원"
+        keys={DEV_RESOURCE_KEYS}
+        values={game.resources}
+        labelMap={RESOURCE_META}
+        onChange={(key, value) => onSetMapValue("resources", key, value)}
+      />
+      <DeveloperNumberSection
+        title="영지"
+        keys={DEV_ESTATE_KEYS}
+        values={game.estate}
+        onChange={(key, value) => onSetMapValue("estate", key, value)}
+      />
+      <DeveloperNumberSection
+        title="공포"
+        keys={DEV_HORROR_TRAIT_KEYS}
+        values={game.horrorTraits}
+        labelMap={HORROR_TRAIT_META}
+        onChange={(key, value) => onSetMapValue("horrorTraits", key, value)}
+      />
+      <DeveloperTraitSection
+        game={game}
+        onSetTraitValue={(key, value) => onSetMapValue("traits", key, value)}
+        onSetTraitProgress={onSetTraitProgress}
+      />
+      <DeveloperPassiveSection
+        game={game}
+        onToggleOwned={onTogglePassiveOwned}
+        onToggleActive={onTogglePassiveActive}
+      />
+    </aside>
+  );
+}
+
+function getDayNarration(game) {
+  if (game.day !== 1) return ["선택한 행동은 오늘 다시 고를 수 없다."];
+  if (game.dayTurn === 0) return DAY_OPENING_SCRIPT;
+  if (game.dayTurn === 1) return DAY_INTERLUDES[0].paragraphs;
+  if (game.dayTurn === 3) return DAY_INTERLUDES[1].paragraphs;
+  if (game.dayTurn === 4) return DAY_INTERLUDES[2].paragraphs;
+  return ["선택한 행동은 오늘 다시 고를 수 없다."];
+}
+
+function App() {
+  const saved = useMemo(() => loadAutoSave(), []);
+  const [game, setGame] = useState(() => saved.phase === "start" ? createStartState() : saved);
+  const [showStart, setShowStart] = useState(true);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [tutorialPrompt, setTutorialPrompt] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
+  const [developerMode, setDeveloperMode] = useState(shouldOpenDeveloperMode);
+  const [developerNightPreview, setDeveloperNightPreview] = useState(false);
+  const [developerUiPreset, setDeveloperUiPreset] = useState("auto");
+  const [eyeOverride, setEyeOverride] = useState({
+    forceEyes: false,
+    intensity: 0.72,
+    count: 1,
+    variant: "sleepy1",
+    burst: false,
+  });
+
+  useEffect(() => {
+    if (!showStart && game.phase !== "start") saveAuto(game);
+  }, [game, showStart]);
+
+  useEffect(() => {
+    if (!showStart && game.day === 2 && game.phase === "day" && !game.tutorialSummarySeen) {
+      setTutorialPrompt(true);
+      setRulesOpen(true);
+    }
+  }, [game.day, game.phase, game.tutorialSummarySeen, showStart]);
+
+  const isNight = isNightDisplayPhase(game);
+  const selectedUiPreset = developerMode ? developerUiPreset : "auto";
+  const presetNightOverride = selectedUiPreset === "auto" ? null : selectedUiPreset.startsWith("night-");
+  const effectiveIsNight = presetNightOverride ?? (isNight || (developerMode && developerNightPreview));
+  const horrorDirector = resolveHorrorDirector(game, effectiveIsNight);
+  const uiPresentation = applyDeveloperUiOverrides(
+    resolveUiPresentation(game, effectiveIsNight, horrorDirector),
+    selectedUiPreset,
+  );
+  const stagedHorrorDirector = applyUiPresentationToHorrorDirector(horrorDirector, uiPresentation);
+  const visibleHorrorDirector = developerMode && eyeOverride.forceEyes
+    ? {
+        ...stagedHorrorDirector,
+        intensity: Math.max(stagedHorrorDirector.intensity, eyeOverride.intensity),
+        textEyes: {
+          enabled: true,
+          intensity: eyeOverride.intensity,
+          count: eyeOverride.count,
+          burst: eyeOverride.burst,
+          variant: eyeOverride.variant,
+        },
+      }
+    : stagedHorrorDirector;
+  const estateState = getEstatePresentation(game, effectiveIsNight);
+  const animate = (id, action) => {
+    if (selectedId) return;
+    setSelectedId(id);
+    window.setTimeout(() => {
+      setGame(action);
+      setSelectedId(null);
+    }, 150);
+  };
+
+  const newGame = () => {
+    const meta = game.meta;
+    clearAutoSave();
+    setGame(createNewRun({ second: new Date().getSeconds(), meta }));
+    setShowStart(false);
+    setRulesOpen(false);
+    setTutorialPrompt(false);
+  };
+  const nextCycle = () => {
+    setGame((current) => advanceToNextCycle(current, { second: new Date().getSeconds() }));
+    setShowStart(false);
+    setSaveOpen(false);
+    setRulesOpen(false);
+    setTutorialPrompt(false);
+  };
+  const loadSlot = (index) => {
+    const loaded = loadManual(index);
+    if (loaded) {
+      setGame(loaded);
+      setShowStart(false);
+      setSaveOpen(false);
+      setRulesOpen(false);
+      setTutorialPrompt(false);
+    }
+  };
+
+  const closeRules = () => {
+    setRulesOpen(false);
+    if (tutorialPrompt) {
+      setTutorialPrompt(false);
+      setGame((current) => ({ ...current, tutorialSummarySeen: true }));
+    }
+  };
+
+  const togglePassive = (passiveId) => {
+    setGame((current) => {
+      const active = current.passiveIds ?? [];
+      if (active.includes(passiveId)) {
+        return { ...current, passiveIds: active.filter((id) => id !== passiveId) };
+      }
+      if (active.length >= 3) return current;
+      return { ...current, passiveIds: [...active, passiveId] };
+    });
+  };
+
+  const toggleMarkLoadout = (markId) => {
+    setGame((current) => {
+      const ownedMarkIds = getOwnedMarkIds(current);
+      const equippedMarkId = getEquippedMarkId(current);
+      if (!ownedMarkIds.includes(markId) || equippedMarkId === markId) return current;
+      const currentLoadout = getLoadoutMarkIds(current);
+      const loadoutMarkIds = currentLoadout.includes(markId)
+        ? currentLoadout.filter((id) => id !== markId)
+        : currentLoadout.length >= MARK_LOADOUT_LIMIT
+          ? currentLoadout
+          : [...currentLoadout, markId];
+      return {
+        ...current,
+        loadoutMarkIds,
+        meta: {
+          ...current.meta,
+          ownedMarkIds,
+          loadoutMarkIds,
+          equippedMarkId,
+          unlockedBranchKeys: getUnlockedBranchKeys(ownedMarkIds),
+        },
+      };
+    });
+  };
+
+  const equipMark = (markId) => {
+    setGame((current) => {
+      const ownedMarkIds = getOwnedMarkIds(current);
+      if (markId && !ownedMarkIds.includes(markId)) return current;
+      const equippedMarkId = markId ?? null;
+      const loadoutMarkIds = getLoadoutMarkIds(current).filter((id) => id !== equippedMarkId);
+      return {
+        ...current,
+        equippedMarkId,
+        loadoutMarkIds,
+        meta: {
+          ...current.meta,
+          ownedMarkIds,
+          loadoutMarkIds,
+          equippedMarkId,
+          unlockedBranchKeys: getUnlockedBranchKeys(ownedMarkIds),
+        },
+      };
+    });
+  };
+
+  const setDeveloperMapValue = (group, key, rawValue) => {
+    setGame((current) => {
+      const value = getDeveloperNumber(rawValue);
+      const next = {
+        ...current,
+        [group]: {
+          ...(current[group] ?? {}),
+          [key]: value,
+        },
+      };
+      if (group === "stats") {
+        next.displayStats = {
+          ...(current.displayStats ?? current.stats ?? {}),
+          [key]: value,
+        };
+      }
+      if (["stats", "resources", "estate", "horrorTraits"].includes(group)) {
+        return syncDeveloperHorrorState(next);
+      }
+      return next;
+    });
+  };
+
+  const setDeveloperTraitProgress = (traitId, field, rawValue) => {
+    setGame((current) => {
+      const value = Math.floor(getDeveloperNumber(rawValue));
+      const currentProgress = current.meta?.traitProgress?.[traitId] ?? { level: 0, xp: 0 };
+      const nextProgress = {
+        ...currentProgress,
+        [field]: field === "level"
+          ? Math.min(Math.max(value, 0), 10)
+          : Math.min(Math.max(value, 0), 9),
+      };
+      if (nextProgress.level >= 10) nextProgress.xp = 0;
+      return {
+        ...current,
+        meta: {
+          ...(current.meta ?? {}),
+          traitProgress: {
+            ...(current.meta?.traitProgress ?? {}),
+            [traitId]: nextProgress,
+          },
+        },
+      };
+    });
+  };
+
+  const applyDeveloperHorrorPreset = (presetId) => {
+    const preset = DEV_HORROR_PRESETS.find((item) => item.id === presetId);
+    setGame((current) => applyDeveloperHorrorPresetToGame(current, presetId));
+    if (preset?.resetPreview) {
+      setDeveloperNightPreview(false);
+      setDeveloperUiPreset("auto");
+      setEyeOverride((current) => ({ ...current, forceEyes: false, burst: false }));
+    }
+  };
+
+  const toggleDeveloperPassiveOwned = (passiveId) => {
+    setGame((current) => {
+      const ownedPassiveIds = current.ownedPassiveIds ?? [];
+      const owned = ownedPassiveIds.includes(passiveId);
+      return {
+        ...current,
+        ownedPassiveIds: owned
+          ? ownedPassiveIds.filter((id) => id !== passiveId)
+          : uniqueValues([...ownedPassiveIds, passiveId]),
+        passiveIds: owned
+          ? (current.passiveIds ?? []).filter((id) => id !== passiveId)
+          : current.passiveIds ?? [],
+      };
+    });
+  };
+
+  const toggleDeveloperPassiveActive = (passiveId) => {
+    setGame((current) => {
+      const activePassiveIds = current.passiveIds ?? [];
+      const active = activePassiveIds.includes(passiveId);
+      return {
+        ...current,
+        ownedPassiveIds: uniqueValues([...(current.ownedPassiveIds ?? []), passiveId]),
+        passiveIds: active
+          ? activePassiveIds.filter((id) => id !== passiveId)
+          : uniqueValues([...activePassiveIds, passiveId]),
+      };
+    });
+  };
+
+  if (showStart) {
+    return (
+      <>
+        <StartScreen
+          hasContinue={game.phase !== "start"}
+          developerMode={developerMode}
+          onContinue={() => setShowStart(false)}
+          onNew={newGame}
+          onToggleDeveloper={() => setDeveloperMode((current) => !current)}
+        />
+        {developerMode && (developerNightPreview || eyeOverride.forceEyes || developerUiPreset !== "auto") && (
+          <HorrorTextOverlay game={game} isNight={effectiveIsNight} director={visibleHorrorDirector} />
+        )}
+        {developerMode && (
+          <DeveloperPanel
+            game={game}
+            eyeOverride={eyeOverride}
+            nightPreview={developerNightPreview}
+            uiPreset={developerUiPreset}
+            onClose={() => setDeveloperMode(false)}
+            onEyeOverrideChange={(patch) => setEyeOverride((current) => ({ ...current, ...patch }))}
+            onNightPreviewChange={setDeveloperNightPreview}
+            onUiPresetChange={setDeveloperUiPreset}
+            onApplyHorrorPreset={applyDeveloperHorrorPreset}
+            onSetMapValue={setDeveloperMapValue}
+            onSetTraitProgress={setDeveloperTraitProgress}
+            onTogglePassiveOwned={toggleDeveloperPassiveOwned}
+            onTogglePassiveActive={toggleDeveloperPassiveActive}
+          />
+        )}
+      </>
+    );
+  }
+
+  const mainContent = (() => {
+    if (game.phase === "seed-reveal") {
+      return (
+        <SeedRevealModal
+          name={game.specialSeedName}
+          rule={game.specialSeedRule}
+          onContinue={() => setGame(beginPrologue(game))}
+        />
+      );
+    }
+    if (game.phase === "prologue") {
+      return (
+        <DialogueCard
+          game={game}
+          eyebrow={PROLOGUE.tag}
+          paragraphs={PROLOGUE.text.map((text, index) => ({ text, speaker: PROLOGUE.speakers[index] ?? "unknown" }))}
+          button="영주의 자리에 앉는다"
+          onContinue={() => setGame(openFirstDay(game))}
+        />
+      );
+    }
+    if (game.phase === "special-event") {
+      const group = getSpecialGroup(game);
+      const stage = group.stages[game.specialProgress];
+      return (
+        <ChoicePanel
+          game={game}
+          eyebrow={`특수 사건 · ${group.name}`}
+          title={stage.title}
           text={stage.text}
           choices={stage.options.map((choice) => {
             const effectiveChance = getEffectiveChoiceChance({ ...game, phase: "event" }, choice.chance, { ...choice, tone: "extreme" });
