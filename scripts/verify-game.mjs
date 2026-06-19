@@ -27,24 +27,36 @@ import {
   advanceToNextCycle,
   applyPermanentLoss,
   applyTraitExperience,
+  beginPrologue,
   chooseDayAction,
   chooseEscapeTransformedFate,
   chooseExplorationOption,
+  chooseFinaleOption,
+  chooseSpecialEvent,
+  chooseTransformedFate,
   completeTransition,
   continueAfterResult,
   createNewRun,
   deriveHorrorState,
+  deliverKeepsake,
   normalizeProgressMeta,
   finishNight,
+  finishVerticalSlice,
+  getCompanionOffers,
+  getCurrentExplorationEvent,
+  getCurrentFinale,
   getDayOffers,
+  getDirectionOffers,
   getExplorationOptions,
   getFinaleOptions,
   getNpcSpeaker,
+  getSpecialGroup,
   isExplorationOptionAvailable,
   isNightDisplayPhase,
   openFirstDay,
   refreshSeedState,
   retreatExpedition,
+  selectCompanion,
   startExpedition,
 } from "../src/engine/rosenthalEngine.js";
 import {
@@ -125,6 +137,187 @@ const legacyProgressionGame = createLegacyInitialGame("legacy-boundary-check");
 assert.equal(legacyProgressionGame.version, 9);
 assert.ok(getLegacyDayOffers(legacyProgressionGame).length > 0);
 assert.ok(getLegacyNightOffers(legacyProgressionGame).length > 0);
+
+const AUTOPLAY_SMOKE_SEEDS = [
+  { second: 0, runRngSeed: "autoplay-smoke-0" },
+  { second: 1, runRngSeed: "autoplay-smoke-1" },
+  { second: 7, runRngSeed: "autoplay-smoke-7" },
+  { second: 13, runRngSeed: "autoplay-smoke-13" },
+  { second: 59, runRngSeed: "autoplay-smoke-59" },
+];
+const AUTOPLAY_MAX_STEPS = 500;
+const AUTOPLAY_REPEAT_LIMIT = 4;
+const AUTOPLAY_TERMINAL_PHASES = new Set(["record-stop", "ending"]);
+
+function getAutoplayContext({ seedConfig, step, state }) {
+  return `seed=${seedConfig.runRngSeed}/${seedConfig.second}, step=${step}, phase=${state?.phase}, day=${state?.day}, dayTurn=${state?.dayTurn}`;
+}
+
+function failAutoplay(message, context) {
+  throw new Error(`autoplay smoke failed: ${message} (${getAutoplayContext(context)})`);
+}
+
+function getFirstAvailable(items) {
+  return items.find((item) => item && item.available !== false);
+}
+
+function assertFiniteAutoplayMap(map, label, context) {
+  if (!map || typeof map !== "object" || Array.isArray(map)) {
+    failAutoplay(`${label} must be an object`, context);
+  }
+  Object.entries(map).forEach(([key, value]) => {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      failAutoplay(`${label}.${key} must be finite, got ${value}`, context);
+    }
+  });
+}
+
+function assertAutoplayState(state, context) {
+  if (!state || typeof state !== "object") failAutoplay("state must be an object", context);
+  if (typeof state.phase !== "string") failAutoplay("phase must be a string", context);
+  if (!KNOWN_AUTOPLAY_PHASES.has(state.phase)) failAutoplay(`unknown phase ${state.phase}`, context);
+  if (!Number.isFinite(state.day)) failAutoplay(`day must be finite, got ${state.day}`, context);
+  if (!Number.isFinite(state.dayTurn)) failAutoplay(`dayTurn must be finite, got ${state.dayTurn}`, context);
+  if (!Array.isArray(state.history)) failAutoplay("history must be an array", context);
+  if (!Number.isFinite(state.history.length)) failAutoplay("history.length must be finite", context);
+  if (state.phase === "result" && !state.pendingResult) failAutoplay("result phase requires pendingResult", context);
+  assertFiniteAutoplayMap(state.resources, "resources", context);
+  assertFiniteAutoplayMap(state.estate, "estate", context);
+  assertFiniteAutoplayMap(state.stats, "stats", context);
+  assertFiniteAutoplayMap(state.horrorTraits, "horrorTraits", context);
+  assertFiniteAutoplayMap(state.derivedHorror, "derivedHorror", context);
+}
+
+function getAutoplayLoopKey(state) {
+  return [
+    state.phase,
+    state.day,
+    state.dayTurn,
+    state.expedition?.stepIndex ?? "none",
+    state.history.length,
+  ].join("|");
+}
+
+function projectFiniteMap(map) {
+  return Object.fromEntries(Object.entries(map).sort(([left], [right]) => left.localeCompare(right)));
+}
+
+function projectAutoplayState(state) {
+  return {
+    phase: state.phase,
+    day: state.day,
+    dayTurn: state.dayTurn,
+    route: state.route ?? null,
+    endingId: state.endingId ?? state.ending?.id ?? null,
+    sacrificeCount: state.sacrificeCount ?? 0,
+    history: state.history.map((entry) => ({
+      day: entry.day ?? null,
+      phase: entry.phase ?? null,
+      choiceId: entry.choiceId ?? null,
+      label: entry.label ?? null,
+      success: entry.success ?? null,
+    })),
+    resources: projectFiniteMap(state.resources),
+    estate: projectFiniteMap(state.estate),
+    stats: projectFiniteMap(state.stats),
+    horrorTraits: projectFiniteMap(state.horrorTraits),
+    derivedHorror: projectFiniteMap(state.derivedHorror),
+  };
+}
+
+function handleAutoplayDay(state, context) {
+  const choice = getFirstAvailable(getDayOffers(state));
+  if (!choice) failAutoplay("day phase has no valid offer", context);
+  return chooseDayAction(state, choice);
+}
+
+function handleAutoplaySpecialEvent(state, context) {
+  const group = getSpecialGroup(state);
+  const stage = group?.stages?.[state.specialProgress];
+  const option = stage?.options?.[0];
+  if (!option) failAutoplay("special-event phase has no current option", context);
+  return chooseSpecialEvent(state, option);
+}
+
+function handleAutoplayNightCompanion(state, context) {
+  const offers = getCompanionOffers(state);
+  const companion = offers.find((offer) => offer.id === "alone") ?? offers[0];
+  if (!companion) failAutoplay("night-companion phase has no companion offer", context);
+  return selectCompanion(state, companion.id);
+}
+
+function handleAutoplayNightDirection(state, context) {
+  const direction = getDirectionOffers()[0];
+  if (!direction) failAutoplay("night-direction phase has no direction offer", context);
+  return startExpedition(state, direction.id);
+}
+
+function handleAutoplayExpedition(state, context) {
+  const event = getCurrentExplorationEvent(state);
+  if (!event) failAutoplay("expedition phase has no current event", context);
+  const option = getExplorationOptions(event).find((candidate) => isExplorationOptionAvailable(state, candidate));
+  if (!option) failAutoplay(`expedition event ${event.id} has no available option`, context);
+  return chooseExplorationOption(state, event, option);
+}
+
+function handleAutoplayFinale(state, context) {
+  const finale = getCurrentFinale(state);
+  if (!finale) failAutoplay("finale phase has no current finale", context);
+  const option = getFinaleOptions(state, finale)[0];
+  if (!option) failAutoplay(`finale ${finale.id} has no option`, context);
+  return chooseFinaleOption(state, finale, option);
+}
+
+const autoplayHandlers = {
+  "seed-reveal": (state) => beginPrologue(state),
+  prologue: (state) => openFirstDay(state),
+  day: handleAutoplayDay,
+  "special-event": handleAutoplaySpecialEvent,
+  result: (state, context) => {
+    if (!state.pendingResult) failAutoplay("result phase requires pendingResult", context);
+    return continueAfterResult(state);
+  },
+  "nightfall-transition": (state) => completeTransition(state),
+  "night-companion": handleAutoplayNightCompanion,
+  "night-direction": handleAutoplayNightDirection,
+  expedition: handleAutoplayExpedition,
+  finale: handleAutoplayFinale,
+  "keepsake-delivery": (state) => deliverKeepsake(state, "family"),
+  "transformed-choice": (state) => chooseTransformedFate(state, "spare"),
+  "escape-transformed-choice": (state) => chooseEscapeTransformedFate(state, "spare"),
+  "day-eight": (state) => finishVerticalSlice(state),
+};
+
+const KNOWN_AUTOPLAY_PHASES = new Set([
+  ...Object.keys(autoplayHandlers),
+  ...AUTOPLAY_TERMINAL_PHASES,
+]);
+
+function runAutoplaySmoke(seedConfig) {
+  let state = createNewRun(seedConfig);
+  const seenKeys = new Map();
+  for (let step = 0; step <= AUTOPLAY_MAX_STEPS; step += 1) {
+    const context = { seedConfig, step, state };
+    assertAutoplayState(state, context);
+    const loopKey = getAutoplayLoopKey(state);
+    const seenCount = (seenKeys.get(loopKey) ?? 0) + 1;
+    seenKeys.set(loopKey, seenCount);
+    if (seenCount > AUTOPLAY_REPEAT_LIMIT) {
+      failAutoplay(`loop key repeated too often: ${loopKey}`, context);
+    }
+    if (AUTOPLAY_TERMINAL_PHASES.has(state.phase)) {
+      return { state, projection: projectAutoplayState(state), steps: step };
+    }
+    const handler = autoplayHandlers[state.phase];
+    if (!handler) failAutoplay(`no handler for phase ${state.phase}`, context);
+    const nextState = handler(state, context);
+    if (!nextState || typeof nextState !== "object") {
+      failAutoplay(`handler for phase ${state.phase} did not return state`, context);
+    }
+    state = nextState;
+  }
+  failAutoplay(`exceeded ${AUTOPLAY_MAX_STEPS} steps`, { seedConfig, step: AUTOPLAY_MAX_STEPS, state });
+}
 
 assert.equal(SAINT_SEEDS.length, 60);
 assert.equal(new Set(SAINT_SEEDS.map((seed) => seed.name)).size, 60);
@@ -813,5 +1006,26 @@ assert.equal(transformedReturn.phase, "escape-transformed-choice");
 const sparedReturn = chooseEscapeTransformedFate(transformedReturn, "spare");
 assert.equal(sparedReturn.resumePhase, "daybreak");
 assert.equal(continueAfterResult(sparedReturn).phase, "day");
+
+assert.equal(KNOWN_AUTOPLAY_PHASES.has("prologue"), true);
+assert.equal(typeof autoplayHandlers.prologue, "function");
+const autoplayFlowCheck = createNewRun({ second: 0, runRngSeed: "autoplay-flow-check" });
+assert.equal(autoplayFlowCheck.phase, "seed-reveal");
+const afterSeedReveal = autoplayHandlers["seed-reveal"](autoplayFlowCheck);
+assert.equal(afterSeedReveal.phase, "prologue");
+assert.equal(autoplayHandlers.prologue(afterSeedReveal).phase, "day");
+for (const seedConfig of AUTOPLAY_SMOKE_SEEDS) {
+  const firstRun = runAutoplaySmoke(seedConfig);
+  const secondRun = runAutoplaySmoke(seedConfig);
+  assert.ok(
+    AUTOPLAY_TERMINAL_PHASES.has(firstRun.state.phase),
+    `autoplay smoke must end in record-stop or ending: ${seedConfig.runRngSeed}`,
+  );
+  assert.deepEqual(
+    firstRun.projection,
+    secondRun.projection,
+    `autoplay smoke projection changed for same seed: ${seedConfig.runRngSeed}`,
+  );
+}
 
 console.log("Rosenthal vertical slice verification passed.");
