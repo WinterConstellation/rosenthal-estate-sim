@@ -1,42 +1,293 @@
-# 핑퐁 최신 인계
+# 핑퐁 파일 정리 및 실제 수정 이력
 
-## 기준
-- 원격: `origin/main`
-- 시각: 2026-06-20 KST
+이 문서는 최신 작업 인계용이다.
+압축본만 두면 작업 의도가 손실되므로, 완료된 구조와 다음 작업의 이유를 함께 남긴다.
 
-## 작업 해석
+## 최신 기준
+
+- 기준 원격: `origin/main`
+- 기준 시각: 2026-06-20 KST
+
+## 작업 해석 기준
+
 - `수정해`, `고쳐`, `반영해`, `넣어`, `정리해`, `진행해`는 실행 지시다.
-- `검토만`, `수정하지 마`, `핑퐁 X`, `커밋하지 마`, `아직 하지 마`가 있을 때만 쓰기 작업을 멈춘다.
-- 쓰기 전 최신 파일을 다시 읽는다.
-- 409가 나면 덮어쓰지 않는다.
+- `검토만`, `수정하지 마`, `핑퐁 X`, `커밋하지 마`, `아직 하지 마`가 명시된 경우에만 쓰기 작업을 멈춘다.
+- 사용자의 최신 입력을 임의로 보류문이나 반대 의미로 바꾸지 않는다.
+- 애매하면 현재 파일과 이 문서를 읽고 작업 범위를 줄여 실행한다.
+- 쓰기 전 최신 파일 SHA를 확인한다.
+- 409가 나면 덮어쓰지 말고 최신 파일을 다시 읽는다.
+- 작업 후 변경 파일, 검증, 빌드 여부를 보고한다.
+- 핑퐁 외 보조 인계 파일을 만들지 않는다.
 
-## 완료 상태
-- storylet 기반 낮/밤 후보 선택 적용 완료.
-- 엔진 책임선 1차 분리 완료.
-- `ResultOverlay`, `DialogueCard`, `FirstDayHintModal` 분리 완료.
-- 자동 플레이 smoke 검증 추가 완료.
-- 프롤로그/1일차 낮 톤 보정 완료.
+## 현재 확정 상태
 
-## 1순위: UI 표시 보정
+- 성흔/낙인 표식은 총 `100개`가 정본이다.
+  - 성흔 50개
+  - 낙인 50개
+  - 성향형 94개
+  - 단독 6개
+- `MARK_BRANCH_UNLOCKS`는 현재 총량 안에서 모두 도달 가능하다.
+- 기존 저장 마이그레이션(`LEGACY_STIGMA_MARK_MAP`)은 유지한다.
+- UI 단계는 `day-calm`, `day-anomaly`, `day-critical`, `night-calm`, `night-anomaly`, `night-critical` 6단계다.
+- 기본 밤은 푸른 `night-calm`이며 붉은 밤은 `night-anomaly` 이후에 사용한다.
+- 공포 UI는 장식이 아니라 실제 낮/밤, 이상 단계, 공포 상태와 연결되는 표시 체계다.
 
-1. `DialogueCard` 내부를 `제목 -> 구분선 -> 화자 -> 본문` 구조로 분리한다.
-2. 상단 꿈 표기는 날짜가 아니라 회차/기록 기준으로 계산한다.
-3. `1번째 꿈` 같은 어색한 문구를 자연스러운 서수 표현으로 바꾼다.
-4. 성향 레벨이 음수 변화까지 키우는 구조를 재검토한다.
-5. 증가할수록 나쁜 값은 증가 시 경고색으로 표시한다.
-6. 확정 선택은 보정값 때문에 흔들리지 않게 표시한다.
-7. 진행 카운터는 0일 때만 은폐 가능하며, 1 이상부터 의미를 드러낸다.
+## 완료된 구조
 
-## 검증
+### 콘텐츠 레지스트리
+
+- `src/engine/storyletRegistry.js`를 추가했다.
+- `triggerKey`, 조건, 우선순위, 반복 여부 기반 후보 색인을 만든다.
+- `src/engine/dayActionStorylets.js`를 추가했다.
+- `DAY_ACTIONS`를 `day-category:*` storylet으로 등록했다.
+- `getDayOffers`는 낮 행동 후보를 직접 전체 배열에서 필터링하지 않고 category triggerKey로 좁힌 후보를 사용한다.
+- `src/engine/explorationStorylets.js`를 추가했다.
+- `EXPLORATION_EVENTS`를 `exploration-direction:*` storylet으로 등록했다.
+- `startExpedition`은 direction별 직접 배열 필터링 대신 direction triggerKey 후보를 사용한다.
+- 본문 지연 로딩은 아직 적용하지 않았다.
+
+### 엔진 책임선 1차
+
+- `src/engine/rosenthalEngine.js`는 본편 상태 생성, phase 전환, 낮/밤 진행, 저장용 run/meta 동기화의 정본 엔진이다.
+- `src/engine/rulesEngine.js`는 확률, 수치 보정, 선택 결과 계산, 직업/표식/패시브 조회 중심으로 줄였다.
+- 본편 미사용 구형 진행 API는 `src/engine/legacyProgressionEngine.js`로 이동해 보존했다.
+- `rulesEngine.js`는 더 이상 `tutorialRules.js`의 구형 낮/밤 콘텐츠를 직접 import하지 않는다.
+
+### 화면 분리 1차
+
+- `src/components/DialogueCard.jsx`를 추가했다.
+- 대화 카드와 `normalizeDialogue`를 공유 컴포넌트/표시 유틸로 분리했다.
+- `src/screens/ResultOverlay.jsx`를 추가했다.
+- 결과 대화, 결과 카드, 변경 목록, 알림, 확인 버튼 표시를 App 밖으로 옮겼다.
+- `App.jsx`는 기존처럼 하단에서 `<ResultOverlay ... />`를 호출한다.
+- `mainContent`에 result phase branch를 새로 만들지 않았다.
+- `continueAfterResult`, `completeTransition`, 엔진 파일, 결과 문구, 판정, 저장 구조는 변경하지 않았다.
+
+### 프롤로그/1일차 톤
+
+- 프롤로그는 따뜻한 환대와 낯선 준비 상태를 중심으로 낮췄다.
+- 불길함은 서류, 빈 의자, 너무 정확한 준비 같은 생활 불일치로만 남긴다.
+- 1일차 낮은 카테고리별 `firstDaySafe` 후보를 우선 사용한다.
+- 단순 비용, 피로, 약한 불길함은 `warning`/`uneasy` 계열로 보인다.
+- 실제 강한 선택지만 `danger` 이상으로 둔다.
+- 엔진의 선택 결과 계산과 자동 플레이 smoke 검증은 약화하지 않았다.
+
+### 첫날 힌트 팝업
+
+- `src/components/FirstDayHintModal.jsx`를 추가했다.
+- 첫날 낮 최초 진입 시 `firstDayHintOpen` 화면 상태로 표시한다.
+- 닫으면 `firstDayHintSeen: true`, `firstDayHintVariant: "ledger-v2"`를 기록한다.
+- 이전 저장/테스트에서 `firstDayHintSeen`이 true였더라도 새 `ledger-v2` 인계서 팝업은 한 번 다시 뜬다.
+- 힌트는 낮 업무, 선택에 따른 수치 변화, 해가 진 뒤의 진행만 안내한다.
+- 문구는 로젠탈 저택이 새 영주에게 건네는 3단계 인계서처럼 처리한다.
+- 세계 규칙의 정답은 설명하지 않는다.
+- 자동 플레이 smoke는 UI를 렌더링하지 않으므로 기존처럼 통과한다.
+
+### 자동 플레이 smoke 검증
+
+- `scripts/verify-game.mjs`에 `KNOWN_AUTOPLAY_PHASES`와 `autoplayHandlers`를 추가했다.
+- 실제 App 흐름과 같은 `seed-reveal -> prologue -> day` 진입을 검증한다.
+- 자동 플레이는 첫 번째 유효 선택지만 고르는 단순 순찰 검증이다.
+- `result`의 `pendingResult`, 알 수 없는 phase, NaN/Infinity, 반복 key 정체를 실패로 처리한다.
+- 최소 5개 seed를 두 번씩 실행해 `record-stop` 또는 `ending` 도달과 projection 결정성을 확인한다.
+- `App.jsx`, `rosenthalEngine.js`, `rulesEngine.js`는 이 작업에서 수정하지 않았다.
+
+### 글리프 분위기 효과
+
+- `src/effects/GlyphAtmosphereCanvas.jsx`와 `src/effects/glyphAtmosphere.css`를 삭제했다.
+- `src/App.jsx`의 import, director 상태, `glyphFormat`, Canvas 렌더링 경로를 제거했다.
+- 공포 오버레이는 글자 안개, 정적 문장, 텍스트 눈동자만 사용한다.
+
+### 표식 도감과 분기 진행도
+
+- 모든 표식은 정적 데이터인 `codexText`, `sourceHint`를 가진다.
+- 두 필드는 효과 계산과 저장 데이터에 관여하지 않는다.
+- 보유 표식은 도감 문장, 미획득 표식은 획득 힌트, 미해금 표식은 수집 조건을 표시한다.
+- `getMarkBranchProgress(markIds)`는 요구 조건별 현재값, 요구값, 남은 수량, 해방 여부를 반환한다.
+- `getMarkBranchLabel(branchKey)`는 수량 분기와 성향별 capstone 분기에 사용자용 이름을 제공한다.
+- 장비/도감 화면은 해방된 분기와 성흔·낙인·혼합 축의 다음 목표를 최대 1개씩 표시한다.
+
+## 검증 기준
+
 - `npm.cmd run verify`
 - `npm.cmd run build`
-- 자동 플레이 smoke 검증 유지
-- `docs/work_log.txt` 기록
+- 기존 verify를 약화하지 않는다.
+- 자동 플레이 smoke 검증을 약화하지 않는다.
+- 작업 후 `docs/work_log.txt`에 기록한다.
+
+현재 verify가 검사하는 주요 항목:
+- `MARKS=100`, 성흔 50, 낙인 50, 분기 조건 도달 가능성
+- 모든 표식의 `codexText`, `sourceHint`
+- 분기 진행도의 0개, 일부 수집, 전체 수집 결과
+- 삭제된 글리프 파일과 `App.jsx` 글리프 참조 부재
+- 낮 행동 storylet 수량, triggerKey, category별 후보 순서, `requiresFlag` 조건
+- 밤 탐사 storylet 수량, triggerKey, direction별 후보 순서, 고정 seed `startExpedition` eventIds 유지
+- `rulesEngine.js` 구형 진행 API export 부재와 `legacyProgressionEngine.js` 보존 API 존재
+- `App.jsx` 내부 `ResultOverlay`/`DialogueCard` 함수 부재와 독립 컴포넌트 export 존재
+- 자동 플레이 smoke의 phase handler map, 알 수 없는 phase 실패, result `pendingResult`, NaN/Infinity, 반복 key 정체 방지
+- 최소 5개 seed의 `record-stop` 또는 `ending` 도달과 projection 결정성
+- 1일차 낮 후보에서 `danger/extreme/lethal` 미노출
+- `choice--warning`, `choice--uneasy` 스타일 존재
+- 첫날 힌트 팝업의 export/import, App 장문 JSX 부재, 금지어 부재, 표시 상태, 기본값
+
+## 변경하지 않은 것
+
+- 성흔/낙인 수치 밸런스
+- `night-critical`, `day-anomaly`, `day-critical` 추가 연출
+- 새 표식, 자원, 능력치, 분기, 저장 필드
+- 본문 지연 로딩
+
+## 현재 남은 오염 상태
+
+- `docs/pingpong_ui_display_queue.md`는 잘못 생성된 임시 파일이다.
+- 이 파일은 작업 인계에 사용하지 않는다.
+- 정본 인계는 `docs/pingpong.txt`만 사용한다.
+- 삭제가 가능해지면 해당 파일은 제거해야 한다.
+
+## 1순위 작업 묶음: UI/표기/수치/카운터 보정
+
+본문 지연 로딩보다 먼저 처리한다.
+새 콘텐츠 확장이 아니라 현재 플레이 화면의 의미 오류를 바로잡는 작업이다.
+
+### 1. DialogueCard 텍스트 계층 분리
+
+현재 문제:
+- 턴 정보는 상단에 이미 있다.
+- 카드 안에서 현재 턴 제목, 화자, 본문이 한 덩어리처럼 붙어 보인다.
+- 읽는 순서가 흐려진다.
+
+수정 방향:
+- 상단 턴 정보는 유지한다.
+- 카드 내부는 아래 계층으로 분리한다.
+
+```txt
+현재 턴의 제목
+────────────────
+화자
+본문
+```
+
+구현 기준:
+- `DialogueCard.jsx`와 CSS 중심으로 수정한다.
+- `ChoicePanel` 전체를 뜯지 않는다.
+- `eyebrow`는 상단 보조 정보로 유지한다.
+- `title`은 본문 제목으로 분리한다.
+- speaker label은 화자로 분리한다.
+- 선택지 목록 UI와 첫날 힌트 팝업은 이번 수정에 끌어들이지 않는다.
+
+Acceptance:
+- 제목, 화자, 본문이 시각적으로 분리된다.
+- 기존 대화 넘김과 continue 동작은 유지된다.
+- `npm.cmd run verify`, `npm.cmd run build` 통과.
+
+### 2. 꿈/회차 표기 보정
+
+현재 문제:
+- 상단 `dream-mark`가 `{game.day}번째 꿈 - {game.day}번째 밤`처럼 날짜와 묶여 있다.
+- 다음 회차로 넘어가도 꿈 번호가 기대대로 바뀌지 않을 수 있다.
+- `1번째 꿈`은 UI 문구로 어색하다.
+
+수정 방향:
+- 꿈 번호는 `day`가 아니라 실제 회차/기록 축에서 가져온다.
+- 실제 증가하는 값이 `game.cycle`인지 `game.meta.cycle`인지 확인한다.
+- 표기는 `첫 번째 꿈`, `두 번째 꿈` 같은 한글 서수 또는 다른 자연스러운 형식으로 바꾼다.
+- 밤 표기는 날짜 기준으로 유지 가능하다.
+
+Acceptance:
+- 다음 회차에서 꿈 번호가 바뀐다.
+- `1번째 꿈` 문구가 사라진다.
+- 낮/밤 날짜 표기는 깨지지 않는다.
+- 가능하면 표시 helper 테스트를 verify에 추가한다.
+
+### 3. 성향 레벨의 음수 변화 보정
+
+현재 문제:
+- 성향 레벨이 높을수록 보너스뿐 아니라 음수 변화도 커지는 것으로 보인다.
+- 성장 보상이 손해를 키우는 느낌을 줄 수 있다.
+
+수정 방향:
+- 성향 레벨 보정은 긍정 효과에 우선 적용한다.
+- 음수 delta에 같은 배율을 적용하는 구조는 재검토한다.
+- 특정 빌드가 특정 감소값을 더 크게 받는 의도라면 별도 규칙으로 명시한다.
+
+Acceptance:
+- 성향 레벨 상승이 단순 음수 변화 증폭으로 작동하지 않는다.
+- verify에 양수/음수 delta 배율 차이를 검사한다.
+- 기존 직업/표식/패시브 계산과 충돌하지 않는다.
+
+### 4. 역방향 수치 색상 보정
+
+현재 문제:
+- 일부 수치는 증가할수록 좋지 않은 변화다.
+- 이런 값의 `+`가 일반 긍정 증가처럼 보이면 안 된다.
+
+수정 방향:
+- change display에서 key 또는 group 기준으로 polarity를 구분한다.
+- `fear`, `corruption`, `missing`, `horrorTraits`, `derivedHorror` 계열은 증가가 나쁜 변화다.
+- 나쁜 증가는 danger 계열 색으로 표시한다.
+- 좋은 감소는 완화색으로 표시한다.
+- 단순히 delta 부호만으로 positive/negative class를 정하지 않는다.
+
+Acceptance:
+- 공포 +, 이상징후 +, 공포 특성 +가 위험색으로 보인다.
+- 체력/식량/신뢰 같은 일반 좋은 값 증가는 기존 긍정색을 유지한다.
+- `getChangeDetail` 또는 result change 표시가 polarity를 반영한다.
+
+### 5. 확정 선택 표시 보정
+
+현재 문제:
+- 일부 선택은 확률 판정이 아니라 확정 선택이어야 한다.
+- 일반 확률 보정에 휘둘리면 의미가 흐려진다.
+
+수정 방향:
+- `leave-companion` 계열 선택은 성공률 100%로 고정한다.
+- preview/detail도 성공률 100%로 보여야 한다.
+- 성향, 직업, 표식, 패시브가 이 성공률을 바꾸지 않는다.
+- 이 선택의 무게는 실패 확률이 아니라 영구 결과와 비용이다.
+
+Acceptance:
+- 해당 선택은 항상 성공률 100%로 표시된다.
+- 관련 보정값이 이 확률을 바꾸지 않는다.
+- verify에 성공률 고정 검사를 추가한다.
+
+### 6. 진행 카운터 표시 보정
+
+현재 문제:
+- 카운터가 `■■ 0 / 3`처럼 가려진다.
+- 첫 누적 이후에도 완전히 가려져 있으면 피드백이 부족하다.
+
+수정 방향:
+- 0일 때는 은폐 표시를 유지할 수 있다.
+- 1 이상부터는 `제물 1 / 3` 계열로 의미가 드러나야 한다.
+- 저장/로드 후에도 표시가 유지되어야 한다.
+- 관련 선택 후 카운터가 즉시 바뀐다.
+
+Acceptance:
+- count 0일 때는 은폐 표시 가능.
+- count 1 이상이면 의미가 드러난다.
+- 관련 선택 후 카운터가 즉시 바뀐다.
+
+## 2순위: 본문 지연 로딩 실험
+
+대형 스크립트 파일 1개를 manifest + loader로 분리하는 실험은 UI/표기/수치/카운터 보정 뒤에 진행한다.
+자동 플레이가 먼저 있으므로 loader 작업 뒤 phase 진행이 깨졌는지 확인할 수 있다.
+
+## 3순위: 표식 효과 밸런스
+
+구조가 고정되기 전에 표식 효과를 많이 바꾸지 않는다.
+효과 밸런스는 UI/표기/수치/카운터 보정과 loader 실험 뒤에 진행한다.
 
 ## 다음 작업 후보
-1. UI 표시 보정
+
+1. UI/표기/수치/카운터 보정
 2. 본문 지연 로딩 실험
 3. 표식 효과 밸런스 1차 정리
 4. 1일차 낮 튜토리얼 고정 스크립트 세부 정리
 5. 2일차 낮 약한 변주
 6. 3일차 시작쯤 최초 균열 발현 구조
+
+## 파일 작성 규칙
+
+- 텍스트 파일은 UTF-8(BOM 없음)·LF를 유지한다.
+- Windows PowerShell의 `>`, `>>`, `Out-File`로 소스/문서를 작성하지 않는다.
+- 수정은 패치 또는 UTF-8을 명시하는 도구를 사용하며, 전수 인코딩 검사는 이상 징후가 있을 때만 수행한다.
