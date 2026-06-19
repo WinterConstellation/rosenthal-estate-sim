@@ -84,6 +84,8 @@ import {
 } from "../src/rules/systemRules.js";
 
 const appSource = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+const dialogueCardSource = readFileSync(new URL("../src/components/DialogueCard.jsx", import.meta.url), "utf8");
+const resultOverlaySource = readFileSync(new URL("../src/screens/ResultOverlay.jsx", import.meta.url), "utf8");
 const rulesEngineSource = readFileSync(new URL("../src/engine/rulesEngine.js", import.meta.url), "utf8");
 const legacyProgressionEngineSource = readFileSync(new URL("../src/engine/legacyProgressionEngine.js", import.meta.url), "utf8");
 for (const removedToken of ["GlyphAtmosphereCanvas", "glyphAtmosphere", "glyphFormat", "glyph-atmosphere"]) {
@@ -96,6 +98,13 @@ for (const removedPath of [
 ]) {
   assert.equal(existsSync(new URL(removedPath, import.meta.url)), false, `삭제된 글리프 파일 금지: ${removedPath}`);
 }
+assert.equal(appSource.includes("function ResultOverlay"), false, "App.jsx 내부 ResultOverlay 함수는 분리되어야 함");
+assert.equal(appSource.includes("function DialogueCard"), false, "App.jsx 내부 DialogueCard 함수는 공유 컴포넌트로 분리되어야 함");
+assert.equal(appSource.includes('from "./screens/ResultOverlay.jsx"'), true, "App.jsx는 ResultOverlay를 독립 컴포넌트에서 import해야 함");
+assert.equal(appSource.includes('from "./components/DialogueCard.jsx"'), true, "App.jsx는 DialogueCard를 공유 컴포넌트에서 import해야 함");
+assert.equal(resultOverlaySource.includes("export function ResultOverlay"), true, "ResultOverlay 독립 컴포넌트 export 필요");
+assert.equal(dialogueCardSource.includes("export function DialogueCard"), true, "DialogueCard 공유 컴포넌트 export 필요");
+assert.equal(dialogueCardSource.includes("export function normalizeDialogue"), true, "normalizeDialogue 공유 export 필요");
 assert.equal(rulesEngineSource.includes("../rules/tutorialRules.js"), false, "rulesEngine은 구형 튜토리얼 진행 데이터를 직접 import하지 않는다");
 for (const legacyExport of [
   "createInitialGame",

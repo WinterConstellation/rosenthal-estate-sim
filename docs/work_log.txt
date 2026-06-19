@@ -191,3 +191,9 @@
 - 구조: `rulesEngine.js`에서 본편 미사용 구형 진행 API를 제거하고 `legacyProgressionEngine.js`에 보존했다. `rosenthalEngine.js`는 본편 진행 정본, `rulesEngine.js`는 확률/수치/표식 계산 중심으로 유지한다.
 - 수정 파일: `src/engine/rulesEngine.js`, `src/engine/legacyProgressionEngine.js`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-20 04:18 KST
+- 작업: `App.jsx` 내부 `ResultOverlay`를 독립 화면 컴포넌트로 분리하고 `DialogueCard`를 공유 컴포넌트로 옮겼다.
+- 구조: `App.jsx`는 기존 하단 overlay 호출을 유지하며, `ResultOverlay`는 결과 대화/결과 카드/변경 목록 표시를 담당한다. 엔진 파일과 결과 판정/문구/저장 구조는 변경하지 않았다.
+- 수정 파일: `src/App.jsx`, `src/screens/ResultOverlay.jsx`, `src/components/DialogueCard.jsx`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `npm.cmd run verify`, `npm.cmd run build`

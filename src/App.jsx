@@ -27,7 +27,6 @@ import {
   getEnding,
   getExplorationOptions,
   getFinaleOptions,
-  getNpcSpeaker,
   getSpecialGroup,
   isExplorationOptionAvailable,
   isNightDisplayPhase,
@@ -47,6 +46,8 @@ import {
   saveManual,
 } from "./engine/saveManager.js";
 import { getEffectiveChoiceChance, getJob, getMarkName, getPassive, resolveChoice, truncateToTenth } from "./engine/rulesEngine.js";
+import { DialogueCard, normalizeDialogue } from "./components/DialogueCard.jsx";
+import { ResultOverlay } from "./screens/ResultOverlay.jsx";
 import {
   HORROR_DERIVED_META,
   HORROR_TRAIT_META,
@@ -1327,87 +1328,6 @@ function CharacterPanel({ game }) {
   );
 }
 
-function normalizeDialogue(value, defaultSpeaker = "narration") {
-  const source = Array.isArray(value) ? value : [value];
-  return source
-    .flatMap((entry) => {
-      const text = typeof entry === "object" && entry !== null ? entry.text : entry;
-      const speaker = typeof entry === "object" && entry !== null
-        ? entry.speaker ?? defaultSpeaker
-        : defaultSpeaker;
-      return String(text ?? "")
-        .split(/\n\s*\n/)
-        .map((paragraph) => ({ text: paragraph.trim(), speaker }));
-    })
-    .filter((entry) => entry.text);
-}
-
-function resolveSpeakerLabel(speaker, game) {
-  if (speaker === "narration") return "들리지 않는 목소리";
-  if (speaker === "player") return "나";
-  if (!speaker || speaker === "unknown" || speaker === "*미정*") return "*미정*";
-  if (speaker.startsWith("npc:")) return getNpcSpeaker(game, speaker.slice(4));
-  return speaker;
-}
-
-function getSpeakerKind(speaker) {
-  if (speaker === "narration") return "narration";
-  if (speaker === "player") return "player";
-  if (speaker?.startsWith("npc:")) return "npc";
-  return "unknown";
-}
-
-function DialogueCard({ game, eyebrow, title, paragraphs, button, onContinue, danger = false }) {
-  const script = normalizeDialogue(paragraphs);
-  const scriptKey = script.map((line) => `${line.speaker}:${line.text}`).join("\u241e");
-  const [paragraphIndex, setParagraphIndex] = useState(0);
-
-  useEffect(() => {
-    setParagraphIndex(0);
-  }, [scriptKey]);
-
-  const currentIndex = Math.min(paragraphIndex, Math.max(script.length - 1, 0));
-  const hasNextParagraph = currentIndex < script.length - 1;
-  const currentLine = script[currentIndex];
-  const currentSpeaker = resolveSpeakerLabel(currentLine?.speaker, game);
-  const speakerKind = getSpeakerKind(currentLine?.speaker);
-
-  return (
-    <section className={`dialogue-card dialogue-card--speaker-${speakerKind} ${danger ? "dialogue-card--danger" : ""}`}>
-      <div className="dialogue-card__head">
-        <span>{eyebrow}</span>
-        <div className="dialogue-card__head-actions">
-          <span>{currentIndex + 1} / {script.length}</span>
-          {hasNextParagraph && (
-            <button className="dialogue-card__skip" type="button" onClick={() => setParagraphIndex(script.length - 1)}>
-              <span>스킵</span>
-            </button>
-          )}
-        </div>
-      </div>
-      {title && <h2 className="dialogue-card__title">{title}</h2>}
-      <strong className={`speaker-label speaker-label--${speakerKind} dialogue-card__speaker`}>{currentSpeaker}</strong>
-      <div className="dialogue-card__text">
-        {currentLine && <p key={`${scriptKey}-${currentIndex}`}>{currentLine.text}</p>}
-      </div>
-      <div className="dialogue-card__controls">
-        <button
-          type="button"
-          disabled={currentIndex === 0}
-          onClick={() => setParagraphIndex((index) => Math.max(index - 1, 0))}
-        >
-          이전으로
-        </button>
-        {hasNextParagraph ? (
-          <button type="button" onClick={() => setParagraphIndex((index) => index + 1)}>다음</button>
-        ) : (
-          button && <button type="button" onClick={onContinue}>{button}</button>
-        )}
-      </div>
-    </section>
-  );
-}
-
 function SeedRevealModal({ name, rule, onContinue }) {
   return (
     <div className="seed-reveal-overlay">
@@ -1487,78 +1407,6 @@ function ChoicePanel({ game, eyebrow, title, text, choices, onChoose, selectedId
         />
       )}
     </>
-  );
-}
-
-function ResultOverlay({ game, result, onContinue }) {
-  const paragraphs = normalizeDialogue(result?.result, result?.speaker ?? "narration");
-  const scriptKey = paragraphs.map((line) => `${line.speaker}:${line.text}`).join("\u241e");
-  const dialogueKey = `${result?.title ?? ""}\u241f${scriptKey}`;
-  const [completedScriptKey, setCompletedScriptKey] = useState(null);
-  const dialogueComplete = completedScriptKey === dialogueKey;
-  const changeGroups = [
-    { id: "stats", label: "주인공 능력치", changes: result?.changes?.filter((change) => change.group === "능력치") ?? [] },
-    { id: "resources", label: "영지 자원", changes: result?.changes?.filter((change) => change.group === "자원") ?? [] },
-    { id: "estate", label: "영지 상태", changes: result?.changes?.filter((change) => change.group === "영지") ?? [] },
-    { id: "traits", label: "성향", changes: result?.changes?.filter((change) => change.group === "성향") ?? [] },
-    { id: "horrorTraits", label: "공포 특성", changes: result?.changes?.filter((change) => change.group === "공포 특성") ?? [] },
-  ].filter((group) => group.changes.length > 0);
-
-  if (!result) return null;
-  if (!dialogueComplete && paragraphs.length > 0) {
-    return (
-      <DialogueCard
-        game={game}
-        eyebrow="선택의 결과"
-        title={result.title}
-        paragraphs={paragraphs}
-        button="선택의 결과 확인"
-        onContinue={() => setCompletedScriptKey(dialogueKey)}
-        danger={["danger", "lethal"].includes(result.tone)}
-      />
-    );
-  }
-
-  return (
-    <div className="overlay result-overlay">
-      <section className={`result-card result-card--${result.tone ?? "neutral"}`}>
-        <div className="result-card__head">
-          <span>선택의 결과</span>
-          <strong>{result.title}</strong>
-        </div>
-        <div className="result-card__summary">
-          <strong>{result.changes?.length > 0 ? `${result.changes.length}개 항목 변경` : "변화 없음"}</strong>
-        </div>
-        {result.notices?.length > 0 && (
-          <div className="notice-list">
-            {result.notices.map((notice, index) => <span key={`${notice}-${index}`}>{notice}</span>)}
-          </div>
-        )}
-        {changeGroups.length > 0 && (
-          <div className="change-groups">
-            {changeGroups.map((group) => (
-              <section className="change-group" key={group.id}>
-                <strong>{group.label}</strong>
-                <div className="change-list">
-                  {group.changes.map((change, index) => (
-                    <span
-                      className={change.delta < 0 ? "change--negative" : "change--positive"}
-                      key={`${change.group}-${change.key}-${index}`}
-                      title={getChangeDetail(change)}
-                    >
-                      {LABELS[change.key] ?? change.label} {displaySignedTenth(change.delta)}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        )}
-        <div className="result-card__controls">
-          <button type="button" onClick={onContinue}>확인</button>
-        </div>
-      </section>
-    </div>
   );
 }
 
@@ -2697,7 +2545,14 @@ function App() {
       </div>
 
       {game.phase === "nightfall-transition" && <TransitionOverlay onContinue={() => setGame(completeTransition(game))} />}
-      <ResultOverlay game={game} result={game.phase === "result" ? game.pendingResult : null} onContinue={() => setGame(continueAfterResult(game))} />
+      <ResultOverlay
+        game={game}
+        result={game.phase === "result" ? game.pendingResult : null}
+        labels={LABELS}
+        formatSignedTenth={displaySignedTenth}
+        getChangeDetail={getChangeDetail}
+        onContinue={() => setGame(continueAfterResult(game))}
+      />
       {rulesOpen && (
         <RulesModal
           game={game}
