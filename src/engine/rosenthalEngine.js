@@ -516,7 +516,11 @@ export function getDayOffers(state) {
         }
       }
       const candidates = getDayActionCandidates(state, category.id);
-      return seededPick(candidates, `${state.runRngSeed}:day:${state.day}:turn:${state.dayTurn}:${category.id}`);
+      const firstDayCandidates = state.day === 1
+        ? candidates.filter((candidate) => candidate.firstDaySafe)
+        : [];
+      const pool = firstDayCandidates.length > 0 ? firstDayCandidates : candidates;
+      return seededPick(pool, `${state.runRngSeed}:day:${state.day}:turn:${state.dayTurn}:${category.id}`);
     })
     .filter(Boolean);
 }

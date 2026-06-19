@@ -918,6 +918,22 @@ button:focus-visible {
     #101214;
 }
 
+.choice--warning,
+.choice--uneasy {
+  border-color: rgba(178, 133, 49, 0.76);
+  color: #493313;
+  background: linear-gradient(90deg, #fffaf0 0%, #f3e4bf 54%, #e4c985 100%);
+}
+
+.theme-night .choice--warning,
+.theme-night .choice--uneasy {
+  border-color: rgba(218, 170, 82, 0.78);
+  color: #f0d99f;
+  background:
+    linear-gradient(90deg, rgba(214, 160, 61, 0.22), transparent 48%),
+    #16120b;
+}
+
 .choice--danger {
   border-color: rgba(151, 33, 39, 0.88);
   color: #f1d7d7;

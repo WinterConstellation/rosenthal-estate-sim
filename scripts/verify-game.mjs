@@ -100,6 +100,7 @@ const dialogueCardSource = readFileSync(new URL("../src/components/DialogueCard.
 const resultOverlaySource = readFileSync(new URL("../src/screens/ResultOverlay.jsx", import.meta.url), "utf8");
 const rulesEngineSource = readFileSync(new URL("../src/engine/rulesEngine.js", import.meta.url), "utf8");
 const legacyProgressionEngineSource = readFileSync(new URL("../src/engine/legacyProgressionEngine.js", import.meta.url), "utf8");
+const stylesSource = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
 for (const removedToken of ["GlyphAtmosphereCanvas", "glyphAtmosphere", "glyphFormat", "glyph-atmosphere"]) {
   assert.equal(appSource.includes(removedToken), false, `App.jsx 글리프 잔재 금지: ${removedToken}`);
 }
@@ -117,6 +118,8 @@ assert.equal(appSource.includes('from "./components/DialogueCard.jsx"'), true, "
 assert.equal(resultOverlaySource.includes("export function ResultOverlay"), true, "ResultOverlay 독립 컴포넌트 export 필요");
 assert.equal(dialogueCardSource.includes("export function DialogueCard"), true, "DialogueCard 공유 컴포넌트 export 필요");
 assert.equal(dialogueCardSource.includes("export function normalizeDialogue"), true, "normalizeDialogue 공유 export 필요");
+assert.equal(stylesSource.includes(".choice--warning"), true, "단순 비용/불길한 징조용 warning 선택지 스타일 필요");
+assert.equal(stylesSource.includes(".choice--uneasy"), true, "불길한 징조용 uneasy 선택지 스타일 alias 필요");
 assert.equal(rulesEngineSource.includes("../rules/tutorialRules.js"), false, "rulesEngine은 구형 튜토리얼 진행 데이터를 직접 import하지 않는다");
 for (const legacyExport of [
   "createInitialGame",
@@ -375,6 +378,20 @@ assert.deepEqual(
   ])),
   { gain: 5, loss: 5, "gain-heavy": 10, "loss-heavy": 10 },
 );
+const severeChoiceTones = new Set(["danger", "extreme", "lethal"]);
+const firstDaySafeActions = DAY_ACTIONS.filter((action) => action.firstDaySafe);
+assert.equal(firstDaySafeActions.length, 6);
+for (const category of ["gathering", "interaction", "investigation", "training", "rest", "other"]) {
+  assert.equal(
+    firstDaySafeActions.filter((action) => action.category === category).length,
+    1,
+    `1일차 안전 낮 후보는 카테고리별 1개씩 필요: ${category}`,
+  );
+}
+assert.ok(firstDaySafeActions.every((action) => !severeChoiceTones.has(action.tone ?? "neutral")));
+assert.ok(DAY_ACTIONS.some((action) => action.tone === "warning"));
+assert.ok(DAY_ACTIONS.filter((action) => action.tone === "danger").length > 0);
+assert.ok(DAY_ACTIONS.filter((action) => action.tone === "extreme").length > 0);
 assert.equal(EXPLORATION_EVENTS.length, 40);
 assert.equal(EXPLORATION_STORYLETS.length, EXPLORATION_EVENTS.length);
 assert.equal(new Set(EXPLORATION_STORYLETS.map((storylet) => storylet.id)).size, EXPLORATION_EVENTS.length);
@@ -427,9 +444,12 @@ assert.ok(FORFEIT_RESULTS && typeof FORFEIT_RESULTS === "object");
 assert.equal(CORE_NPCS.find((npc) => npc.id === "maid")?.name, "샤를로트");
 assert.equal(CORE_NPCS.find((npc) => npc.id === "knight")?.name, "리오넬");
 assert.ok(CORE_NPCS.filter((npc) => !["maid", "knight"].includes(npc.id)).every((npc) => npc.name === "*미정*"));
-assert.ok(USER_PROLOGUE.text.some((line) => line.includes("허리에는 사용감이 많은 검")));
+assert.ok(USER_PROLOGUE.text.some((line) => line.includes("따뜻한 차")));
+assert.ok(USER_PROLOGUE.text.some((line) => line.includes("짧은 호신검")));
+assert.ok(USER_PROLOGUE.text.some((line) => line.includes("서류 첫 장")));
+assert.ok(USER_PROLOGUE.text.some((line) => line.includes("맞은편 의자는 비어 있다")));
 assert.ok(USER_PROLOGUE.text.every((line) => !line.includes("팔랑거리는 치맛단")));
-assert.ok(DAY_INTERLUDES[0].paragraphs[0].startsWith("당신은 선택을 해야 한다."));
+assert.ok(DAY_INTERLUDES[0].paragraphs[0].startsWith("첫 업무가 지나가자"));
 assert.ok(DAY_INTERLUDES[1].paragraphs.some((paragraph) => paragraph.includes("힐링물 같은 세계")));
 assert.ok(DAY_INTERLUDES[2].paragraphs.some((paragraph) => paragraph.includes("아무 일도 일어나지 않는다")));
 
@@ -639,6 +659,20 @@ for (const direction of DIRECTIONS) {
   );
 }
 assert.equal(openFirstDay(deterministicA).phase, "day");
+for (const seedConfig of AUTOPLAY_SMOKE_SEEDS) {
+  const dayOneRun = openFirstDay(beginPrologue(createNewRun(seedConfig)));
+  const dayOneOffers = getDayOffers(dayOneRun);
+  assert.equal(dayOneOffers.length, 6, `1일차 낮 후보는 카테고리별 1개씩 보여야 함: ${seedConfig.runRngSeed}`);
+  assert.ok(
+    dayOneOffers.every((choice) => !severeChoiceTones.has(choice.tone ?? "neutral")),
+    `1일차 낮 후보에 강한 위험 tone 노출 금지: ${seedConfig.runRngSeed}`,
+  );
+  assert.deepEqual(
+    new Set(dayOneOffers.map((choice) => choice.id)),
+    new Set(firstDaySafeActions.map((action) => action.id)),
+    `1일차 낮 후보는 firstDaySafe 후보만 사용해야 함: ${seedConfig.runRngSeed}`,
+  );
+}
 const firstDayChoice = chooseDayAction({ ...deterministicA, phase: "day" }, getDayOffers(deterministicA)[0]);
 assert.equal(firstDayChoice.resumePhase, "special-event");
 assert.ok(!firstDayChoice.pendingResult.notices.some((notice) => notice.includes(deterministicA.specialSeedName)));
