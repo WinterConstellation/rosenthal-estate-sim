@@ -6,7 +6,7 @@
 ## 최신 기준
 
 기준 원격: `origin/main`
-기준 시각: 2026-06-20 03:42 KST
+기준 시각: 2026-06-20 03:54 KST
 
 ## 현재 확정 상태
 
@@ -24,6 +24,7 @@
 
 - 방어적인 직접 배열 필터링에서 공격적인 storylet 레지스트리 흐름으로 1차 전환한다.
 - 낮 행동과 밤 탐사 이벤트를 triggerKey 색인 기반 실제 진행 경로에 연결한다.
+- `rosenthalEngine.js`를 본편 진행 엔진으로 두고, `rulesEngine.js`는 계산 규칙 중심으로 줄인다.
 - 글리프 제거, 표식 도감 문장, 분기 진행도 구조는 현재 정본으로 유지한다.
 
 ## 완성된 구조
@@ -35,6 +36,11 @@
   - `src/engine/explorationStorylets.js`를 추가해 `EXPLORATION_EVENTS`를 `exploration-direction:*` storylet으로 등록했다.
   - `startExpedition`은 이제 `EXPLORATION_EVENTS` 직접 direction 필터링 대신 direction triggerKey 후보를 사용한다.
   - 아직 본문 지연 로딩은 적용하지 않았다. 이번 단계는 실제 진행 경로에 레지스트리 골격을 먼저 꽂는 것이다.
+- 엔진 책임선 1차:
+  - `src/engine/rosenthalEngine.js`는 본편 상태 생성, phase 전환, 낮/밤 진행, 저장용 run/meta 동기화의 정본 엔진이다.
+  - `src/engine/rulesEngine.js`는 확률, 수치 보정, 선택 결과 계산, 직업/표식/패시브 조회 중심으로 줄였다.
+  - 본편 미사용 구형 진행 API(`createInitialGame`, `getNightOffers`, `getTitles`, `hasPeacefulLordEnding` 등)는 `src/engine/legacyProgressionEngine.js`로 이동해 보존했다.
+  - `rulesEngine.js`는 더 이상 `tutorialRules.js`의 구형 낮/밤 콘텐츠를 직접 import하지 않는다.
 - 글리프 분위기 효과:
   - `src/effects/GlyphAtmosphereCanvas.jsx`와 `src/effects/glyphAtmosphere.css`를 삭제했다.
   - `src/App.jsx`의 import, director 상태, `glyphFormat`, Canvas 렌더링 경로를 제거했다.
@@ -57,7 +63,8 @@
   - 삭제된 글리프 파일과 `App.jsx` 글리프 참조 부재
   - 낮 행동 storylet 수량, triggerKey, category별 후보 순서, `requiresFlag` 조건
   - 밤 탐사 storylet 수량, triggerKey, direction별 후보 순서, 고정 seed `startExpedition` eventIds 유지
-- 이번 밤 탐사 storylet 작업에서는 `npm.cmd run verify`, `npm.cmd run build`를 실행했다.
+  - `rulesEngine.js` 구형 진행 API export 부재와 `legacyProgressionEngine.js` 보존 API 존재
+- 이번 엔진 경계 작업에서는 `npm.cmd run verify`, `npm.cmd run build`를 실행했다.
 - 로컬 확인 항목:
   - 장비/도감에서 보유·미획득·미해금 문구가 구분되는지
   - 다음 해방 목표가 수집량에 따라 갱신되는지
@@ -78,7 +85,7 @@
 ### 1. 당장 추가를 검토할 것
 
 - 대규모 콘텐츠용 최소 레지스트리: 낮 행동에 1차 적용했다. 다음은 적용 범위 확대와 본문 로더 실험이 필요하다.
-- 정본 엔진 단일화: `rosenthalEngine.js`를 본편 엔진으로 확정하고 `rulesEngine.js`의 구형 진행 API를 분리할지 확인해야 한다.
+- 정본 엔진 단일화: `rosenthalEngine.js`를 본편 엔진으로 확정하고, `rulesEngine.js`의 구형 진행 API는 `legacyProgressionEngine.js`로 분리했다.
 - 저장 마이그레이션: `GAME_VERSION`별 변환 함수와 저장 손상 전 백업 1개를 둘지 확인해야 한다.
 - 자동 플레이 검증: 여러 시드와 단순 행동 정책으로 phase 중단, 도달 불가능한 분기, NaN을 검사하는 시뮬레이터가 필요해 보인다.
 - CI 검증 게이트: Pages와 Windows 빌드 전에 `npm run verify`를 실행하도록 할지 확인해야 한다.
@@ -86,7 +93,7 @@
 ### 2. 당장 무너질 수 있는 위험
 
 - `App.jsx`가 phase 렌더링, 개발자 도구, 모달, 공포 연출을 함께 소유해 새 phase가 늘수록 결합도가 빠르게 커질 수 있다.
-- `rosenthalEngine.js`와 `rulesEngine.js`의 책임이 겹치며, 다른 작업자가 잘못된 엔진 경로를 수정할 위험이 있다.
+- `rosenthalEngine.js`와 `rulesEngine.js`의 큰 책임선은 1차로 분리했지만, 일부 계산 helper의 위치는 화면 분리와 자동 플레이 검증 뒤 다시 정리할 수 있다.
 - `rosenthalContent.js`와 `tutorialRules.js`에 동명 콘텐츠가 병존해 어느 쪽이 정본인지 혼동될 수 있다.
 - 현재 콘텐츠가 정적 import이므로 스크립트가 수십 MB가 되면 초기 로드와 파싱 비용이 커질 수 있다.
 - 수동 저장 10칸이 전체 상태를 `localStorage`에 복제하므로 history와 상태가 커질 때 용량 초과나 저장 지연 위험이 있다.
@@ -103,7 +110,7 @@
 
 ### 4. 제작 의도를 확인해야 하는 부분
 
-- `rulesEngine.js`의 `createInitialGame`, `getNightOffers`, `getTitles`, `hasPeacefulLordEnding` 등 본편 미사용 API를 보존한 목적이 불분명하다.
+- `legacyProgressionEngine.js`에 보존한 구형 진행 API를 장기 보존할지, `reference/`로 이동할지는 추후 결정이 필요하다.
 - 새 회차 시드가 일반 난수가 아니라 버튼을 누른 시각의 초 `00~59`로 결정되는 것이 의도된 연출인지 확인이 필요하다.
 - 로그라이크 구조에서 수동 저장 10칸이 기록 보존용인지, 세이브 스컴 허용용인지 확인이 필요하다.
 - 성향, 직업, 칭호, 패시브, 휴대표식, 장착표식, 성인 시드가 모두 선택 계산에 겹치는데 어느 층이 빌드의 중심인지 확인이 필요하다.
@@ -111,7 +118,7 @@
 
 ### 제작자 확인 질문
 
-1. 구형 진행 API와 중복 콘텐츠는 삭제, `reference/` 이동, 유지 중 어느 쪽인가?
+1. `legacyProgressionEngine.js`의 구형 진행 API는 장기 보존, `reference/` 이동, 삭제 중 어느 쪽인가?
 2. 초 단위 시드 선택은 작품 설정과 연결된 의도된 규칙인가?
 3. 수동 저장 10칸은 결과 되돌리기를 허용하는 설계인가?
 4. 여러 성장축 중 플레이어가 빌드의 중심으로 인식해야 하는 것은 무엇인가?
@@ -120,8 +127,8 @@
 ## 다음 진행 방향
 
 현재 단계는 새 콘텐츠 추가보다 구조 고정이 우선이다.
-낮 행동과 밤 탐사 storylet은 레지스트리 흐름의 1차 증명으로 본다.
-다음은 엔진 책임선과 화면 결합도를 순서대로 줄인다.
+낮 행동/밤 탐사 storylet과 엔진 책임선 1차 분리는 구조 고정의 첫 증명으로 본다.
+다음은 화면 결합도를 줄인다.
 
 ### 작업 묶음 원칙
 
@@ -129,9 +136,9 @@
 다만 한 커밋에 섞지 않는다.
 오류 추적을 위해 다음 순서와 커밋 단위를 유지한다.
 
-1. `rosenthalEngine.js` / `rulesEngine.js` 책임선 1차 정리
-2. `App.jsx` phase renderer 1차 분리
-3. 자동 플레이 검증 추가
+1. `App.jsx` phase renderer 1차 분리
+2. 자동 플레이 검증 추가
+3. 본문 지연 로딩 실험
 
 ### 완료: 밤 탐사 이벤트 storylet화
 
@@ -139,23 +146,14 @@
 - `startExpedition`은 direction별 직접 배열 필터링 대신 storylet 후보를 사용한다.
 - direction별 payload 순서와 고정 seed `eventIds`는 기존과 같다.
 
-### 1순위: 엔진 책임선 1차 정리
+### 완료: 엔진 책임선 1차 정리
 
-목표:
-- `rosenthalEngine.js`를 본편 진행 엔진으로 둔다.
-- `rulesEngine.js`는 확률, 수치, 효과 계산 전용으로 줄인다.
-- 구형 진행 API는 삭제, `legacy/`, `reference/` 이동 중 하나를 정해야 한다.
-
-판단 기준:
 - phase를 바꾸는 함수는 본편 엔진 쪽에 둔다.
 - 성공률, 표식, 패시브, 성인 시드 보정은 rules/chance 쪽에 둔다.
-- 이름이 겹치는 API는 다음 작업자가 어느 경로를 고쳐야 하는지 헷갈리지 않게 정리한다.
+- 구형 진행 API는 `legacyProgressionEngine.js`에 보존한다.
+- `rulesEngine.js`가 구형 튜토리얼 진행 데이터를 직접 import하지 않는 것을 verify에서 검사한다.
 
-주의:
-- 이 단계에서는 대규모 로직 변경보다 export 경계와 파일 위치 정리를 우선한다.
-- 본편 미사용 API를 지울 때는 verify가 먼저 보장해야 한다.
-
-### 2순위: App.jsx phase renderer 1차 분리
+### 1순위: App.jsx phase renderer 1차 분리
 
 목표:
 - `App.jsx`가 모든 화면과 dev 패널과 공포 연출을 함께 소유하는 구조를 줄인다.
@@ -175,7 +173,7 @@
 - dev 패널, 공포 오버레이, 모달, 전체 phase router를 한 번에 모두 분리하지 않는다.
 - 화면 분리와 엔진 로직 변경을 같은 커밋에 섞지 않는다.
 
-### 3순위: 자동 플레이 검증 추가
+### 2순위: 자동 플레이 검증 추가
 
 자동 플레이는 사람이 플레이하는 것이 아니라 `scripts/verify-game.mjs` 안에서 엔진 함수를 호출하는 결정적 시뮬레이터다.
 
@@ -190,21 +188,20 @@
 - 탐사 선택지: 첫 번째 available option
 - 결과 화면: `continueAfterResult`
 
-### 4순위: 성흔/낙인 효과 밸런스
+### 3순위: 성흔/낙인 효과 밸런스
 
 구조가 고정되기 전에 표식 효과를 많이 바꾸지 않는다.
-효과 밸런스는 엔진 책임선, App 분리, 자동 플레이 검증 뒤에 진행한다.
+효과 밸런스는 App 분리, 자동 플레이 검증 뒤에 진행한다.
 
 ## 다음 작업 후보
 
-1. `rosenthalEngine.js`와 `rulesEngine.js`의 정본 책임선 1차 정리
-2. `App.jsx` phase renderer 1차 분리
-3. 자동 플레이 검증 추가
-4. 본문 지연 로딩 실험: 새 대형 스크립트 파일 1개를 manifest + loader로 분리
-5. 성흔/낙인 효과 밸런스 1차 정리
-6. 1일차 낮 튜토리얼 고정 스크립트 정리
-7. 2일차 낮 약한 변주
-8. 3일차 시작쯤 최초 균열 발현 구조
+1. `App.jsx` phase renderer 1차 분리
+2. 자동 플레이 검증 추가
+3. 본문 지연 로딩 실험: 새 대형 스크립트 파일 1개를 manifest + loader로 분리
+4. 성흔/낙인 효과 밸런스 1차 정리
+5. 1일차 낮 튜토리얼 고정 스크립트 정리
+6. 2일차 낮 약한 변주
+7. 3일차 시작쯤 최초 균열 발현 구조
 
 ## 파일 작성 규칙
 

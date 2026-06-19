@@ -185,3 +185,9 @@
 - 구조: `startExpedition`은 direction별 직접 배열 필터링 대신 storylet 후보를 사용하며, 고정 seed eventIds는 유지한다.
 - 수정 파일: `src/engine/explorationStorylets.js`, `src/engine/rosenthalEngine.js`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-20 03:54 KST
+- 작업: 본편 진행 엔진과 규칙 계산 엔진의 책임선을 1차 정리했다.
+- 구조: `rulesEngine.js`에서 본편 미사용 구형 진행 API를 제거하고 `legacyProgressionEngine.js`에 보존했다. `rosenthalEngine.js`는 본편 진행 정본, `rulesEngine.js`는 확률/수치/표식 계산 중심으로 유지한다.
+- 수정 파일: `src/engine/rulesEngine.js`, `src/engine/legacyProgressionEngine.js`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `npm.cmd run verify`, `npm.cmd run build`

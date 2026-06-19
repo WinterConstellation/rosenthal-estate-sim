@@ -61,6 +61,11 @@ import {
   getExplorationStorylets,
   getExplorationTriggerKey,
 } from "../src/engine/explorationStorylets.js";
+import {
+  createInitialGame as createLegacyInitialGame,
+  getDayOffers as getLegacyDayOffers,
+  getNightOffers as getLegacyNightOffers,
+} from "../src/engine/legacyProgressionEngine.js";
 import { getEffectiveChoiceChance, resolveChoice, roundToTenth, truncateToTenth } from "../src/engine/rulesEngine.js";
 import { seededRank } from "../src/engine/seed.js";
 import {
@@ -79,6 +84,8 @@ import {
 } from "../src/rules/systemRules.js";
 
 const appSource = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+const rulesEngineSource = readFileSync(new URL("../src/engine/rulesEngine.js", import.meta.url), "utf8");
+const legacyProgressionEngineSource = readFileSync(new URL("../src/engine/legacyProgressionEngine.js", import.meta.url), "utf8");
 for (const removedToken of ["GlyphAtmosphereCanvas", "glyphAtmosphere", "glyphFormat", "glyph-atmosphere"]) {
   assert.equal(appSource.includes(removedToken), false, `App.jsx 글리프 잔재 금지: ${removedToken}`);
 }
@@ -89,6 +96,26 @@ for (const removedPath of [
 ]) {
   assert.equal(existsSync(new URL(removedPath, import.meta.url)), false, `삭제된 글리프 파일 금지: ${removedPath}`);
 }
+assert.equal(rulesEngineSource.includes("../rules/tutorialRules.js"), false, "rulesEngine은 구형 튜토리얼 진행 데이터를 직접 import하지 않는다");
+for (const legacyExport of [
+  "createInitialGame",
+  "getCriticalState",
+  "isChoiceAvailable",
+  "getDayOffers",
+  "getNightOffers",
+  "getTitles",
+  "hasPeacefulLordEnding",
+  "assessChoice",
+  "getEstateState",
+  "getTitle",
+]) {
+  assert.equal(rulesEngineSource.includes(`export function ${legacyExport}`), false, `rulesEngine 구형 진행 API export 금지: ${legacyExport}`);
+  assert.equal(legacyProgressionEngineSource.includes(`export function ${legacyExport}`), true, `legacyProgressionEngine 보존 API 필요: ${legacyExport}`);
+}
+const legacyProgressionGame = createLegacyInitialGame("legacy-boundary-check");
+assert.equal(legacyProgressionGame.version, 9);
+assert.ok(getLegacyDayOffers(legacyProgressionGame).length > 0);
+assert.ok(getLegacyNightOffers(legacyProgressionGame).length > 0);
 
 assert.equal(SAINT_SEEDS.length, 60);
 assert.equal(new Set(SAINT_SEEDS.map((seed) => seed.name)).size, 60);
