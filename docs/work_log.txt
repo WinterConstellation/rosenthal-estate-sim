@@ -155,3 +155,10 @@
 - 원칙: UTF-8(BOM 없음)·LF를 유지하고, Windows PowerShell의 `>`, `>>`, `Out-File`로 소스/문서를 작성하지 않는다. 전수 검사는 이상 징후가 있을 때만 수행한다.
 - 수정 파일: `AGENTS.md`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: 코드 변경이 없어 빌드/실행 검증은 수행하지 않았다.
+
+2026-06-19 19:04 KST
+- 작업: 글리프 분위기 Canvas를 제거하고 표식 도감 문장, 획득 힌트, 분기 진행도 표시를 추가했다.
+- 구조: 공포 오버레이는 글자 안개·정적 문장·텍스트 눈동자만 유지하며, 표식 효과와 저장 구조는 변경하지 않았다.
+- 수정 파일: `src/App.jsx`, `src/rules/systemRules.js`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 삭제 파일: `src/effects/GlyphAtmosphereCanvas.jsx`, `src/effects/glyphAtmosphere.css`
+- 확인: 사용자가 로컬에서 검증하므로 빌드/실행은 수행하지 않았다.
