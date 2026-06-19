@@ -6,7 +6,7 @@
 ## 최신 기준
 
 기준 원격: `origin/main`
-기준 시각: 2026-06-20 KST
+기준 시각: 2026-06-20 03:42 KST
 
 ## 현재 확정 상태
 
@@ -23,15 +23,17 @@
 ## 이번 작업 의도
 
 - 방어적인 직접 배열 필터링에서 공격적인 storylet 레지스트리 흐름으로 1차 전환한다.
-- 낮 행동부터 `day-category:*` triggerKey 색인을 실제 진행 경로에 연결한다.
+- 낮 행동과 밤 탐사 이벤트를 triggerKey 색인 기반 실제 진행 경로에 연결한다.
 - 글리프 제거, 표식 도감 문장, 분기 진행도 구조는 현재 정본으로 유지한다.
 
 ## 완성된 구조
 
-- 콘텐츠 레지스트리 1차:
+- 콘텐츠 레지스트리:
   - `src/engine/storyletRegistry.js`를 추가해 `triggerKey`, 조건, 우선순위, 반복 여부 기반 후보 색인을 만들었다.
   - `src/engine/dayActionStorylets.js`를 추가해 `DAY_ACTIONS`를 `day-category:*` storylet으로 등록했다.
   - `getDayOffers`는 이제 낮 행동 후보를 직접 전체 배열에서 필터링하지 않고, category triggerKey로 좁힌 후보만 사용한다.
+  - `src/engine/explorationStorylets.js`를 추가해 `EXPLORATION_EVENTS`를 `exploration-direction:*` storylet으로 등록했다.
+  - `startExpedition`은 이제 `EXPLORATION_EVENTS` 직접 direction 필터링 대신 direction triggerKey 후보를 사용한다.
   - 아직 본문 지연 로딩은 적용하지 않았다. 이번 단계는 실제 진행 경로에 레지스트리 골격을 먼저 꽂는 것이다.
 - 글리프 분위기 효과:
   - `src/effects/GlyphAtmosphereCanvas.jsx`와 `src/effects/glyphAtmosphere.css`를 삭제했다.
@@ -54,7 +56,8 @@
   - 분기 진행도의 0개, 일부 수집, 전체 수집 결과
   - 삭제된 글리프 파일과 `App.jsx` 글리프 참조 부재
   - 낮 행동 storylet 수량, triggerKey, category별 후보 순서, `requiresFlag` 조건
-- 이번 구조 작업에서는 `npm.cmd run verify`, `npm.cmd run build`를 실행했다.
+  - 밤 탐사 storylet 수량, triggerKey, direction별 후보 순서, 고정 seed `startExpedition` eventIds 유지
+- 이번 밤 탐사 storylet 작업에서는 `npm.cmd run verify`, `npm.cmd run build`를 실행했다.
 - 로컬 확인 항목:
   - 장비/도감에서 보유·미획득·미해금 문구가 구분되는지
   - 다음 해방 목표가 수집량에 따라 갱신되는지
@@ -117,43 +120,26 @@
 ## 다음 진행 방향
 
 현재 단계는 새 콘텐츠 추가보다 구조 고정이 우선이다.
-낮 행동 storylet은 레지스트리 흐름의 1차 증명으로 본다.
-다음은 같은 흐름을 사건성이 더 강한 밤 탐사에 적용하고, 엔진 책임선과 화면 결합도를 순서대로 줄인다.
+낮 행동과 밤 탐사 storylet은 레지스트리 흐름의 1차 증명으로 본다.
+다음은 엔진 책임선과 화면 결합도를 순서대로 줄인다.
 
 ### 작업 묶음 원칙
 
-1~3순위는 한 작업 묶음으로 진행할 수 있다.
+다음 구조 작업은 한 작업 묶음으로 진행할 수 있다.
 다만 한 커밋에 섞지 않는다.
 오류 추적을 위해 다음 순서와 커밋 단위를 유지한다.
 
-1. 밤 탐사 이벤트 storylet화
-2. `rosenthalEngine.js` / `rulesEngine.js` 책임선 1차 정리
-3. `App.jsx` phase renderer 1차 분리
+1. `rosenthalEngine.js` / `rulesEngine.js` 책임선 1차 정리
+2. `App.jsx` phase renderer 1차 분리
+3. 자동 플레이 검증 추가
 
-### 1순위: 밤 탐사 이벤트 storylet화
+### 완료: 밤 탐사 이벤트 storylet화
 
-목표:
-- 낮 행동에 적용한 `triggerKey -> 후보 축소 -> condition gate -> 우선순위/order -> seededRank` 흐름을 밤 탐사 이벤트에도 적용한다.
-- `EXPLORATION_EVENTS.filter(event => event.directionId === directionId)` 직접 필터링을 `exploration-direction:*` triggerKey 조회로 바꾼다.
+- `EXPLORATION_EVENTS`는 `src/engine/explorationStorylets.js`에서 `exploration-direction:*` storylet으로 색인된다.
+- `startExpedition`은 direction별 직접 배열 필터링 대신 storylet 후보를 사용한다.
+- direction별 payload 순서와 고정 seed `eventIds`는 기존과 같다.
 
-권장 파일:
-- `src/engine/explorationStorylets.js`
-
-권장 triggerKey:
-- `exploration-direction:stairs`
-- `exploration-direction:archive`
-- `exploration-direction:waterway`
-- `exploration-direction:chapel`
-
-검증:
-- direction별 storylet payload id 목록이 기존 `EXPLORATION_EVENTS.filter` 결과와 동일해야 한다.
-- 기존 고정 seed에서 `startExpedition`의 `eventIds`가 바뀌지 않아야 한다.
-- `startExpedition`에서 `EXPLORATION_EVENTS` 직접 direction 필터링이 사라져야 한다.
-- 조건이 없는 현재 단계에서는 동작 변경이 없어야 한다.
-- 구현 후 `npm.cmd run verify`와 `npm.cmd run build`를 통과해야 한다.
-- 작업 후 `docs/pingpong.txt` 기준 시각과 다음 작업 후보를 갱신한다.
-
-### 2순위: 엔진 책임선 1차 정리
+### 1순위: 엔진 책임선 1차 정리
 
 목표:
 - `rosenthalEngine.js`를 본편 진행 엔진으로 둔다.
@@ -169,7 +155,7 @@
 - 이 단계에서는 대규모 로직 변경보다 export 경계와 파일 위치 정리를 우선한다.
 - 본편 미사용 API를 지울 때는 verify가 먼저 보장해야 한다.
 
-### 3순위: App.jsx phase renderer 1차 분리
+### 2순위: App.jsx phase renderer 1차 분리
 
 목표:
 - `App.jsx`가 모든 화면과 dev 패널과 공포 연출을 함께 소유하는 구조를 줄인다.
@@ -189,7 +175,7 @@
 - dev 패널, 공포 오버레이, 모달, 전체 phase router를 한 번에 모두 분리하지 않는다.
 - 화면 분리와 엔진 로직 변경을 같은 커밋에 섞지 않는다.
 
-### 4순위: 자동 플레이 검증 추가
+### 3순위: 자동 플레이 검증 추가
 
 자동 플레이는 사람이 플레이하는 것이 아니라 `scripts/verify-game.mjs` 안에서 엔진 함수를 호출하는 결정적 시뮬레이터다.
 
@@ -204,22 +190,21 @@
 - 탐사 선택지: 첫 번째 available option
 - 결과 화면: `continueAfterResult`
 
-### 5순위: 성흔/낙인 효과 밸런스
+### 4순위: 성흔/낙인 효과 밸런스
 
 구조가 고정되기 전에 표식 효과를 많이 바꾸지 않는다.
-효과 밸런스는 storylet 확장, 엔진 책임선, App 분리, 자동 플레이 검증 뒤에 진행한다.
+효과 밸런스는 엔진 책임선, App 분리, 자동 플레이 검증 뒤에 진행한다.
 
 ## 다음 작업 후보
 
-1. 밤 탐사 이벤트 storylet화
-2. `rosenthalEngine.js`와 `rulesEngine.js`의 정본 책임선 1차 정리
-3. `App.jsx` phase renderer 1차 분리
-4. 자동 플레이 검증 추가
-5. 본문 지연 로딩 실험: 새 대형 스크립트 파일 1개를 manifest + loader로 분리
-6. 성흔/낙인 효과 밸런스 1차 정리
-7. 1일차 낮 튜토리얼 고정 스크립트 정리
-8. 2일차 낮 약한 변주
-9. 3일차 시작쯤 최초 균열 발현 구조
+1. `rosenthalEngine.js`와 `rulesEngine.js`의 정본 책임선 1차 정리
+2. `App.jsx` phase renderer 1차 분리
+3. 자동 플레이 검증 추가
+4. 본문 지연 로딩 실험: 새 대형 스크립트 파일 1개를 manifest + loader로 분리
+5. 성흔/낙인 효과 밸런스 1차 정리
+6. 1일차 낮 튜토리얼 고정 스크립트 정리
+7. 2일차 낮 약한 변주
+8. 3일차 시작쯤 최초 균열 발현 구조
 
 ## 파일 작성 규칙
 

@@ -29,6 +29,7 @@ import {
   resolveChoice,
 } from "./rulesEngine.js";
 import { getDayActionCandidates } from "./dayActionStorylets.js";
+import { getExplorationCandidates } from "./explorationStorylets.js";
 import { createRunSeed, seededPick, seededRank, seededValue } from "./seed.js";
 
 export const GAME_VERSION = 12;
@@ -734,7 +735,7 @@ export function getDirectionOffers() {
 export function startExpedition(state, directionId) {
   const totalSteps = 3 + Math.floor(seededValue(`${state.runRngSeed}:depth:${state.day}:${directionId}`) * 8);
   const eventIds = seededRank(
-    EXPLORATION_EVENTS.filter((event) => event.directionId === directionId),
+    getExplorationCandidates(state, directionId),
     `${state.runRngSeed}:events:${state.day}:${directionId}`,
   ).slice(0, totalSteps).map((event) => event.id);
   const descendedWithAlchemist = state.selectedCompanionId === "alchemist" || state.truthFlags.descendedWithAlchemist;

@@ -4,6 +4,7 @@ import { SAINT_SEEDS, SEED_BENEFIT_RULES, SEED_BURDEN_RULES } from "../src/data/
 import {
   CORE_NPCS,
   DAY_ACTIONS,
+  DIRECTIONS,
   EXPLORATION_EVENTS,
   FINALES,
   NIGHT_OPENING,
@@ -53,7 +54,15 @@ import {
   getDayActionStorylets,
   getDayActionTriggerKey,
 } from "../src/engine/dayActionStorylets.js";
+import {
+  EXPLORATION_STORYLETS,
+  EXPLORATION_TRIGGER_PREFIX,
+  getExplorationCandidates,
+  getExplorationStorylets,
+  getExplorationTriggerKey,
+} from "../src/engine/explorationStorylets.js";
 import { getEffectiveChoiceChance, resolveChoice, roundToTenth, truncateToTenth } from "../src/engine/rulesEngine.js";
+import { seededRank } from "../src/engine/seed.js";
 import {
   HORROR_DERIVED_META,
   HORROR_TRAIT_META,
@@ -138,6 +147,19 @@ assert.deepEqual(
   { gain: 5, loss: 5, "gain-heavy": 10, "loss-heavy": 10 },
 );
 assert.equal(EXPLORATION_EVENTS.length, 40);
+assert.equal(EXPLORATION_STORYLETS.length, EXPLORATION_EVENTS.length);
+assert.equal(new Set(EXPLORATION_STORYLETS.map((storylet) => storylet.id)).size, EXPLORATION_EVENTS.length);
+assert.ok(EXPLORATION_STORYLETS.every((storylet) => storylet.id.startsWith("exploration-event:")));
+assert.ok(EXPLORATION_STORYLETS.every((storylet) => storylet.triggerKey.startsWith(EXPLORATION_TRIGGER_PREFIX)));
+for (const direction of DIRECTIONS) {
+  const triggerKey = getExplorationTriggerKey(direction.id);
+  const sourceIds = EXPLORATION_EVENTS.filter((event) => event.directionId === direction.id).map((event) => event.id);
+  const storyletIds = getExplorationStorylets({}, direction.id).map((storylet) => storylet.payload.id);
+  const candidateIds = getExplorationCandidates({}, direction.id).map((event) => event.id);
+  assert.deepEqual(storyletIds, sourceIds, `exploration storylet order mismatch: ${direction.id}`);
+  assert.deepEqual(candidateIds, sourceIds, `exploration candidate order mismatch: ${direction.id}`);
+  assert.equal(triggerKey, `${EXPLORATION_TRIGGER_PREFIX}${direction.id}`);
+}
 assert.equal(FINALES.length, 12);
 assert.ok(FINALES.flatMap((finale) => finale.options).some((option) => option.label === "약점을 찾는다"));
 assert.ok(FINALES.flatMap((finale) => finale.options).every((option) => option.label !== "급소를 노린다"));
@@ -376,6 +398,17 @@ assert.deepEqual(
   startExpedition({ ...deterministicA, selectedCompanionId: "alone" }, "stairs").expedition,
   startExpedition({ ...deterministicB, selectedCompanionId: "alone" }, "stairs").expedition,
 );
+for (const direction of DIRECTIONS) {
+  const sourceEvents = EXPLORATION_EVENTS.filter((event) => event.directionId === direction.id);
+  const expedition = startExpedition({ ...deterministicA, selectedCompanionId: "alone" }, direction.id).expedition;
+  assert.deepEqual(
+    expedition.eventIds,
+    seededRank(sourceEvents, `${deterministicA.runRngSeed}:events:${deterministicA.day}:${direction.id}`)
+      .slice(0, expedition.totalSteps)
+      .map((event) => event.id),
+    `startExpedition fixed seed eventIds changed: ${direction.id}`,
+  );
+}
 assert.equal(openFirstDay(deterministicA).phase, "day");
 const firstDayChoice = chooseDayAction({ ...deterministicA, phase: "day" }, getDayOffers(deterministicA)[0]);
 assert.equal(firstDayChoice.resumePhase, "special-event");
