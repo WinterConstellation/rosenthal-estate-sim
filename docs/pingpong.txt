@@ -181,6 +181,7 @@
 - 자동 플레이는 재미있게 플레이하지 않는다.
 - 자동 플레이는 첫 번째 유효 선택지만 고르는 단순 순찰 검증이다.
 - 새 phase가 추가될 때 전체 자동 플레이를 뜯어고치지 않도록 phase handler map 구조로 만든다.
+- 실제 App 흐름을 따라 `seed-reveal -> prologue -> day`를 반드시 거친다.
 
 작업 대상:
 - `scripts/verify-game.mjs`
@@ -196,8 +197,10 @@
 
 구현 방향:
 - `verify-game.mjs`에 `KNOWN_AUTOPLAY_PHASES`와 `autoplayHandlers`를 둔다.
+- `KNOWN_AUTOPLAY_PHASES`에는 `prologue`를 포함한다.
 - 자동 플레이는 `createNewRun({ second, runRngSeed })`에서 시작한다.
-- `seed-reveal`은 `openFirstDay(state)`로 넘긴다.
+- `seed-reveal`은 `beginPrologue(state)`로 넘긴다.
+- `prologue`는 `openFirstDay(state)`로 넘긴다.
 - `day`는 `getDayOffers(state)`의 첫 번째 유효 선택지를 `chooseDayAction(state, choice)`로 처리한다.
 - `special-event`는 `getSpecialGroup(state)`의 현재 stage 첫 option을 `chooseSpecialEvent(state, option)`으로 처리한다.
 - `result`는 `pendingResult` 존재를 확인한 뒤 `continueAfterResult(state)`를 호출한다.
@@ -243,6 +246,7 @@
 필요 import:
 - 기존 import를 최대한 재사용한다.
 - 부족하면 `rosenthalEngine.js`에서 다음 함수만 추가 import한다.
+  - `beginPrologue`
   - `getCompanionOffers`
   - `selectCompanion`
   - `getDirectionOffers`
@@ -260,6 +264,7 @@ Acceptance:
 - `npm.cmd run verify` 통과
 - `npm.cmd run build` 통과
 - `scripts/verify-game.mjs`에 phase handler map이 존재
+- `prologue` handler가 존재하고, `seed-reveal -> prologue -> day` 흐름을 밟는다.
 - 모르는 phase가 나오면 명확한 메시지로 실패
 - 자동 플레이가 최소 5개 seed에서 `record-stop` 또는 `ending`까지 도달
 - 같은 seed를 두 번 실행했을 때 projection이 동일
