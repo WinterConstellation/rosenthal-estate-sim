@@ -140,15 +140,18 @@
 - `src/engine/explorationStorylets.js`
 
 권장 triggerKey:
+- `exploration-direction:stairs`
 - `exploration-direction:archive`
+- `exploration-direction:waterway`
 - `exploration-direction:chapel`
-- `exploration-direction:underground`
-- `exploration-direction:forest`
 
 검증:
-- direction별 storylet 후보 수와 순서가 기존 `EXPLORATION_EVENTS` 필터 결과와 일치해야 한다.
-- 기존 seed에서 `startExpedition`의 `eventIds`가 바뀌지 않는지 확인한다.
+- direction별 storylet payload id 목록이 기존 `EXPLORATION_EVENTS.filter` 결과와 동일해야 한다.
+- 기존 고정 seed에서 `startExpedition`의 `eventIds`가 바뀌지 않아야 한다.
+- `startExpedition`에서 `EXPLORATION_EVENTS` 직접 direction 필터링이 사라져야 한다.
 - 조건이 없는 현재 단계에서는 동작 변경이 없어야 한다.
+- 구현 후 `npm.cmd run verify`와 `npm.cmd run build`를 통과해야 한다.
+- 작업 후 `docs/pingpong.txt` 기준 시각과 다음 작업 후보를 갱신한다.
 
 ### 2순위: 엔진 책임선 1차 정리
 
