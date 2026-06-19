@@ -209,3 +209,9 @@
 - 구조: 1일차 낮은 카테고리별 `firstDaySafe` 후보를 우선 표시하며, 단순 비용형 선택지는 `warning`/`uneasy` 계열로 분리하고 실제 위험형만 `danger` 이상을 유지한다.
 - 수정 파일: `src/data/rosenthalContent.js`, `src/rules/tutorialRules.js`, `src/engine/rosenthalEngine.js`, `src/styles.css`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-20 05:41 KST
+- 작업: 첫날 힌트 팝업을 별도 컴포넌트로 추가하고 로젠탈식 안내문 문체로 튜토리얼 정보를 변형했다.
+- 구조: `firstDayHintSeen` run state flag로 첫날 낮 최초 진입 시 1회 표시하며, App에는 표시 조건과 닫기 처리만 두고 긴 힌트 JSX는 `FirstDayHintModal`로 분리했다.
+- 수정 파일: `src/components/FirstDayHintModal.jsx`, `src/App.jsx`, `src/engine/rosenthalEngine.js`, `src/styles.css`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `npm.cmd run verify`, `npm.cmd run build`

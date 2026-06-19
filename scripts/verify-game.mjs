@@ -97,6 +97,7 @@ import {
 
 const appSource = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
 const dialogueCardSource = readFileSync(new URL("../src/components/DialogueCard.jsx", import.meta.url), "utf8");
+const firstDayHintSource = readFileSync(new URL("../src/components/FirstDayHintModal.jsx", import.meta.url), "utf8");
 const resultOverlaySource = readFileSync(new URL("../src/screens/ResultOverlay.jsx", import.meta.url), "utf8");
 const rulesEngineSource = readFileSync(new URL("../src/engine/rulesEngine.js", import.meta.url), "utf8");
 const legacyProgressionEngineSource = readFileSync(new URL("../src/engine/legacyProgressionEngine.js", import.meta.url), "utf8");
@@ -115,11 +116,21 @@ assert.equal(appSource.includes("function ResultOverlay"), false, "App.jsx 내�
 assert.equal(appSource.includes("function DialogueCard"), false, "App.jsx 내부 DialogueCard 함수는 공유 컴포넌트로 분리되어야 함");
 assert.equal(appSource.includes('from "./screens/ResultOverlay.jsx"'), true, "App.jsx는 ResultOverlay를 독립 컴포넌트에서 import해야 함");
 assert.equal(appSource.includes('from "./components/DialogueCard.jsx"'), true, "App.jsx는 DialogueCard를 공유 컴포넌트에서 import해야 함");
+assert.equal(appSource.includes('from "./components/FirstDayHintModal.jsx"'), true, "App.jsx는 첫날 힌트 팝업을 독립 컴포넌트에서 import해야 함");
+assert.equal(appSource.includes("<FirstDayHintModal"), true, "App.jsx는 첫날 힌트 팝업을 렌더링해야 함");
 assert.equal(resultOverlaySource.includes("export function ResultOverlay"), true, "ResultOverlay 독립 컴포넌트 export 필요");
 assert.equal(dialogueCardSource.includes("export function DialogueCard"), true, "DialogueCard 공유 컴포넌트 export 필요");
 assert.equal(dialogueCardSource.includes("export function normalizeDialogue"), true, "normalizeDialogue 공유 export 필요");
+assert.equal(firstDayHintSource.includes("export function FirstDayHintModal"), true, "FirstDayHintModal 독립 컴포넌트 export 필요");
+assert.equal(firstDayHintSource.includes("낮의 장부"), true, "첫날 힌트는 낮 업무 안내를 포함해야 함");
+assert.equal(firstDayHintSource.includes("저택 아래로 이어지는 일정"), true, "첫날 힌트는 밤 진행을 로젠탈식 안내로 암시해야 함");
+assert.equal(appSource.includes("낮의 장부"), false, "App.jsx에 첫날 힌트 장문 JSX를 직접 두지 않는다");
+for (const forbiddenHintWord of ["제물", "사망", "소각", "변질", "7일", "정답 루트", "최적 선택"]) {
+  assert.equal(firstDayHintSource.includes(forbiddenHintWord), false, `첫날 힌트 금지어 노출 금지: ${forbiddenHintWord}`);
+}
 assert.equal(stylesSource.includes(".choice--warning"), true, "단순 비용/불길한 징조용 warning 선택지 스타일 필요");
 assert.equal(stylesSource.includes(".choice--uneasy"), true, "불길한 징조용 uneasy 선택지 스타일 alias 필요");
+assert.equal(stylesSource.includes(".first-day-hint-modal"), true, "첫날 힌트 팝업 스타일 필요");
 assert.equal(rulesEngineSource.includes("../rules/tutorialRules.js"), false, "rulesEngine은 구형 튜토리얼 진행 데이터를 직접 import하지 않는다");
 for (const legacyExport of [
   "createInitialGame",
@@ -474,6 +485,8 @@ assert.equal(Object.keys(deterministicA.meta.traitProgress).length, 10);
 assert.deepEqual(deterministicA.meta.ownedMarkIds, []);
 assert.deepEqual(deterministicA.meta.loadoutMarkIds, []);
 assert.equal(deterministicA.meta.equippedMarkId, null);
+assert.equal(deterministicA.firstDayHintSeen, false);
+assert.equal(deterministicA.tutorialSummarySeen, false);
 const markCounts = MARKS.reduce((counts, mark) => {
   counts.total += 1;
   counts[mark.kind] = (counts[mark.kind] ?? 0) + 1;
@@ -593,10 +606,14 @@ assert.equal(getEffectiveChoiceChance({
 }, 1), 0.95);
 const refreshedHorrorSave = refreshSeedState({
   ...deterministicA,
+  firstDayHintSeen: undefined,
+  tutorialSummarySeen: undefined,
   horrorTraits: { madness: 2 },
   revealedHorrorTraits: [],
   revealedHorrorStates: [],
 });
+assert.equal(refreshedHorrorSave.firstDayHintSeen, false);
+assert.equal(refreshedHorrorSave.tutorialSummarySeen, false);
 assert.equal(refreshedHorrorSave.derivedHorror.effectiveFear, 2);
 assert.deepEqual(refreshedHorrorSave.revealedHorrorTraits, ["madness"]);
 assert.ok(refreshedHorrorSave.revealedHorrorStates.includes("effectiveFear"));

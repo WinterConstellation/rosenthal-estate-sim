@@ -1487,6 +1487,85 @@ button:focus-visible {
   background: rgba(214, 189, 123, 0.18);
 }
 
+.first-day-hint-overlay {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(214, 189, 123, 0.16), transparent 34%),
+    rgba(21, 20, 16, 0.58);
+}
+
+.first-day-hint-modal {
+  width: min(620px, 100%);
+  border: 1px solid rgba(136, 112, 63, 0.42);
+  border-top: 3px solid #b88b3f;
+  padding: 30px;
+  color: #302918;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 240, 0.96), rgba(238, 226, 196, 0.98)),
+    #f5edda;
+  box-shadow: 0 24px 68px rgba(31, 26, 14, 0.34);
+  animation: enter-card 220ms ease-out both;
+}
+
+.first-day-hint-modal h2 {
+  margin: 8px 0 12px;
+  color: #493313;
+  font-family: "Gowun Batang", serif;
+  font-size: 1.62rem;
+  font-weight: 700;
+}
+
+.first-day-hint-modal__intro,
+.first-day-hint-modal__postscript {
+  margin: 0;
+  color: #625236;
+  font-family: "Gowun Batang", serif;
+  font-size: 0.88rem;
+  line-height: 1.8;
+}
+
+.first-day-hint-modal__notes {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0;
+}
+
+.first-day-hint-modal__notes article {
+  border-left: 3px solid rgba(184, 139, 63, 0.56);
+  padding: 4px 0 4px 13px;
+}
+
+.first-day-hint-modal__notes strong {
+  display: block;
+  color: #493313;
+  font-size: 0.78rem;
+}
+
+.first-day-hint-modal__notes p {
+  margin: 5px 0 0;
+  color: #5d5139;
+  font-size: 0.72rem;
+  line-height: 1.65;
+}
+
+.first-day-hint-modal__postscript {
+  border-top: 1px solid rgba(136, 112, 63, 0.22);
+  padding-top: 14px;
+  color: #80672f;
+}
+
+.first-day-hint-modal > button {
+  width: 100%;
+  margin-top: 20px;
+  border: 1px solid rgba(91, 65, 24, 0.5);
+  padding: 12px 18px;
+  color: #fffaf0;
+  background: #6b4a1b;
+}
+
+.first-day-hint-modal > button:hover {
+  background: #7b5723;
+}
+
 .result-overlay {
   place-items: end center;
   padding: 28px;

@@ -47,6 +47,7 @@ import {
 } from "./engine/saveManager.js";
 import { getEffectiveChoiceChance, getJob, getMarkName, getPassive, resolveChoice, truncateToTenth } from "./engine/rulesEngine.js";
 import { DialogueCard, normalizeDialogue } from "./components/DialogueCard.jsx";
+import { FirstDayHintModal } from "./components/FirstDayHintModal.jsx";
 import { ResultOverlay } from "./screens/ResultOverlay.jsx";
 import {
   HORROR_DERIVED_META,
@@ -1984,6 +1985,11 @@ function App() {
     }
   }, [game.day, game.phase, game.tutorialSummarySeen, showStart]);
 
+  const shouldShowFirstDayHint = !showStart
+    && game.day === 1
+    && game.dayTurn === 0
+    && game.phase === "day"
+    && !game.firstDayHintSeen;
   const isNight = isNightDisplayPhase(game);
   const selectedUiPreset = developerMode ? developerUiPreset : "auto";
   const presetNightOverride = selectedUiPreset === "auto" ? null : selectedUiPreset.startsWith("night-");
@@ -2049,6 +2055,10 @@ function App() {
       setTutorialPrompt(false);
       setGame((current) => ({ ...current, tutorialSummarySeen: true }));
     }
+  };
+
+  const closeFirstDayHint = () => {
+    setGame((current) => ({ ...current, firstDayHintSeen: true }));
   };
 
   const togglePassive = (passiveId) => {
@@ -2553,6 +2563,7 @@ function App() {
         getChangeDetail={getChangeDetail}
         onContinue={() => setGame(continueAfterResult(game))}
       />
+      {shouldShowFirstDayHint && <FirstDayHintModal onClose={closeFirstDayHint} />}
       {rulesOpen && (
         <RulesModal
           game={game}
