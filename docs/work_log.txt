@@ -162,3 +162,9 @@
 - 수정 파일: `src/App.jsx`, `src/rules/systemRules.js`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 삭제 파일: `src/effects/GlyphAtmosphereCanvas.jsx`, `src/effects/glyphAtmosphere.css`
 - 확인: 사용자가 로컬에서 검증하므로 빌드/실행은 수행하지 않았다.
+
+2026-06-19 19:33 KST
+- 작업: 현재 선택형 로그라이크 구조를 즉시 추가 후보, 붕괴 위험, 강점, 제작 의도 확인 항목으로 나눠 `docs/pingpong.txt`에 기록했다.
+- 원칙: 보고서는 정적 분석이며 제작자 의도 확인 전에는 관련 코드를 제거하거나 작업 방향으로 확정하지 않는다.
+- 수정 파일: `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: 문서만 변경해 빌드/실행 검증은 수행하지 않았다.
