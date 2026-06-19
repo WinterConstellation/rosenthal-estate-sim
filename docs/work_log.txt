@@ -215,3 +215,9 @@
 - 구조: `firstDayHintSeen` run state flag로 첫날 낮 최초 진입 시 1회 표시하며, App에는 표시 조건과 닫기 처리만 두고 긴 힌트 JSX는 `FirstDayHintModal`로 분리했다.
 - 수정 파일: `src/components/FirstDayHintModal.jsx`, `src/App.jsx`, `src/engine/rosenthalEngine.js`, `src/styles.css`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-20 05:52 KST
+- 작업: 첫날 힌트 팝업을 대사형 안내가 아니라 3단계 인계서 UI로 보정하고, 이전 저장값 때문에 새 팝업이 눌리는 문제를 막았다.
+- 구조: 표시 여부는 `firstDayHintOpen` 화면 상태로 제어하고, 닫기 기록은 `firstDayHintSeen`과 `firstDayHintVariant: "ledger-v2"`로 남긴다.
+- 수정 파일: `src/components/FirstDayHintModal.jsx`, `src/App.jsx`, `src/engine/rosenthalEngine.js`, `src/styles.css`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `npm.cmd run verify`, `npm.cmd run build`, 로컬 브라우저에서 프롤로그 완료 뒤 팝업 표시와 닫기 확인

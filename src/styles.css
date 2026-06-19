@@ -1507,63 +1507,127 @@ button:focus-visible {
 }
 
 .first-day-hint-modal h2 {
-  margin: 8px 0 12px;
+  margin: 6px 0 0;
   color: #493313;
   font-family: "Gowun Batang", serif;
   font-size: 1.62rem;
   font-weight: 700;
 }
 
-.first-day-hint-modal__intro,
-.first-day-hint-modal__postscript {
-  margin: 0;
-  color: #625236;
-  font-family: "Gowun Batang", serif;
-  font-size: 0.88rem;
-  line-height: 1.8;
+.first-day-hint-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
 }
 
-.first-day-hint-modal__notes {
+.first-day-hint-modal__header > span {
+  flex: 0 0 auto;
+  border: 1px solid rgba(136, 112, 63, 0.34);
+  padding: 5px 9px;
+  color: #6a542c;
+  font-size: 0.72rem;
+  line-height: 1;
+  background: rgba(255, 250, 232, 0.55);
+}
+
+.first-day-hint-modal__steps {
   display: grid;
-  gap: 8px;
-  margin: 20px 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 22px 0 18px;
+  padding: 0;
+  list-style: none;
 }
 
-.first-day-hint-modal__notes article {
-  border-left: 3px solid rgba(184, 139, 63, 0.56);
-  padding: 4px 0 4px 13px;
+.first-day-hint-modal__steps li {
+  border-bottom: 2px solid rgba(136, 112, 63, 0.24);
+  padding-bottom: 8px;
+  color: #8b744a;
+  font-size: 0.72rem;
 }
 
-.first-day-hint-modal__notes strong {
+.first-day-hint-modal__steps li.is-current {
+  border-color: #8a5c1f;
+  color: #493313;
+}
+
+.first-day-hint-modal__ledger {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 18px;
+  min-height: 156px;
+  border: 1px solid rgba(136, 112, 63, 0.28);
+  padding: 18px;
+  background:
+    linear-gradient(90deg, rgba(137, 92, 31, 0.08), transparent 34%),
+    rgba(255, 250, 232, 0.5);
+}
+
+.first-day-hint-modal__stamp {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border: 1px solid rgba(107, 74, 27, 0.56);
+  color: #744a12;
+  font-family: "Gowun Batang", serif;
+  font-size: 0.86rem;
+  background: rgba(245, 236, 208, 0.82);
+}
+
+.first-day-hint-modal__ledger strong {
   display: block;
   color: #493313;
-  font-size: 0.78rem;
+  font-family: "Gowun Batang", serif;
+  font-size: 1.02rem;
+  line-height: 1.55;
 }
 
-.first-day-hint-modal__notes p {
-  margin: 5px 0 0;
+.first-day-hint-modal__ledger p {
+  margin: 12px 0 0;
   color: #5d5139;
-  font-size: 0.72rem;
-  line-height: 1.65;
+  font-size: 0.8rem;
+  line-height: 1.75;
 }
 
-.first-day-hint-modal__postscript {
-  border-top: 1px solid rgba(136, 112, 63, 0.22);
-  padding-top: 14px;
+.first-day-hint-modal__ledger small {
+  display: block;
+  margin-top: 12px;
   color: #80672f;
+  font-size: 0.72rem;
+  line-height: 1.55;
 }
 
-.first-day-hint-modal > button {
-  width: 100%;
-  margin-top: 20px;
+.first-day-hint-modal__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.first-day-hint-modal__controls button {
   border: 1px solid rgba(91, 65, 24, 0.5);
   padding: 12px 18px;
   color: #fffaf0;
   background: #6b4a1b;
 }
 
-.first-day-hint-modal > button:hover {
+.first-day-hint-modal__controls button:first-child {
+  color: #493313;
+  background: rgba(255, 250, 232, 0.64);
+}
+
+.first-day-hint-modal__controls button:hover:not(:disabled) {
   background: #7b5723;
+}
+
+.first-day-hint-modal__controls button:first-child:hover:not(:disabled) {
+  background: rgba(255, 250, 232, 0.9);
+}
+
+.first-day-hint-modal__controls button:disabled {
+  cursor: default;
+  opacity: 0.42;
 }
 
 .result-overlay {

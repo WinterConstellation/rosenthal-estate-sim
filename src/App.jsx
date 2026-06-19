@@ -91,6 +91,8 @@ const LABELS = {
   missing: "실종",
 };
 
+const FIRST_DAY_HINT_VARIANT = "ledger-v2";
+
 const STATUS_LABELS = {
   alive: "생존",
   dead: "사망",
@@ -1962,6 +1964,7 @@ function App() {
   const [saveOpen, setSaveOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [tutorialPrompt, setTutorialPrompt] = useState(false);
+  const [firstDayHintOpen, setFirstDayHintOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [developerMode, setDeveloperMode] = useState(shouldOpenDeveloperMode);
   const [developerNightPreview, setDeveloperNightPreview] = useState(false);
@@ -1985,11 +1988,15 @@ function App() {
     }
   }, [game.day, game.phase, game.tutorialSummarySeen, showStart]);
 
-  const shouldShowFirstDayHint = !showStart
-    && game.day === 1
-    && game.dayTurn === 0
-    && game.phase === "day"
-    && !game.firstDayHintSeen;
+  useEffect(() => {
+    const shouldOpenFirstDayHint = !showStart
+      && game.day === 1
+      && game.dayTurn === 0
+      && game.phase === "day"
+      && game.firstDayHintVariant !== FIRST_DAY_HINT_VARIANT;
+    setFirstDayHintOpen(shouldOpenFirstDayHint);
+  }, [game.day, game.dayTurn, game.phase, game.firstDayHintVariant, showStart]);
+
   const isNight = isNightDisplayPhase(game);
   const selectedUiPreset = developerMode ? developerUiPreset : "auto";
   const presetNightOverride = selectedUiPreset === "auto" ? null : selectedUiPreset.startsWith("night-");
@@ -2030,6 +2037,7 @@ function App() {
     setShowStart(false);
     setRulesOpen(false);
     setTutorialPrompt(false);
+    setFirstDayHintOpen(false);
   };
   const nextCycle = () => {
     setGame((current) => advanceToNextCycle(current, { second: new Date().getSeconds() }));
@@ -2037,6 +2045,7 @@ function App() {
     setSaveOpen(false);
     setRulesOpen(false);
     setTutorialPrompt(false);
+    setFirstDayHintOpen(false);
   };
   const loadSlot = (index) => {
     const loaded = loadManual(index);
@@ -2046,6 +2055,7 @@ function App() {
       setSaveOpen(false);
       setRulesOpen(false);
       setTutorialPrompt(false);
+      setFirstDayHintOpen(false);
     }
   };
 
@@ -2058,7 +2068,12 @@ function App() {
   };
 
   const closeFirstDayHint = () => {
-    setGame((current) => ({ ...current, firstDayHintSeen: true }));
+    setFirstDayHintOpen(false);
+    setGame((current) => ({
+      ...current,
+      firstDayHintSeen: true,
+      firstDayHintVariant: FIRST_DAY_HINT_VARIANT,
+    }));
   };
 
   const togglePassive = (passiveId) => {
@@ -2563,7 +2578,7 @@ function App() {
         getChangeDetail={getChangeDetail}
         onContinue={() => setGame(continueAfterResult(game))}
       />
-      {shouldShowFirstDayHint && <FirstDayHintModal onClose={closeFirstDayHint} />}
+      {firstDayHintOpen && <FirstDayHintModal onClose={closeFirstDayHint} />}
       {rulesOpen && (
         <RulesModal
           game={game}

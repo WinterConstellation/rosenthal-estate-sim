@@ -118,10 +118,15 @@ assert.equal(appSource.includes('from "./screens/ResultOverlay.jsx"'), true, "Ap
 assert.equal(appSource.includes('from "./components/DialogueCard.jsx"'), true, "App.jsx는 DialogueCard를 공유 컴포넌트에서 import해야 함");
 assert.equal(appSource.includes('from "./components/FirstDayHintModal.jsx"'), true, "App.jsx는 첫날 힌트 팝업을 독립 컴포넌트에서 import해야 함");
 assert.equal(appSource.includes("<FirstDayHintModal"), true, "App.jsx는 첫날 힌트 팝업을 렌더링해야 함");
+assert.equal(appSource.includes('const FIRST_DAY_HINT_VARIANT = "ledger-v2";'), true, "첫날 힌트는 저장 데이터와 구분되는 버전 플래그를 가져야 함");
+assert.equal(appSource.includes("firstDayHintOpen"), true, "첫날 힌트는 렌더 조건만이 아니라 별도 오픈 상태로 제어해야 함");
+assert.equal(appSource.includes("game.firstDayHintVariant !== FIRST_DAY_HINT_VARIANT"), true, "첫날 힌트는 이전 저장의 seen 값만으로 새 안내를 누르면 안 됨");
 assert.equal(resultOverlaySource.includes("export function ResultOverlay"), true, "ResultOverlay 독립 컴포넌트 export 필요");
 assert.equal(dialogueCardSource.includes("export function DialogueCard"), true, "DialogueCard 공유 컴포넌트 export 필요");
 assert.equal(dialogueCardSource.includes("export function normalizeDialogue"), true, "normalizeDialogue 공유 export 필요");
 assert.equal(firstDayHintSource.includes("export function FirstDayHintModal"), true, "FirstDayHintModal 독립 컴포넌트 export 필요");
+assert.equal(firstDayHintSource.includes("useState"), true, "첫날 힌트는 단순 대사 복구가 아니라 단계형 팝업이어야 함");
+assert.equal(firstDayHintSource.includes("신임 영주 인계서"), true, "첫날 힌트는 로젠탈식 인계서 UI로 제시되어야 함");
 assert.equal(firstDayHintSource.includes("낮의 장부"), true, "첫날 힌트는 낮 업무 안내를 포함해야 함");
 assert.equal(firstDayHintSource.includes("저택 아래로 이어지는 일정"), true, "첫날 힌트는 밤 진행을 로젠탈식 안내로 암시해야 함");
 assert.equal(appSource.includes("낮의 장부"), false, "App.jsx에 첫날 힌트 장문 JSX를 직접 두지 않는다");
@@ -486,6 +491,7 @@ assert.deepEqual(deterministicA.meta.ownedMarkIds, []);
 assert.deepEqual(deterministicA.meta.loadoutMarkIds, []);
 assert.equal(deterministicA.meta.equippedMarkId, null);
 assert.equal(deterministicA.firstDayHintSeen, false);
+assert.equal(deterministicA.firstDayHintVariant, null);
 assert.equal(deterministicA.tutorialSummarySeen, false);
 const markCounts = MARKS.reduce((counts, mark) => {
   counts.total += 1;
@@ -607,12 +613,14 @@ assert.equal(getEffectiveChoiceChance({
 const refreshedHorrorSave = refreshSeedState({
   ...deterministicA,
   firstDayHintSeen: undefined,
+  firstDayHintVariant: undefined,
   tutorialSummarySeen: undefined,
   horrorTraits: { madness: 2 },
   revealedHorrorTraits: [],
   revealedHorrorStates: [],
 });
 assert.equal(refreshedHorrorSave.firstDayHintSeen, false);
+assert.equal(refreshedHorrorSave.firstDayHintVariant, null);
 assert.equal(refreshedHorrorSave.tutorialSummarySeen, false);
 assert.equal(refreshedHorrorSave.derivedHorror.effectiveFear, 2);
 assert.deepEqual(refreshedHorrorSave.revealedHorrorTraits, ["madness"]);

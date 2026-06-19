@@ -27,7 +27,7 @@
 - `App.jsx`의 결과 오버레이 표시를 독립 컴포넌트로 분리한 상태를 유지한다.
 - 자동 플레이 smoke 검증으로 phase 진행성을 지킨다.
 - 프롤로그/1일차 낮을 평화롭게 조정하고, 선택지 색상 의미를 정리했다.
-- 첫날 힌트 창은 별도 팝업으로 구현했고, 일반 튜토리얼 문법을 로젠탈 저택 안내문처럼 변형했다.
+- 첫날 힌트 창은 별도 단계형 팝업으로 구현했고, 일반 튜토리얼 문법을 로젠탈 저택 인계서처럼 변형했다.
 - 새 콘텐츠 추가보다 구조 고정과 초반 톤 정리가 우선이다.
 
 ## 완성된 구조
@@ -56,9 +56,10 @@
   - 엔진의 선택 결과 계산과 자동 플레이 smoke 검증은 약화하지 않았다.
 - 첫날 힌트 팝업:
   - `src/components/FirstDayHintModal.jsx`를 추가했다.
-  - 첫날 낮 최초 진입 시 `firstDayHintSeen` run state flag로 1회 표시한다.
+  - 첫날 낮 최초 진입 시 `firstDayHintOpen` 화면 상태로 표시하고, 닫으면 `firstDayHintSeen: true`, `firstDayHintVariant: "ledger-v2"`를 기록한다.
+  - 이전 저장/테스트에서 `firstDayHintSeen`이 true였더라도 새 `ledger-v2` 인계서 팝업은 한 번 다시 뜬다.
   - 힌트는 낮 업무, 선택에 따른 수치 변화, 해가 진 뒤의 진행만 안내한다.
-  - 문구는 로젠탈 저택이 새 영주에게 건네는 안내문처럼 처리하고, 세계 규칙의 정답은 설명하지 않는다.
+  - 문구는 로젠탈 저택이 새 영주에게 건네는 3단계 인계서처럼 처리하고, 세계 규칙의 정답은 설명하지 않는다.
 - 자동 플레이 smoke 검증:
   - `scripts/verify-game.mjs`에 `KNOWN_AUTOPLAY_PHASES`와 `autoplayHandlers`를 추가했다.
   - 실제 App 흐름과 같은 `seed-reveal -> prologue -> day` 진입을 검증한다.
@@ -94,8 +95,9 @@
   - 자동 플레이 smoke: 최소 5개 seed를 두 번씩 실행해 `record-stop` 또는 `ending` 도달과 projection 결정성을 확인
   - 1일차 낮 후보: `createNewRun -> beginPrologue -> openFirstDay -> getDayOffers` 경로에서 `danger/extreme/lethal` 미노출
   - 선택지 색상: `choice--warning`, `choice--uneasy` 스타일 존재
-  - 첫날 힌트 팝업: `FirstDayHintModal` export/import, App 장문 JSX 부재, 금지어 부재, `firstDayHintSeen` 기본값
+  - 첫날 힌트 팝업: `FirstDayHintModal` export/import, App 장문 JSX 부재, 금지어 부재, `firstDayHintOpen` 표시 상태, `firstDayHintSeen`/`firstDayHintVariant` 기본값
 - 이번 첫날 힌트 팝업 작업에서는 `npm.cmd run verify`, `npm.cmd run build`를 실행했다.
+- 로컬 브라우저 확인에서 `잠에서 깨어난다 -> 기록을 시작한다 -> 스킵 -> 영주의 자리에 앉는다` 뒤 `신임 영주 인계서` 팝업이 뜨고, 3단계 완료 뒤 닫히는 것을 확인했다.
 - 로컬 확인 항목:
   - 장비/도감에서 보유·미획득·미해금 문구가 구분되는지
   - 다음 해방 목표가 수집량에 따라 갱신되는지
@@ -215,8 +217,9 @@
 ### 완료: 첫날 힌트 팝업 + 스토리 진행 연결
 
 - `FirstDayHintModal`을 별도 컴포넌트로 추가했다.
-- 힌트는 첫날 낮 최초 진입 시 1회 표시되고, 닫으면 `firstDayHintSeen`이 true가 된다.
-- 흔한 튜토리얼 클리셰는 낮의 장부, 움직이는 숫자, 해가 기운 뒤 일정이라는 로젠탈식 안내로 변형했다.
+- 힌트는 첫날 낮 최초 진입 시 `firstDayHintOpen` 화면 상태로 표시되고, 닫으면 `firstDayHintSeen`과 `firstDayHintVariant: "ledger-v2"`를 기록한다.
+- 이전 저장/테스트에서 `firstDayHintSeen`이 true였더라도 `ledger-v2` 인계서 버전은 한 번 다시 뜨게 했다.
+- 흔한 튜토리얼 클리셰는 낮의 장부, 움직이는 숫자, 해가 기운 뒤 일정이라는 3단계 로젠탈식 인계서로 변형했다.
 - 금지어와 세계 규칙의 정답은 힌트에서 설명하지 않는다.
 - 자동 플레이 smoke는 UI를 렌더링하지 않으므로 기존처럼 통과한다.
 
