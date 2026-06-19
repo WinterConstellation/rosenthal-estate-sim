@@ -150,3 +150,8 @@
 - 수정: `src/App.jsx`는 글리프 렌더러 내부 구현 대신 `GlyphAtmosphereCanvas` 모듈의 helper만 호출한다. `src/glyph-fall-fix.css`와 `index.html`의 임시 CSS 로드는 제거했다.
 - 수정 파일: `src/App.jsx`, `src/styles.css`, `src/effects/GlyphAtmosphereCanvas.jsx`, `src/effects/glyphAtmosphere.css`, `index.html`, `src/glyph-fall-fix.css`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
+2026-06-19 13:58 KST
+- 작업: 텍스트 파일 인코딩 재발 방지를 위해 루트 작업 규칙과 핑퐁 인계 기준을 갱신했다.
+- 원칙: UTF-8(BOM 없음)·LF를 유지하고, Windows PowerShell의 `>`, `>>`, `Out-File`로 소스/문서를 작성하지 않는다. 전수 검사는 이상 징후가 있을 때만 수행한다.
+- 수정 파일: `AGENTS.md`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: 코드 변경이 없어 빌드/실행 검증은 수행하지 않았다.
