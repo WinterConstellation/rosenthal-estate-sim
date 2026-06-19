@@ -1,6 +1,5 @@
 import {
   CORE_NPCS,
-  DAY_ACTIONS,
   DAY_CATEGORIES,
   DAY_EIGHT_SCRIPTS,
   DIRECTIONS,
@@ -29,6 +28,7 @@ import {
   getMarkName,
   resolveChoice,
 } from "./rulesEngine.js";
+import { getDayActionCandidates } from "./dayActionStorylets.js";
 import { createRunSeed, seededPick, seededRank, seededValue } from "./seed.js";
 
 export const GAME_VERSION = 12;
@@ -486,11 +486,6 @@ function nextPhaseAfterDayTurn(state, dayTurn) {
   return "day";
 }
 
-function canUseDayAction(action, state) {
-  if (action.requiresFlag && !state.truthFlags[action.requiresFlag]) return false;
-  return true;
-}
-
 export function getDayOffers(state) {
   return DAY_CATEGORIES
     .filter((category) => !state.usedDayCategories.includes(category.id))
@@ -519,7 +514,7 @@ export function getDayOffers(state) {
           };
         }
       }
-      const candidates = DAY_ACTIONS.filter((action) => action.category === category.id && canUseDayAction(action, state));
+      const candidates = getDayActionCandidates(state, category.id);
       return seededPick(candidates, `${state.runRngSeed}:day:${state.day}:turn:${state.dayTurn}:${category.id}`);
     })
     .filter(Boolean);

@@ -46,6 +46,13 @@ import {
   retreatExpedition,
   startExpedition,
 } from "../src/engine/rosenthalEngine.js";
+import {
+  DAY_ACTION_STORYLETS,
+  DAY_ACTION_TRIGGER_PREFIX,
+  getDayActionCandidates,
+  getDayActionStorylets,
+  getDayActionTriggerKey,
+} from "../src/engine/dayActionStorylets.js";
 import { getEffectiveChoiceChance, resolveChoice, roundToTenth, truncateToTenth } from "../src/engine/rulesEngine.js";
 import {
   HORROR_DERIVED_META,
@@ -103,6 +110,26 @@ assert.equal(DAY_ACTIONS.length, 30);
 for (const category of ["gathering", "interaction", "investigation", "training", "rest", "other"]) {
   assert.equal(DAY_ACTIONS.filter((action) => action.category === category).length, 5);
 }
+assert.equal(DAY_ACTION_STORYLETS.length, DAY_ACTIONS.length);
+assert.equal(new Set(DAY_ACTION_STORYLETS.map((storylet) => storylet.id)).size, DAY_ACTIONS.length);
+assert.ok(DAY_ACTION_STORYLETS.every((storylet) => storylet.id.startsWith("day-action:")));
+assert.ok(DAY_ACTION_STORYLETS.every((storylet) => storylet.triggerKey.startsWith(DAY_ACTION_TRIGGER_PREFIX)));
+for (const category of ["gathering", "interaction", "investigation", "training", "rest", "other"]) {
+  const triggerKey = getDayActionTriggerKey(category);
+  const sourceIds = DAY_ACTIONS.filter((action) => action.category === category).map((action) => action.id);
+  const storyletIds = getDayActionStorylets({ truthFlags: { metAlchemist: true } }, category)
+    .map((storylet) => storylet.payload.id);
+  assert.deepEqual(storyletIds, sourceIds, `day action storylet order mismatch: ${category}`);
+  assert.equal(triggerKey, `${DAY_ACTION_TRIGGER_PREFIX}${category}`);
+}
+assert.equal(
+  getDayActionCandidates({ truthFlags: {} }, "investigation").some((action) => action.id === "summoning-trace"),
+  false,
+);
+assert.equal(
+  getDayActionCandidates({ truthFlags: { metAlchemist: true } }, "investigation").some((action) => action.id === "summoning-trace"),
+  true,
+);
 assert.deepEqual(
   Object.fromEntries(["gain", "loss", "gain-heavy", "loss-heavy"].map((kind) => [
     kind,

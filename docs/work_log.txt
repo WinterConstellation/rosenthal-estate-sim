@@ -168,3 +168,9 @@
 - 원칙: 보고서는 정적 분석이며 제작자 의도 확인 전에는 관련 코드를 제거하거나 작업 방향으로 확정하지 않는다.
 - 수정 파일: `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: 문서만 변경해 빌드/실행 검증은 수행하지 않았다.
+
+2026-06-19 20:10 KST
+- 작업: 대규모 스크립트 확장을 위한 storylet 레지스트리 1차 골격을 추가하고 낮 행동 후보 선택을 `day-category:*` triggerKey 경로로 전환했다.
+- 구조: `DAY_ACTIONS`는 `dayActionStorylets`에서 storylet으로 색인되고, `getDayOffers`는 레지스트리 후보만 사용한다. 기존 행동 데이터와 선택 결과는 유지한다.
+- 수정 파일: `src/engine/storyletRegistry.js`, `src/engine/dayActionStorylets.js`, `src/engine/rosenthalEngine.js`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `npm.cmd run verify`, `npm.cmd run build`
