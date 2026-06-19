@@ -1,248 +1,42 @@
-# 핑퐁 파일 정리 및 실제 수정 이력
+# 핑퐁 최신 인계
 
-이 문서는 최신 작업 인계용이다.
-길어지면 이전 논의와 폐기안을 지우고, 다음 작업자가 바로 이어받을 현재 판단과 확인 항목만 남긴다.
+## 기준
+- 원격: `origin/main`
+- 시각: 2026-06-20 KST
 
-## 최신 기준
+## 작업 해석
+- `수정해`, `고쳐`, `반영해`, `넣어`, `정리해`, `진행해`는 실행 지시다.
+- `검토만`, `수정하지 마`, `핑퐁 X`, `커밋하지 마`, `아직 하지 마`가 있을 때만 쓰기 작업을 멈춘다.
+- 쓰기 전 최신 파일을 다시 읽는다.
+- 409가 나면 덮어쓰지 않는다.
 
-기준 원격: `origin/main`
-기준 시각: 2026-06-20 KST
+## 완료 상태
+- storylet 기반 낮/밤 후보 선택 적용 완료.
+- 엔진 책임선 1차 분리 완료.
+- `ResultOverlay`, `DialogueCard`, `FirstDayHintModal` 분리 완료.
+- 자동 플레이 smoke 검증 추가 완료.
+- 프롤로그/1일차 낮 톤 보정 완료.
 
-## 현재 확정 상태
+## 1순위: UI 표시 보정
 
-- 성흔/낙인 표식은 총 `100개`가 정본이다.
-  - 성흔 50개
-  - 낙인 50개
-  - 성향형 94개
-  - 단독 6개
-- `MARK_BRANCH_UNLOCKS`는 현재 총량 안에서 모두 도달 가능하다.
-- 기존 저장 마이그레이션(`LEGACY_STIGMA_MARK_MAP`)은 유지한다.
-- UI 단계는 `day-calm`, `day-anomaly`, `day-critical`, `night-calm`, `night-anomaly`, `night-critical` 6단계다.
-- 기본 밤은 푸른 `night-calm`이며 붉은 밤은 `night-anomaly` 이후에 사용한다.
+1. `DialogueCard` 내부를 `제목 -> 구분선 -> 화자 -> 본문` 구조로 분리한다.
+2. 상단 꿈 표기는 날짜가 아니라 회차/기록 기준으로 계산한다.
+3. `1번째 꿈` 같은 어색한 문구를 자연스러운 서수 표현으로 바꾼다.
+4. 성향 레벨이 음수 변화까지 키우는 구조를 재검토한다.
+5. 증가할수록 나쁜 값은 증가 시 경고색으로 표시한다.
+6. 확정 선택은 보정값 때문에 흔들리지 않게 표시한다.
+7. 진행 카운터는 0일 때만 은폐 가능하며, 1 이상부터 의미를 드러낸다.
 
-## 이번 작업 의도
-
-- 낮 행동과 밤 탐사 이벤트는 storylet triggerKey 기반 실제 진행 경로로 연결한다.
-- `rosenthalEngine.js`는 본편 진행 엔진, `rulesEngine.js`는 계산 규칙 중심으로 유지한다.
-- `App.jsx`의 결과 오버레이 표시를 독립 컴포넌트로 분리한 상태를 유지한다.
-- 자동 플레이 smoke 검증으로 phase 진행성을 지킨다.
-- 프롤로그/1일차 낮을 평화롭게 조정하고, 선택지 색상 의미를 정리했다.
-- 첫날 힌트 창은 별도 단계형 팝업으로 구현했고, 일반 튜토리얼 문법을 로젠탈 저택 인계서처럼 변형했다.
-- 새 콘텐츠 추가보다 구조 고정과 초반 톤 정리가 우선이다.
-
-## 완성된 구조
-
-- 콘텐츠 레지스트리:
-  - `src/engine/storyletRegistry.js`를 추가해 `triggerKey`, 조건, 우선순위, 반복 여부 기반 후보 색인을 만들었다.
-  - `src/engine/dayActionStorylets.js`를 추가해 `DAY_ACTIONS`를 `day-category:*` storylet으로 등록했다.
-  - `getDayOffers`는 이제 낮 행동 후보를 직접 전체 배열에서 필터링하지 않고, category triggerKey로 좁힌 후보만 사용한다.
-  - `src/engine/explorationStorylets.js`를 추가해 `EXPLORATION_EVENTS`를 `exploration-direction:*` storylet으로 등록했다.
-  - `startExpedition`은 이제 `EXPLORATION_EVENTS` 직접 direction 필터링 대신 direction triggerKey 후보를 사용한다.
-  - 아직 본문 지연 로딩은 적용하지 않았다. 이번 단계는 실제 진행 경로에 레지스트리 골격을 먼저 꽂는 것이다.
-- 엔진 책임선 1차:
-  - `src/engine/rosenthalEngine.js`는 본편 상태 생성, phase 전환, 낮/밤 진행, 저장용 run/meta 동기화의 정본 엔진이다.
-  - `src/engine/rulesEngine.js`는 확률, 수치 보정, 선택 결과 계산, 직업/표식/패시브 조회 중심으로 줄였다.
-  - 본편 미사용 구형 진행 API(`createInitialGame`, `getNightOffers`, `getTitles`, `hasPeacefulLordEnding` 등)는 `src/engine/legacyProgressionEngine.js`로 이동해 보존했다.
-  - `rulesEngine.js`는 더 이상 `tutorialRules.js`의 구형 낮/밤 콘텐츠를 직접 import하지 않는다.
-- 화면 분리 1차:
-  - `src/components/DialogueCard.jsx`를 추가해 대화 카드와 `normalizeDialogue`를 공유 컴포넌트/표시 유틸로 분리했다.
-  - `src/screens/ResultOverlay.jsx`를 추가해 결과 대화, 결과 카드, 변경 목록, 알림, 확인 버튼 표시를 App 밖으로 옮겼다.
-  - `App.jsx`는 기존처럼 하단에서 `<ResultOverlay ... />`를 호출하며, `mainContent`에 result phase branch를 새로 만들지 않았다.
-  - `continueAfterResult`, `completeTransition`, 엔진 파일, 결과 문구, 판정, 저장 구조는 변경하지 않았다.
-- 프롤로그/1일차 톤:
-  - 프롤로그는 따뜻한 환대와 낯선 준비 상태를 중심으로 낮췄다.
-  - 1일차 낮은 카테고리별 `firstDaySafe` 후보를 우선 사용한다.
-  - 단순 비용/피로/약한 불길함은 `warning`/`uneasy` 계열로 보이고, 실제 위험만 `danger` 이상으로 둔다.
-  - 엔진의 선택 결과 계산과 자동 플레이 smoke 검증은 약화하지 않았다.
-- 첫날 힌트 팝업:
-  - `src/components/FirstDayHintModal.jsx`를 추가했다.
-  - 첫날 낮 최초 진입 시 `firstDayHintOpen` 화면 상태로 표시하고, 닫으면 `firstDayHintSeen: true`, `firstDayHintVariant: "ledger-v2"`를 기록한다.
-  - 이전 저장/테스트에서 `firstDayHintSeen`이 true였더라도 새 `ledger-v2` 인계서 팝업은 한 번 다시 뜬다.
-  - 힌트는 낮 업무, 선택에 따른 수치 변화, 해가 진 뒤의 진행만 안내한다.
-  - 문구는 로젠탈 저택이 새 영주에게 건네는 3단계 인계서처럼 처리하고, 세계 규칙의 정답은 설명하지 않는다.
-- 자동 플레이 smoke 검증:
-  - `scripts/verify-game.mjs`에 `KNOWN_AUTOPLAY_PHASES`와 `autoplayHandlers`를 추가했다.
-  - 실제 App 흐름과 같은 `seed-reveal -> prologue -> day` 진입을 검증한다.
-  - 자동 플레이는 첫 번째 유효 선택지만 고르는 단순 순찰 검증이다.
-  - `result`의 `pendingResult`, 알 수 없는 phase, NaN/Infinity, 반복 key 정체를 실패로 처리한다.
-  - 최소 5개 seed를 두 번씩 실행해 `record-stop` 또는 `ending` 도달과 projection 결정성을 확인한다.
-  - `App.jsx`, `rosenthalEngine.js`, `rulesEngine.js`는 이 작업에서 수정하지 않았다.
-- 글리프 분위기 효과:
-  - `src/effects/GlyphAtmosphereCanvas.jsx`와 `src/effects/glyphAtmosphere.css`를 삭제했다.
-  - `src/App.jsx`의 import, director 상태, `glyphFormat`, Canvas 렌더링 경로를 제거했다.
-  - 공포 오버레이는 글자 안개, 정적 문장, 텍스트 눈동자만 사용한다.
-- 표식 도감:
-  - 모든 표식은 정적 데이터인 `codexText`, `sourceHint`를 가진다.
-  - 두 필드는 효과 계산과 저장 데이터에 관여하지 않는다.
-  - 보유 표식은 도감 문장, 미획득 표식은 획득 힌트, 미해금 표식은 수집 조건을 표시한다.
-- 분기 진행도:
-  - `getMarkBranchProgress(markIds)`는 요구 조건별 현재값, 요구값, 남은 수량, 해방 여부를 반환한다.
-  - `getMarkBranchLabel(branchKey)`는 수량 분기와 성향별 capstone 분기에 사용자용 이름을 제공한다.
-  - 장비/도감 화면은 해방된 분기와 성흔·낙인·혼합 축의 다음 목표를 최대 1개씩 표시한다.
-
-## 검증 기준
-
-- `scripts/verify-game.mjs`가 다음을 검사한다.
-  - `MARKS=100`, 성흔 50, 낙인 50, 분기 조건 도달 가능성
-  - 모든 표식의 `codexText`, `sourceHint`
-  - 분기 진행도의 0개, 일부 수집, 전체 수집 결과
-  - 삭제된 글리프 파일과 `App.jsx` 글리프 참조 부재
-  - 낮 행동 storylet 수량, triggerKey, category별 후보 순서, `requiresFlag` 조건
-  - 밤 탐사 storylet 수량, triggerKey, direction별 후보 순서, 고정 seed `startExpedition` eventIds 유지
-  - `rulesEngine.js` 구형 진행 API export 부재와 `legacyProgressionEngine.js` 보존 API 존재
-  - `App.jsx` 내부 `ResultOverlay`/`DialogueCard` 함수 부재와 독립 컴포넌트 export 존재
-  - 자동 플레이 smoke: `seed-reveal -> prologue -> day` 흐름, phase handler map, 알 수 없는 phase 실패, result `pendingResult`, NaN/Infinity, 반복 key 정체 방지
-  - 자동 플레이 smoke: 최소 5개 seed를 두 번씩 실행해 `record-stop` 또는 `ending` 도달과 projection 결정성을 확인
-  - 1일차 낮 후보: `createNewRun -> beginPrologue -> openFirstDay -> getDayOffers` 경로에서 `danger/extreme/lethal` 미노출
-  - 선택지 색상: `choice--warning`, `choice--uneasy` 스타일 존재
-  - 첫날 힌트 팝업: `FirstDayHintModal` export/import, App 장문 JSX 부재, 금지어 부재, `firstDayHintOpen` 표시 상태, `firstDayHintSeen`/`firstDayHintVariant` 기본값
-- 이번 첫날 힌트 팝업 작업에서는 `npm.cmd run verify`, `npm.cmd run build`를 실행했다.
-- 로컬 브라우저 확인에서 `잠에서 깨어난다 -> 기록을 시작한다 -> 스킵 -> 영주의 자리에 앉는다` 뒤 `신임 영주 인계서` 팝업이 뜨고, 3단계 완료 뒤 닫히는 것을 확인했다.
-- 로컬 확인 항목:
-  - 장비/도감에서 보유·미획득·미해금 문구가 구분되는지
-  - 다음 해방 목표가 수집량에 따라 갱신되는지
-  - 글리프 없이 글자 안개·정적 문장·눈동자가 기존 조건에서 동작하는지
-
-## 변경하지 않은 것
-
-- 성흔/낙인 수치 밸런스
-- `night-critical`, `day-anomaly`, `day-critical` 추가 연출
-- 새 표식, 자원, 능력치, 분기, 저장 필드
-
-## 구조 판단 보고서 (남은 의도 확인)
-
-아래 내용은 현재 코드와 일반적인 선택형 로그라이크 구조를 비교한 정적 분석이다.
-제작자의 의도가 확인되기 전에는 확정 작업 방향으로 취급하거나 관련 코드를 제거하지 않는다.
-
-### 1. 당장 추가를 검토할 것
-
-- 대규모 콘텐츠용 최소 레지스트리: 낮 행동에 1차 적용했다. 다음은 적용 범위 확대와 본문 로더 실험이 필요하다.
-- 정본 엔진 단일화: `rosenthalEngine.js`를 본편 엔진으로 확정하고, `rulesEngine.js`의 구형 진행 API는 `legacyProgressionEngine.js`로 분리했다.
-- 저장 마이그레이션: `GAME_VERSION`별 변환 함수와 저장 손상 전 백업 1개를 둘지 확인해야 한다.
-- 자동 플레이 검증: 여러 시드와 단순 행동 정책으로 phase 중단, 도달 불가능한 분기, NaN을 검사하는 smoke 검증을 추가했다.
-- CI 검증 게이트: Pages와 Windows 빌드 전에 `npm run verify`를 실행하도록 할지 확인해야 한다.
-- 첫날 힌트 팝업은 별도 컴포넌트와 run state flag로 추가했다.
-
-### 2. 당장 무너질 수 있는 위험
-
-- `App.jsx`가 phase 렌더링, 개발자 도구, 모달, 공포 연출을 함께 소유해 새 phase가 늘수록 결합도가 빠르게 커질 수 있다.
-- `rosenthalEngine.js`와 `rulesEngine.js`의 큰 책임선은 1차로 분리했지만, 일부 계산 helper의 위치는 화면 분리와 자동 플레이 검증 뒤 다시 정리할 수 있다.
-- `rosenthalContent.js`와 `tutorialRules.js`에 동명 콘텐츠가 병존해 어느 쪽이 정본인지 혼동될 수 있다.
-- 현재 콘텐츠가 정적 import이므로 스크립트가 수십 MB가 되면 초기 로드와 파싱 비용이 커질 수 있다.
-- 수동 저장 10칸이 전체 상태를 `localStorage`에 복제하므로 history와 상태가 커질 때 용량 초과나 저장 지연 위험이 있다.
-- 표식 100개에 비해 효과 프로필 반복이 많아 수집 규모 대비 체감 차이가 작아질 수 있다.
-
-### 3. 일반적인 게임보다 훌륭한 부분
-
-- 난수가 run seed, 날짜, history, choice id 조합으로 재현 가능해 디버깅과 회차 재현에 유리하다.
-- 주요 선택 계산과 상태 전이가 기존 상태를 직접 훼손하기보다 새 상태를 반환하는 방식으로 구성돼 있다.
-- NPC의 사망, 실종, 변질, 처치, 유품이 제물과 분기에 연결되어 선택이 영구 서사 결과를 만든다.
-- 현재 회차와 영구 `meta`가 분리되어 있고 성향 성장, 표식, 엔딩 기록이 다음 회차로 이어진다.
-- 공포 UI가 단순 장식이 아니라 낮/밤, 이상, 임계 단계와 실제 공포 상태에 연결된다.
-- 단일 검증 스크립트가 확률, 표식, 분기, 저장, phase 전환을 비교적 넓게 다룬다.
-
-### 4. 제작 의도를 확인해야 하는 부분
-
-- `legacyProgressionEngine.js`에 보존한 구형 진행 API를 장기 보존할지, `reference/`로 이동할지는 추후 결정이 필요하다.
-- 새 회차 시드가 일반 난수가 아니라 버튼을 누른 시각의 초 `00~59`로 결정되는 것이 의도된 연출인지 확인이 필요하다.
-- 로그라이크 구조에서 수동 저장 10칸이 기록 보존용인지, 세이브 스컴 허용용인지 확인이 필요하다.
-- 성향, 직업, 칭호, 패시브, 휴대표식, 장착표식, 성인 시드가 모두 선택 계산에 겹치는데 어느 층이 빌드의 중심인지 확인이 필요하다.
-- `docs/large_script_architecture_theory_for_codex.txt`의 레지스트리/지연 로딩 방향을 실제 구현 기준으로 채택할지 확인이 필요하다.
-
-### 제작자 확인 질문
-
-1. `legacyProgressionEngine.js`의 구형 진행 API는 장기 보존, `reference/` 이동, 삭제 중 어느 쪽인가?
-2. 초 단위 시드 선택은 작품 설정과 연결된 의도된 규칙인가?
-3. 수동 저장 10칸은 결과 되돌리기를 허용하는 설계인가?
-4. 여러 성장축 중 플레이어가 빌드의 중심으로 인식해야 하는 것은 무엇인가?
-5. 레지스트리 다음 적용 대상은 특수 사건, 밤 탐사 이벤트, 본문 loader 중 무엇인가?
-
-## 다음 진행 방향
-
-현재 단계는 새 콘텐츠 추가보다 구조 고정이 우선이다.
-낮 행동/밤 탐사 storylet, 엔진 책임선 1차 분리, `ResultOverlay` 추출, 자동 플레이 smoke 검증은 구조 고정의 첫 증명으로 본다.
-프롤로그/1일차 낮의 평온도와 선택지 색상 의미 보정은 완료했다.
-첫날 힌트 팝업과 스토리 진행 연결도 완료했다.
-다음은 본문 지연 로딩 실험을 검토한다.
-
-### 완료: `ResultOverlay` 1차 분리
-
-- `ResultOverlay`는 `src/screens/ResultOverlay.jsx`로 분리했다.
-- `DialogueCard`와 `normalizeDialogue`는 `src/components/DialogueCard.jsx`로 분리했다.
-- `App.jsx` 하단의 overlay 호출 형태는 유지했다.
-- `mainContent`에 result phase branch를 새로 만들지 않았다.
-- 엔진 파일, 결과 문구, 판정, 선택 계산, 저장 구조는 변경하지 않았다.
-
-### 작업 묶음 원칙
-
-다음 구조 작업은 한 작업 묶음으로 진행할 수 있다.
-다만 한 커밋에 섞지 않는다.
-오류 추적을 위해 다음 순서와 커밋 단위를 유지한다.
-
-1. 본문 지연 로딩 실험
-2. 성흔/낙인 효과 밸런스 1차 정리
-3. 1일차 낮 튜토리얼 고정 스크립트 세부 정리
-
-### 완료: 밤 탐사 이벤트 storylet화
-
-- `EXPLORATION_EVENTS`는 `src/engine/explorationStorylets.js`에서 `exploration-direction:*` storylet으로 색인된다.
-- `startExpedition`은 direction별 직접 배열 필터링 대신 storylet 후보를 사용한다.
-- direction별 payload 순서와 고정 seed `eventIds`는 기존과 같다.
-
-### 완료: 엔진 책임선 1차 정리
-
-- phase를 바꾸는 함수는 본편 엔진 쪽에 둔다.
-- 성공률, 표식, 패시브, 성인 시드 보정은 rules/chance 쪽에 둔다.
-- 구형 진행 API는 `legacyProgressionEngine.js`에 보존한다.
-- `rulesEngine.js`가 구형 튜토리얼 진행 데이터를 직접 import하지 않는 것을 verify에서 검사한다.
-
-### 완료: 자동 플레이 smoke 검증 추가
-
-- `scripts/verify-game.mjs`에 `KNOWN_AUTOPLAY_PHASES`와 `autoplayHandlers`를 추가했다.
-- 실제 App 흐름과 같은 `seed-reveal -> prologue -> day` 진입을 검증한다.
-- 자동 플레이는 첫 번째 유효 선택지만 고르는 단순 순찰 검증이다.
-- `result`의 `pendingResult`, 알 수 없는 phase, NaN/Infinity, 반복 key 정체를 실패로 처리한다.
-- 최소 5개 seed를 두 번씩 실행해 `record-stop` 또는 `ending` 도달과 projection 결정성을 확인한다.
-- `App.jsx`, `rosenthalEngine.js`, `rulesEngine.js`는 이 작업에서 수정하지 않았다.
-
-### 완료: 프롤로그/1일차 낮 평온도 보정 + 선택지 색상 의미 정리
-
-- `PROLOGUE`와 첫날 낮 도입문을 따뜻한 환대 중심으로 낮췄다.
-- 불길함은 서류, 빈 의자, 너무 정확한 준비 같은 생활 불일치로만 남겼다.
-- `DAY_ACTIONS`에 카테고리별 `firstDaySafe` 후보를 두고, 1일차 낮은 이 후보를 우선 표시한다.
-- 단순 비용형 선택지는 `warning`으로 낮추고, 실제 위험형 낮 행동만 `danger`/`extreme`을 유지한다.
-- `choice--warning`, `choice--uneasy` CSS를 추가했다.
-- `scripts/verify-game.mjs`가 1일차 낮 후보 tone과 새 CSS class를 검증한다.
-
-### 완료: 첫날 힌트 팝업 + 스토리 진행 연결
-
-- `FirstDayHintModal`을 별도 컴포넌트로 추가했다.
-- 힌트는 첫날 낮 최초 진입 시 `firstDayHintOpen` 화면 상태로 표시되고, 닫으면 `firstDayHintSeen`과 `firstDayHintVariant: "ledger-v2"`를 기록한다.
-- 이전 저장/테스트에서 `firstDayHintSeen`이 true였더라도 `ledger-v2` 인계서 버전은 한 번 다시 뜨게 했다.
-- 흔한 튜토리얼 클리셰는 낮의 장부, 움직이는 숫자, 해가 기운 뒤 일정이라는 3단계 로젠탈식 인계서로 변형했다.
-- 금지어와 세계 규칙의 정답은 힌트에서 설명하지 않는다.
-- 자동 플레이 smoke는 UI를 렌더링하지 않으므로 기존처럼 통과한다.
-
-### 1순위: 본문 지연 로딩 실험
-
-새 대형 스크립트 파일 1개를 manifest + loader로 분리하는 실험은 첫날 힌트 팝업과 자동 플레이 smoke 검증 뒤에 진행한다.
-자동 플레이가 먼저 있어야 loader 작업 뒤 phase 진행이 깨졌는지 바로 잡을 수 있다.
-
-### 2순위: 성흔/낙인 효과 밸런스
-
-구조가 고정되기 전에 표식 효과를 많이 바꾸지 않는다.
-효과 밸런스는 자동 플레이 검증과 프롤로그/1일차 톤 보정 뒤에 진행한다.
+## 검증
+- `npm.cmd run verify`
+- `npm.cmd run build`
+- 자동 플레이 smoke 검증 유지
+- `docs/work_log.txt` 기록
 
 ## 다음 작업 후보
-
-1. 본문 지연 로딩 실험: 새 대형 스크립트 파일 1개를 manifest + loader로 분리
-2. 성흔/낙인 효과 밸런스 1차 정리
-3. 1일차 낮 튜토리얼 고정 스크립트 세부 정리
-4. 2일차 낮 약한 변주
-5. 3일차 시작쯤 최초 균열 발현 구조
-
-## 파일 작성 규칙
-
-- 텍스트 파일은 UTF-8(BOM 없음)·LF를 유지한다.
-- Windows PowerShell의 `>`, `>>`, `Out-File`로 소스/문서를 작성하지 않는다.
-- 수정은 패치 또는 UTF-8을 명시하는 도구를 사용하며, 전수 인코딩 검사는 이상 징후가 있을 때만 수행한다.
+1. UI 표시 보정
+2. 본문 지연 로딩 실험
+3. 표식 효과 밸런스 1차 정리
+4. 1일차 낮 튜토리얼 고정 스크립트 세부 정리
+5. 2일차 낮 약한 변주
+6. 3일차 시작쯤 최초 균열 발현 구조
