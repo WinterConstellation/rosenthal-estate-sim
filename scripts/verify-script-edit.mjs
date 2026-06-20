@@ -15,6 +15,7 @@ import {
 } from "./script-edit/pathPolicy.mjs";
 import { applyScriptEdit, getEditableItem } from "./script-edit/editorStore.mjs";
 import { buildScriptEditIndex, writeScriptEditIndex } from "./script-edit/indexGenerator.mjs";
+import { createScriptEditServer } from "./script-edit/server.mjs";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 
@@ -107,6 +108,41 @@ try {
   await assert.rejects(() => applyScriptEdit(tempEditRoot, { id: "denied:app", value: "no" }), /not editable/);
 } finally {
   rmSync(tempEditRoot, { recursive: true, force: true });
+}
+
+const serverTestRoot = mkdtempSync(join(tmpdir(), "script-edit-server-"));
+try {
+  mkdirSync(join(serverTestRoot, "src", "data", "scriptPacks"), { recursive: true });
+  mkdirSync(join(serverTestRoot, "src", "data"), { recursive: true });
+  mkdirSync(join(serverTestRoot, ".script-edit"), { recursive: true });
+  copyFileSync(join(repoRoot, "src", "data", "scriptManifest.js"), join(serverTestRoot, "src", "data", "scriptManifest.js"));
+  copyFileSync(join(repoRoot, "src", "data", "scriptPacks", "specialEventGroups.js"), join(serverTestRoot, "src", "data", "scriptPacks", "specialEventGroups.js"));
+  writeFileSync(join(serverTestRoot, ".script-edit", "config.json"), JSON.stringify(DEFAULT_SCRIPT_EDIT_CONFIG, null, 2), "utf8");
+  await writeScriptEditIndex(serverTestRoot);
+  const server = createScriptEditServer({ projectRoot: serverTestRoot, token: "test-token", port: 0, openBrowser: false });
+  const address = await server.start();
+  const base = `http://${address.host}:${address.port}`;
+  const forbidden = await fetch(`${base}/api/index`);
+  assert.equal(forbidden.status, 403);
+  const okIndex = await fetch(`${base}/api/index?token=test-token`);
+  assert.equal(okIndex.status, 200);
+  const indexJson = await okIndex.json();
+  assert.equal(indexJson.entries.length > 0, true);
+  const itemResponse = await fetch(`${base}/api/item?token=test-token&id=${encodeURIComponent("script-pack:special-event-groups:blank-ledger:stage-1:title")}`);
+  assert.equal(itemResponse.status, 200);
+  assert.equal((await itemResponse.json()).value, "비어 있는 첫 장");
+  const saveResponse = await fetch(`${base}/api/item?token=test-token`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id: "script-pack:special-event-groups:blank-ledger:stage-1:title", value: "서버 저장 테스트" }),
+  });
+  assert.equal(saveResponse.status, 200);
+  assert.equal((await saveResponse.json()).changedFile, "src/data/scriptPacks/specialEventGroups.js");
+  const missing = await fetch(`${base}/api/item?token=test-token&id=missing`);
+  assert.equal(missing.status, 404);
+  await server.close();
+} finally {
+  rmSync(serverTestRoot, { recursive: true, force: true });
 }
 
 console.log("Script edit verification passed.");
