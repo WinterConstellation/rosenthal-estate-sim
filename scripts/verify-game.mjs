@@ -150,10 +150,10 @@ assert.equal(appSource.includes('from "./components/DialogueCard.jsx"'), true, "
 assert.equal(appSource.includes('from "./components/runMarkers.js"'), true, "App.jsx는 page/counter 표시 helper를 사용해야 함");
 assert.equal(appSource.includes("번째 꿈"), false, "App.jsx에 n번째 꿈 표시 문구가 남으면 안 됨");
 assert.equal(appSource.includes("번째 밤"), false, "App.jsx에 n번째 밤 표시 문구가 남으면 안 됨");
-assert.equal(appSource.includes('? "지하 기록"'), true, "night headerTitle은 지하 기록이어야 함");
-assert.equal(appSource.includes('? "영지 기록"'), true, "day headerTitle은 영지 기록이어야 함");
+assert.equal(appSource.includes('? "지하 페이지"'), true, "night headerTitle은 지하 페이지여야 함");
+assert.equal(appSource.includes('? "영지 페이지"'), true, "day headerTitle은 영지 페이지여야 함");
 assert.equal(appSource.includes("`기록 ${game.day}일차`"), false, "기록 계열 headerTitle에 날짜 표기가 남으면 안 됨");
-assert.equal(appSource.includes(': "기록";'), true, "기록 계열 headerTitle은 날짜 없이 기록이어야 함");
+assert.equal(appSource.includes(': "페이지";'), true, "기록 계열 headerTitle은 날짜 없이 페이지여야 함");
 assert.equal(appSource.includes("formatPageMarker(game, effectiveIsNight)"), true, "dream-mark는 page marker helper 결과를 렌더링해야 함");
 assert.equal(appSource.includes("formatPageMarker(game, true)"), true, "밤 진입 UI도 page marker helper 결과를 사용해야 함");
 assert.equal(appSource.includes("getSacrificeProgress(game.sacrificeCount)"), true, "제물 카운터는 표시 helper를 사용해야 함");

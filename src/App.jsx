@@ -2535,17 +2535,17 @@ function App() {
   })();
 
   const dayPeriod = game.dayTurn < 2 ? "오전" : game.dayTurn < 4 ? "오후" : "저녁";
-  const phaseLabel = effectiveIsNight ? "밤" : game.phase === "day" ? dayPeriod : "기록";
+  const phaseLabel = effectiveIsNight ? "밤" : game.phase === "day" ? dayPeriod : "페이지";
   const phaseProgress = game.phase === "day"
     ? `${Math.min(game.dayTurn + 1, 5)} / 5`
     : game.phase === "expedition"
       ? `${game.expedition.stepIndex + 1} / ${game.expedition.totalSteps}`
       : "—";
   const headerTitle = effectiveIsNight
-    ? "지하 기록"
+    ? "지하 페이지"
     : game.phase === "day"
-      ? "영지 기록"
-      : "기록";
+      ? "영지 페이지"
+      : "페이지";
   const appShellClass = [
     "app-shell",
     effectiveIsNight ? "theme-night" : "theme-day",
