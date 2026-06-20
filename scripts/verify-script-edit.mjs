@@ -1,18 +1,21 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   DEFAULT_SCRIPT_EDIT_CONFIG,
   assertScriptEditPathAllowed,
   ensureScriptEditConfig,
+  getScriptEditIndexPath,
   isScriptEditPathAllowed,
   loadScriptEditConfig,
   matchesPattern,
   normalizeProjectPath,
 } from "./script-edit/pathPolicy.mjs";
+import { buildScriptEditIndex, writeScriptEditIndex } from "./script-edit/indexGenerator.mjs";
 
-const repoRoot = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/scriptPacks/*.js"), true);
 assert.equal(normalizeProjectPath(repoRoot, "src/data/scriptManifest.js"), "src/data/scriptManifest.js");
@@ -43,5 +46,27 @@ try {
 } finally {
   rmSync(tempRoot, { recursive: true, force: true });
 }
+
+const index = await buildScriptEditIndex(repoRoot);
+const ids = new Set(index.entries.map((entry) => entry.id));
+assert.equal(index.version, "1.0.0");
+assert.equal(index.entries.some((entry) => entry.sourceFile === "src/App.jsx"), false);
+assert.equal(ids.has("manifest:special-event-groups:triggerKey"), true);
+assert.equal(ids.has("manifest:special-event-groups:stageCount"), true);
+assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:stage-1:title"), true);
+assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:stage-1:text"), true);
+assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:stage-1:left-label"), true);
+assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:stage-1:right-label"), true);
+const blankText = index.entries.find((entry) => entry.id === "script-pack:special-event-groups:blank-ledger:stage-1:text");
+assert.equal(blankText.kind, "dialogue");
+assert.equal(blankText.sourceFile, "src/data/scriptPacks/specialEventGroups.js");
+assert.equal(blankText.locator.type, "source-span");
+assert.equal(Number.isInteger(blankText.locator.start), true);
+assert.equal(Number.isInteger(blankText.locator.end), true);
+assert.equal(blankText.value, "새 장부 앞 일곱 장은 날짜만 남아 있다.");
+const writtenIndex = await writeScriptEditIndex(repoRoot);
+assert.equal(writtenIndex.entries.length, index.entries.length);
+assert.equal(existsSync(getScriptEditIndexPath(repoRoot)), true);
+assert.equal(JSON.parse(readFileSync(getScriptEditIndexPath(repoRoot), "utf8")).entries.length, index.entries.length);
 
 console.log("Script edit verification passed.");
