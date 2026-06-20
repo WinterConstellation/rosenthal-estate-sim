@@ -49,7 +49,7 @@ import { loadSpecialEventGroups } from "./engine/scriptLoader.js";
 import { getEffectiveChoiceChance, getJob, getMarkName, getPassive, resolveChoice, truncateToTenth } from "./engine/rulesEngine.js";
 import { DialogueCard, normalizeDialogue } from "./components/DialogueCard.jsx";
 import { FirstDayHintModal } from "./components/FirstDayHintModal.jsx";
-import { formatPageMarker, getSacrificeProgress } from "./components/runMarkers.js";
+import { formatPageMarker, getPhaseClockLabel, getPhaseHeaderTitle, getSacrificeProgress } from "./components/runMarkers.js";
 import { ResultOverlay } from "./screens/ResultOverlay.jsx";
 import {
   HORROR_DERIVED_META,
@@ -2534,18 +2534,13 @@ function App() {
     return null;
   })();
 
-  const dayPeriod = game.dayTurn < 2 ? "오전" : game.dayTurn < 4 ? "오후" : "저녁";
-  const phaseLabel = effectiveIsNight ? "밤" : game.phase === "day" ? dayPeriod : "페이지";
+  const phaseLabel = getPhaseClockLabel(game, effectiveIsNight);
   const phaseProgress = game.phase === "day"
     ? `${Math.min(game.dayTurn + 1, 5)} / 5`
     : game.phase === "expedition"
       ? `${game.expedition.stepIndex + 1} / ${game.expedition.totalSteps}`
       : "—";
-  const headerTitle = effectiveIsNight
-    ? "지하 페이지"
-    : game.phase === "day"
-      ? "영지 페이지"
-      : "페이지";
+  const headerTitle = getPhaseHeaderTitle(game, effectiveIsNight);
   const appShellClass = [
     "app-shell",
     effectiveIsNight ? "theme-night" : "theme-day",

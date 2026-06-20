@@ -256,3 +256,9 @@
 - 구조: 밤은 `지하 기록`, 낮은 `영지 기록`, 그 외 기록 계열은 `기록 n일차`로 표시하고 verify에 해당 headerTitle 기준을 추가했다.
 - 수정 파일: `src/App.jsx`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-21 01:56 KST
+- 작업: 페이지/페이즈 용어 분리 기준에 맞춰 화면 성격 표기를 정합화했다.
+- 구조: `페이지`는 상단 좌표에만 남기고, `headerTitle`은 `영지 업무`/`지하 탐사`/`선택의 결과`/`기록 확인` helper를 사용한다. `phaseLabel`의 단독 `페이지` fallback도 제거했다.
+- 수정 파일: `src/App.jsx`, `src/components/runMarkers.js`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `npm.cmd run verify`, `npm.cmd run build`

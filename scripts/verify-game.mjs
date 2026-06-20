@@ -88,6 +88,8 @@ import { seededRank } from "../src/engine/seed.js";
 import {
   formatPageMarker,
   getChangeToneClass,
+  getPhaseClockLabel,
+  getPhaseHeaderTitle,
   getRecordPage,
   getSacrificeProgress,
 } from "../src/components/runMarkers.js";
@@ -150,10 +152,12 @@ assert.equal(appSource.includes('from "./components/DialogueCard.jsx"'), true, "
 assert.equal(appSource.includes('from "./components/runMarkers.js"'), true, "App.jsx는 page/counter 표시 helper를 사용해야 함");
 assert.equal(appSource.includes("번째 꿈"), false, "App.jsx에 n번째 꿈 표시 문구가 남으면 안 됨");
 assert.equal(appSource.includes("번째 밤"), false, "App.jsx에 n번째 밤 표시 문구가 남으면 안 됨");
-assert.equal(appSource.includes('? "지하 페이지"'), true, "night headerTitle은 지하 페이지여야 함");
-assert.equal(appSource.includes('? "영지 페이지"'), true, "day headerTitle은 영지 페이지여야 함");
+assert.equal(appSource.includes("지하 페이지"), false, "App.jsx headerTitle에 지하 페이지가 남으면 안 됨");
+assert.equal(appSource.includes("영지 페이지"), false, "App.jsx headerTitle에 영지 페이지가 남으면 안 됨");
+assert.equal(appSource.includes(': "페이지";'), false, "App.jsx headerTitle fallback이 페이지이면 안 됨");
+assert.equal(appSource.includes("getPhaseHeaderTitle(game, effectiveIsNight)"), true, "headerTitle은 phase title helper를 사용해야 함");
+assert.equal(appSource.includes("getPhaseClockLabel(game, effectiveIsNight)"), true, "phaseLabel은 phase label helper를 사용해야 함");
 assert.equal(appSource.includes("`기록 ${game.day}일차`"), false, "기록 계열 headerTitle에 날짜 표기가 남으면 안 됨");
-assert.equal(appSource.includes(': "페이지";'), true, "기록 계열 headerTitle은 날짜 없이 페이지여야 함");
 assert.equal(appSource.includes("formatPageMarker(game, effectiveIsNight)"), true, "dream-mark는 page marker helper 결과를 렌더링해야 함");
 assert.equal(appSource.includes("formatPageMarker(game, true)"), true, "밤 진입 UI도 page marker helper 결과를 사용해야 함");
 assert.equal(appSource.includes("getSacrificeProgress(game.sacrificeCount)"), true, "제물 카운터는 표시 helper를 사용해야 함");
@@ -532,6 +536,13 @@ assert.equal(getRecordPage(deterministicA), 1);
 assert.equal(formatPageMarker({ ...deterministicA, phase: "day", dayTurn: 0 }, false), "1페이지 · 1일차 · 오전");
 assert.equal(formatPageMarker({ ...deterministicA, phase: "day", dayTurn: 3 }, false), "1페이지 · 1일차 · 오후");
 assert.equal(formatPageMarker({ ...deterministicA, phase: "night-companion" }, true), "1페이지 · 1일차 · 밤");
+assert.equal(getPhaseHeaderTitle({ ...deterministicA, phase: "day" }, false), "영지 업무");
+assert.equal(getPhaseHeaderTitle({ ...deterministicA, phase: "night-companion" }, true), "지하 탐사");
+assert.equal(getPhaseHeaderTitle({ ...deterministicA, phase: "result" }, false), "선택의 결과");
+assert.equal(getPhaseHeaderTitle({ ...deterministicA, phase: "record-stop" }, false), "기록 확인");
+assert.equal(getPhaseClockLabel({ ...deterministicA, phase: "day", dayTurn: 0 }, false), "오전");
+assert.equal(getPhaseClockLabel({ ...deterministicA, phase: "result" }, false), "결과");
+assert.equal(getPhaseClockLabel({ ...deterministicA, phase: "record-stop" }, false), "기록 확인");
 assert.deepEqual(getSacrificeProgress(0), { label: "■■", value: "0 / 3", revealed: false });
 assert.deepEqual(getSacrificeProgress(1), { label: "제물", value: "1 / 3", revealed: true });
 assert.equal(getChangeToneClass({ group: "자원", key: "fear", delta: 3 }), "change--negative");

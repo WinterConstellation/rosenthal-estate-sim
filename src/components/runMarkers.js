@@ -34,6 +34,20 @@ export function formatPageMarker(game = {}, isNight = false) {
   return `${getRecordPage(game)}페이지 · ${positiveInteger(game.day)}일차 · ${getRecordPeriod(game, isNight)}`;
 }
 
+export function getPhaseHeaderTitle(game = {}, isNight = false) {
+  if (game.phase === "result") return "선택의 결과";
+  if (isNight) return "지하 탐사";
+  if (game.phase === "day") return "영지 업무";
+  return "기록 확인";
+}
+
+export function getPhaseClockLabel(game = {}, isNight = false) {
+  if (isNight) return "밤";
+  if (game.phase === "day") return getRecordPeriod(game, false);
+  if (game.phase === "result") return "결과";
+  return "기록 확인";
+}
+
 export function getSacrificeProgress(count = 0) {
   const current = nonnegativeInteger(count);
   return {
