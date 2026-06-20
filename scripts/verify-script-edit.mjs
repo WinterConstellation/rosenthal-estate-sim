@@ -1,0 +1,47 @@
+import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  DEFAULT_SCRIPT_EDIT_CONFIG,
+  assertScriptEditPathAllowed,
+  ensureScriptEditConfig,
+  isScriptEditPathAllowed,
+  loadScriptEditConfig,
+  matchesPattern,
+  normalizeProjectPath,
+} from "./script-edit/pathPolicy.mjs";
+
+const repoRoot = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+
+assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/scriptPacks/*.js"), true);
+assert.equal(normalizeProjectPath(repoRoot, "src/data/scriptManifest.js"), "src/data/scriptManifest.js");
+assert.throws(() => normalizeProjectPath(repoRoot, "../package.json"), /inside the project/);
+assert.throws(() => normalizeProjectPath(repoRoot, "C:/outside/file.js"), /Absolute paths/);
+assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/scriptPacks/specialEventGroups.js"), true);
+assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/scriptManifest.js"), true);
+assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/App.jsx"), false);
+assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/engine/scriptLoader.js"), false);
+assert.equal(matchesPattern("src/engine/**", "src/engine/scriptLoader.js"), true);
+assert.equal(matchesPattern("src/data/scriptPacks/*.js", "src/data/scriptPacks/specialEventGroups.js"), true);
+assert.equal(matchesPattern("src/data/scriptPacks/*.js", "src/data/scriptPacks/nested/file.js"), false);
+assert.doesNotThrow(() => assertScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/scriptManifest.js"));
+assert.throws(() => assertScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/engine/scriptLoader.js"), /not editable/);
+
+const tempRoot = mkdtempSync(join(tmpdir(), "script-edit-policy-"));
+try {
+  mkdirSync(join(tempRoot, ".script-edit"), { recursive: true });
+  const config = ensureScriptEditConfig(tempRoot);
+  assert.deepEqual(config.allow, DEFAULT_SCRIPT_EDIT_CONFIG.allow);
+  assert.deepEqual(loadScriptEditConfig(tempRoot).deny, DEFAULT_SCRIPT_EDIT_CONFIG.deny);
+  writeFileSync(join(tempRoot, ".script-edit", "config.json"), JSON.stringify({
+    allow: ["src/data/scriptManifest.js"],
+    deny: ["src/data/scriptPacks/*.js"],
+    verify: ["npm.cmd run verify"],
+  }, null, 2), "utf8");
+  assert.equal(loadScriptEditConfig(tempRoot).allow.length, 1);
+} finally {
+  rmSync(tempRoot, { recursive: true, force: true });
+}
+
+console.log("Script edit verification passed.");

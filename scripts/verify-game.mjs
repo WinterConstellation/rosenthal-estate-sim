@@ -1193,4 +1193,6 @@ for (const seedConfig of AUTOPLAY_SMOKE_SEEDS) {
   );
 }
 
+await import("./verify-script-edit.mjs");
+
 console.log("Rosenthal vertical slice verification passed.");

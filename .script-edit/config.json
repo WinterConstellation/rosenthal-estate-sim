@@ -1,0 +1,19 @@
+{
+  "allow": [
+    "src/data/scriptPacks/*.js",
+    "src/data/scriptManifest.js",
+    "src/data/rosenthalContent.js",
+    "src/rules/tutorialRules.js",
+    "src/rules/systemRules.js"
+  ],
+  "deny": [
+    "src/App.jsx",
+    "src/engine/**",
+    "src/components/**",
+    "electron/**",
+    "scripts/**",
+    "package.json",
+    "vite.config.js"
+  ],
+  "verify": ["npm.cmd run verify"]
+}

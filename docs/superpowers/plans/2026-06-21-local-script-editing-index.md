@@ -60,7 +60,7 @@
 - Produces: `isScriptEditPathAllowed(config: object, relativePath: string): boolean`
 - Produces: `assertScriptEditPathAllowed(config: object, relativePath: string): void`
 
-- [ ] **Step 1: Add failing policy tests**
+- [ ] **Step 1: Add failing policy tests and connect them to verify**
 
 Append this first block to a new `scripts/verify-script-edit.mjs`:
 
@@ -112,6 +112,12 @@ try {
 }
 
 console.log("Script edit verification passed.");
+```
+
+Add this line immediately before the final `console.log("Rosenthal vertical slice verification passed.");` in `scripts/verify-game.mjs`:
+
+```js
+await import("./verify-script-edit.mjs");
 ```
 
 - [ ] **Step 2: Run the failing verification**
@@ -283,13 +289,9 @@ export function assertScriptEditPathAllowed(config, relativePath) {
 }
 ```
 
-- [ ] **Step 6: Connect script-edit verification to the existing verify command**
+- [ ] **Step 6: Confirm script-edit verification is connected**
 
-Add this line immediately before the final `console.log("Rosenthal vertical slice verification passed.");` in `scripts/verify-game.mjs`:
-
-```js
-await import("./verify-script-edit.mjs");
-```
+Confirm `scripts/verify-game.mjs` imports `./verify-script-edit.mjs` before the final success log.
 
 - [ ] **Step 7: Run verification**
 
