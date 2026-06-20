@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +13,7 @@ import {
   matchesPattern,
   normalizeProjectPath,
 } from "./script-edit/pathPolicy.mjs";
+import { applyScriptEdit, getEditableItem } from "./script-edit/editorStore.mjs";
 import { buildScriptEditIndex, writeScriptEditIndex } from "./script-edit/indexGenerator.mjs";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -68,5 +69,44 @@ const writtenIndex = await writeScriptEditIndex(repoRoot);
 assert.equal(writtenIndex.entries.length, index.entries.length);
 assert.equal(existsSync(getScriptEditIndexPath(repoRoot)), true);
 assert.equal(JSON.parse(readFileSync(getScriptEditIndexPath(repoRoot), "utf8")).entries.length, index.entries.length);
+
+const tempEditRoot = mkdtempSync(join(tmpdir(), "script-edit-save-"));
+try {
+  mkdirSync(join(tempEditRoot, "src", "data", "scriptPacks"), { recursive: true });
+  mkdirSync(join(tempEditRoot, "src", "data"), { recursive: true });
+  mkdirSync(join(tempEditRoot, ".script-edit"), { recursive: true });
+  copyFileSync(join(repoRoot, "src", "data", "scriptManifest.js"), join(tempEditRoot, "src", "data", "scriptManifest.js"));
+  copyFileSync(join(repoRoot, "src", "data", "scriptPacks", "specialEventGroups.js"), join(tempEditRoot, "src", "data", "scriptPacks", "specialEventGroups.js"));
+  writeFileSync(join(tempEditRoot, ".script-edit", "config.json"), JSON.stringify(DEFAULT_SCRIPT_EDIT_CONFIG, null, 2), "utf8");
+  await writeScriptEditIndex(tempEditRoot);
+  const itemId = "script-pack:special-event-groups:blank-ledger:stage-1:text";
+  const beforeItem = getEditableItem(tempEditRoot, itemId);
+  assert.equal(beforeItem.value, "새 장부 앞 일곱 장은 날짜만 남아 있다.");
+  const result = await applyScriptEdit(tempEditRoot, { id: itemId, value: "테스트용으로 바꾼 첫 장부 문장" });
+  assert.equal(result.changedFile, "src/data/scriptPacks/specialEventGroups.js");
+  assert.equal(result.reindexed, true);
+  assert.equal(readFileSync(join(tempEditRoot, result.changedFile), "utf8").includes("테스트용으로 바꾼 첫 장부 문장"), true);
+  assert.equal(getEditableItem(tempEditRoot, itemId).value, "테스트용으로 바꾼 첫 장부 문장");
+  const staleIndex = JSON.parse(readFileSync(join(tempEditRoot, ".script-edit", "index.json"), "utf8"));
+  staleIndex.entries.find((entry) => entry.id === itemId).sourceHash = "stale";
+  writeFileSync(join(tempEditRoot, ".script-edit", "index.json"), JSON.stringify(staleIndex, null, 2), "utf8");
+  await assert.rejects(() => applyScriptEdit(tempEditRoot, { id: itemId, value: "stale write" }), /stale/);
+  await writeScriptEditIndex(tempEditRoot);
+  const denied = JSON.parse(readFileSync(join(tempEditRoot, ".script-edit", "index.json"), "utf8"));
+  denied.entries.push({
+    id: "denied:app",
+    kind: "source",
+    label: "Denied",
+    sourceFile: "src/App.jsx",
+    sourceHash: "x",
+    locator: { type: "source-span", start: 0, end: 0 },
+    editableFields: [{ name: "value", type: "singleLineText" }],
+    value: "",
+  });
+  writeFileSync(join(tempEditRoot, ".script-edit", "index.json"), JSON.stringify(denied, null, 2), "utf8");
+  await assert.rejects(() => applyScriptEdit(tempEditRoot, { id: "denied:app", value: "no" }), /not editable/);
+} finally {
+  rmSync(tempEditRoot, { recursive: true, force: true });
+}
 
 console.log("Script edit verification passed.");
