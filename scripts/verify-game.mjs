@@ -149,7 +149,9 @@ assert.equal(appSource.includes('from "./screens/ResultOverlay.jsx"'), true, "Ap
 assert.equal(appSource.includes('from "./components/DialogueCard.jsx"'), true, "App.jsx는 DialogueCard를 공유 컴포넌트에서 import해야 함");
 assert.equal(appSource.includes('from "./components/runMarkers.js"'), true, "App.jsx는 page/counter 표시 helper를 사용해야 함");
 assert.equal(appSource.includes("번째 꿈"), false, "App.jsx에 n번째 꿈 표시 문구가 남으면 안 됨");
+assert.equal(appSource.includes("번째 밤"), false, "App.jsx에 n번째 밤 표시 문구가 남으면 안 됨");
 assert.equal(appSource.includes("formatPageMarker(game, effectiveIsNight)"), true, "dream-mark는 page marker helper 결과를 렌더링해야 함");
+assert.equal(appSource.includes("formatPageMarker(game, true)"), true, "밤 진입 UI도 page marker helper 결과를 사용해야 함");
 assert.equal(appSource.includes("getSacrificeProgress(game.sacrificeCount)"), true, "제물 카운터는 표시 helper를 사용해야 함");
 assert.equal(appSource.includes('from "./components/FirstDayHintModal.jsx"'), true, "App.jsx는 첫날 힌트 팝업을 독립 컴포넌트에서 import해야 함");
 assert.equal(appSource.includes("<FirstDayHintModal"), true, "App.jsx는 첫날 힌트 팝업을 렌더링해야 함");

@@ -2275,6 +2275,8 @@ function App() {
   }
 
   const sacrificeProgress = getSacrificeProgress(game.sacrificeCount);
+  const currentRecordMarker = formatPageMarker(game, effectiveIsNight);
+  const nightRecordMarker = formatPageMarker(game, true);
 
   const mainContent = (() => {
     if (game.phase === "seed-reveal") {
@@ -2363,7 +2365,7 @@ function App() {
       return (
         <ChoicePanel
           game={game}
-          eyebrow={`${game.day}번째 밤 · 진입 준비`}
+          eyebrow={`${nightRecordMarker} · 진입 준비`}
           title="누구와 내려가겠습니까?"
           text={NIGHT_ENTRY_SCRIPT}
           choices={companions}
@@ -2378,7 +2380,7 @@ function App() {
       return (
         <ChoicePanel
           game={game}
-          eyebrow={`${game.day}번째 밤 · 진입 방향`}
+          eyebrow={`${nightRecordMarker} · 진입 방향`}
           title="어느 길을 택하겠습니까?"
           text="방향과 이번 기록의 내부 난수가 탐사의 길이를 정한다."
           choices={choices}
@@ -2539,7 +2541,7 @@ function App() {
     : game.phase === "expedition"
       ? `${game.expedition.stepIndex + 1} / ${game.expedition.totalSteps}`
       : "—";
-  const headerTitle = effectiveIsNight ? `${game.day}번째 밤` : `기록 ${game.day}일차`;
+  const headerTitle = effectiveIsNight ? "밤의 기록" : "영지 기록";
   const appShellClass = [
     "app-shell",
     effectiveIsNight ? "theme-night" : "theme-day",
@@ -2550,7 +2552,7 @@ function App() {
     <main className={appShellClass}>
       <HorrorTextOverlay game={game} isNight={effectiveIsNight} director={visibleHorrorDirector} />
       <header className="topbar">
-        <div className="dream-mark" aria-hidden="true">{formatPageMarker(game, effectiveIsNight)}</div>
+        <div className="dream-mark" aria-hidden="true">{currentRecordMarker}</div>
         <div className="brand">
           <span className="brand__crest">{effectiveIsNight ? "夜" : "R"}</span>
           <div>

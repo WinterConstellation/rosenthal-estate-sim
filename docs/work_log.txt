@@ -244,3 +244,9 @@
 - 구조: page marker와 제물 카운터, 변화량 polarity helper를 `runMarkers.js`로 분리하고, `leave-companion`은 실제 판정 경로까지 100% 고정 선택으로 통과시켰다. 성향 레벨 배율은 양수 능력치 변화에만 적용한다.
 - 수정 파일: `src/App.jsx`, `src/components/runMarkers.js`, `src/components/DialogueCard.jsx`, `src/screens/ResultOverlay.jsx`, `src/engine/rulesEngine.js`, `src/engine/rosenthalEngine.js`, `src/styles.css`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-21 00:36 KST
+- 작업: `headerTitle`과 밤 진입 eyebrow에 남아 있던 `n번째 밤` 표시를 page marker 기준으로 보정했다.
+- 구조: `currentRecordMarker`와 `nightRecordMarker`를 사용해 상단/밤 진입 UI가 같은 기록 표기 helper를 타게 하고, verify가 `App.jsx`의 `번째 밤` 잔재를 실패로 잡도록 추가했다.
+- 수정 파일: `src/App.jsx`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `npm.cmd run verify`, `npm.cmd run build`

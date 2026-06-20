@@ -196,7 +196,7 @@ Acceptance:
 Acceptance:
 - 상단 표기가 `n페이지 · n일차 · 시간` 형식으로 바뀐다.
 - 다음 회차에서 page 번호가 바뀐다.
-- `n번째 꿈` 계열 문구가 App 표시 코드에서 사라진다.
+- `n번째 꿈`/`n번째 밤` 계열 문구가 App 표시 코드에서 사라진다.
 - 낮/밤 날짜 표기는 깨지지 않는다.
 - 가능하면 표시 helper 테스트를 verify에 추가한다.
 
@@ -270,7 +270,7 @@ Acceptance:
 
 완료 확인:
 - `src/components/runMarkers.js`에 page marker, 제물 카운터, 변화량 polarity helper를 분리했다.
-- App 상단 표기는 `formatPageMarker(game, effectiveIsNight)`를 사용하며 `App.jsx` 표시 코드에서 `n번째 꿈` 계열 문구를 제거했다.
+- App 상단 표기와 밤 진입 eyebrow는 page marker helper를 사용하며 `App.jsx` 표시 코드에서 `n번째 꿈`/`n번째 밤` 계열 문구를 제거했다.
 - `DialogueCard`는 제목/화자/본문 계층을 CSS와 함께 분리했다.
 - 성향 레벨 보정은 양수 능력치 변화에만 적용하고, 음수 변화는 배율을 타지 않는다.
 - 결과 변화 색상은 단순 부호가 아니라 `fear`, `corruption`, `missing`, 공포 특성 계열의 역방향 의미를 반영한다.
