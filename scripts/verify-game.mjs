@@ -9,8 +9,12 @@ import {
   FINALES,
   NIGHT_OPENING,
   PROLOGUE as ROSENTHAL_PROLOGUE,
-  SPECIAL_EVENT_GROUPS,
 } from "../src/data/rosenthalContent.js";
+import {
+  SCRIPT_PACKS,
+  SPECIAL_EVENT_GROUPS_PACK_ID,
+  getScriptPackManifest,
+} from "../src/data/scriptManifest.js";
 import {
   DAY_ACTIONS as LEGACY_DAY_ACTIONS,
   DAY_INTERLUDES,
@@ -78,6 +82,7 @@ import {
   getDayOffers as getLegacyDayOffers,
   getNightOffers as getLegacyNightOffers,
 } from "../src/engine/legacyProgressionEngine.js";
+import { loadScriptPack, loadSpecialEventGroups } from "../src/engine/scriptLoader.js";
 import { getEffectiveChoiceChance, resolveChoice, roundToTenth, truncateToTenth } from "../src/engine/rulesEngine.js";
 import { seededRank } from "../src/engine/seed.js";
 import {
@@ -102,6 +107,26 @@ const resultOverlaySource = readFileSync(new URL("../src/screens/ResultOverlay.j
 const rulesEngineSource = readFileSync(new URL("../src/engine/rulesEngine.js", import.meta.url), "utf8");
 const legacyProgressionEngineSource = readFileSync(new URL("../src/engine/legacyProgressionEngine.js", import.meta.url), "utf8");
 const stylesSource = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+const rosenthalContentSource = readFileSync(new URL("../src/data/rosenthalContent.js", import.meta.url), "utf8");
+const scriptManifestSource = readFileSync(new URL("../src/data/scriptManifest.js", import.meta.url), "utf8");
+const scriptLoaderSource = readFileSync(new URL("../src/engine/scriptLoader.js", import.meta.url), "utf8");
+const specialEventGroupsSource = readFileSync(new URL("../src/data/scriptPacks/specialEventGroups.js", import.meta.url), "utf8");
+const SPECIAL_EVENT_GROUPS = await loadSpecialEventGroups();
+const specialEventPackManifest = getScriptPackManifest(SPECIAL_EVENT_GROUPS_PACK_ID);
+const specialEventPackModule = await loadScriptPack(SPECIAL_EVENT_GROUPS_PACK_ID);
+
+assert.equal(Boolean(specialEventPackManifest), true, "특수 사건 script pack manifest 필요");
+assert.equal(SCRIPT_PACKS.length, 1, "첫 loader 실험은 특수 사건 본문 1개 pack만 등록한다");
+assert.equal(specialEventPackManifest.triggerKey, "special-event");
+assert.equal(specialEventPackManifest.exportName, "SPECIAL_EVENT_GROUPS");
+assert.equal(specialEventPackManifest.itemCount, SPECIAL_EVENT_GROUPS.length);
+assert.equal(specialEventPackManifest.stageCount, 3);
+assert.equal(specialEventPackModule.SPECIAL_EVENT_GROUPS, SPECIAL_EVENT_GROUPS);
+assert.equal(rosenthalContentSource.includes("export const SPECIAL_EVENT_GROUPS"), false, "특수 사건 장문 본문은 rosenthalContent.js에 직접 두지 않는다");
+assert.equal(specialEventGroupsSource.includes("export const SPECIAL_EVENT_GROUPS"), true, "특수 사건 본문 pack은 SPECIAL_EVENT_GROUPS를 export해야 함");
+assert.equal(scriptManifestSource.includes("SPECIAL_EVENT_GROUPS_PACK_ID"), true, "script manifest는 특수 사건 pack id를 제공해야 함");
+assert.equal(scriptLoaderSource.includes('import("../data/scriptPacks/specialEventGroups.js")'), true, "script loader는 특수 사건 본문을 dynamic import해야 함");
+assert.equal(appSource.includes("loadSpecialEventGroups"), true, "App.jsx는 특수 사건 phase에서 script loader를 사용해야 함");
 for (const removedToken of ["GlyphAtmosphereCanvas", "glyphAtmosphere", "glyphFormat", "glyph-atmosphere"]) {
   assert.equal(appSource.includes(removedToken), false, `App.jsx 글리프 잔재 금지: ${removedToken}`);
 }
@@ -251,11 +276,11 @@ function handleAutoplayDay(state, context) {
 }
 
 function handleAutoplaySpecialEvent(state, context) {
-  const group = getSpecialGroup(state);
+  const group = getSpecialGroup(state, SPECIAL_EVENT_GROUPS);
   const stage = group?.stages?.[state.specialProgress];
   const option = stage?.options?.[0];
   if (!option) failAutoplay("special-event phase has no current option", context);
-  return chooseSpecialEvent(state, option);
+  return chooseSpecialEvent(state, option, group);
 }
 
 function handleAutoplayNightCompanion(state, context) {

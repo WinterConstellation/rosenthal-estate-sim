@@ -221,3 +221,20 @@
 - 구조: 표시 여부는 `firstDayHintOpen` 화면 상태로 제어하고, 닫기 기록은 `firstDayHintSeen`과 `firstDayHintVariant: "ledger-v2"`로 남긴다.
 - 수정 파일: `src/components/FirstDayHintModal.jsx`, `src/App.jsx`, `src/engine/rosenthalEngine.js`, `src/styles.css`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `npm.cmd run verify`, `npm.cmd run build`, 로컬 브라우저에서 프롤로그 완료 뒤 팝업 표시와 닫기 확인
+
+2026-06-20 07:30 KST
+- 작업: 예비 핑퐁 메모를 삭제하고 `docs/pingpong.txt`를 유일한 인계 정본으로 확인했다.
+- 수정 파일: `docs/ui_phase_preset_direction_for_gpt.txt`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: 파일 삭제 확인
+
+2026-06-20 07:41 KST
+- 작업: 특수 사건 본문을 첫 본문 지연 로딩 실험 대상으로 분리했다.
+- 구조: `SPECIAL_EVENT_GROUPS`를 `src/data/scriptPacks/specialEventGroups.js`로 옮기고, `src/data/scriptManifest.js`와 `src/engine/scriptLoader.js`로 `special-event-groups` manifest + dynamic import 경로를 추가했다. `App.jsx`는 `special-event` phase에서 본문 pack을 필요 시점에 로드한다.
+- 수정 파일: `src/data/scriptPacks/specialEventGroups.js`, `src/data/scriptManifest.js`, `src/engine/scriptLoader.js`, `src/data/rosenthalContent.js`, `src/engine/rosenthalEngine.js`, `src/App.jsx`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-20 18:57 KST
+- 작업: 원격 최신 핑퐁의 UI/표기/수치/카운터 보정 지시를 보존하고, 로컬 loader 완료 내용을 같은 `docs/pingpong.txt`에 병합했다.
+- 기준: 오래된 로컬 핑퐁으로 신규 원격 지시를 덮지 않고, `꿈/회차 표기 보정` 등 최신 UI 보정 묶음을 다음 작업 후보에 유지했다.
+- 수정 파일: `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `npm.cmd run verify`, `npm.cmd run build`

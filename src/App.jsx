@@ -45,6 +45,7 @@ import {
   saveAuto,
   saveManual,
 } from "./engine/saveManager.js";
+import { loadSpecialEventGroups } from "./engine/scriptLoader.js";
 import { getEffectiveChoiceChance, getJob, getMarkName, getPassive, resolveChoice, truncateToTenth } from "./engine/rulesEngine.js";
 import { DialogueCard, normalizeDialogue } from "./components/DialogueCard.jsx";
 import { FirstDayHintModal } from "./components/FirstDayHintModal.jsx";
@@ -1965,6 +1966,8 @@ function App() {
   const [rulesOpen, setRulesOpen] = useState(false);
   const [tutorialPrompt, setTutorialPrompt] = useState(false);
   const [firstDayHintOpen, setFirstDayHintOpen] = useState(false);
+  const [specialEventGroups, setSpecialEventGroups] = useState(null);
+  const [specialEventLoadFailed, setSpecialEventLoadFailed] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [developerMode, setDeveloperMode] = useState(shouldOpenDeveloperMode);
   const [developerNightPreview, setDeveloperNightPreview] = useState(false);
@@ -1996,6 +1999,22 @@ function App() {
       && game.firstDayHintVariant !== FIRST_DAY_HINT_VARIANT;
     setFirstDayHintOpen(shouldOpenFirstDayHint);
   }, [game.day, game.dayTurn, game.phase, game.firstDayHintVariant, showStart]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (game.phase === "special-event" && !specialEventGroups && !specialEventLoadFailed) {
+      loadSpecialEventGroups()
+        .then((groups) => {
+          if (!cancelled) setSpecialEventGroups(groups);
+        })
+        .catch(() => {
+          if (!cancelled) setSpecialEventLoadFailed(true);
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [game.phase, specialEventGroups, specialEventLoadFailed]);
 
   const isNight = isNightDisplayPhase(game);
   const selectedUiPreset = developerMode ? developerUiPreset : "auto";
@@ -2276,7 +2295,20 @@ function App() {
       );
     }
     if (game.phase === "special-event") {
-      const group = getSpecialGroup(game);
+      const group = getSpecialGroup(game, specialEventGroups);
+      if (!group) {
+        return (
+          <section className="choice-panel">
+            <header className="choice-panel__intro">
+              <span className="eyebrow">특수 사건</span>
+              <h2>{specialEventLoadFailed ? "장부를 펼치지 못했다" : "장부를 펼치는 중"}</h2>
+            </header>
+            <div className="choice-panel__waiting">
+              <span>{specialEventLoadFailed ? "기록을 다시 확인해야 한다." : "묶여 있던 기록을 불러오고 있다."}</span>
+            </div>
+          </section>
+        );
+      }
       const stage = group.stages[game.specialProgress];
       return (
         <ChoicePanel
@@ -2291,7 +2323,7 @@ function App() {
               : { ...choice, detail: `\uc131\uacf5\ub960 ${displayChancePercent(effectiveChance)}%` };
           })}
           selectedId={selectedId}
-          onChoose={(choice) => animate(choice.id, (current) => chooseSpecialEvent(current, choice))}
+          onChoose={(choice) => animate(choice.id, (current) => chooseSpecialEvent(current, choice, group))}
         />
       );
     }

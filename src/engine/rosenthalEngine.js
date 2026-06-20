@@ -5,7 +5,6 @@ import {
   DIRECTIONS,
   EXPLORATION_EVENTS,
   FINALES,
-  SPECIAL_EVENT_GROUPS,
   UNNAMED_COMPANIONS,
 } from "../data/rosenthalContent.js";
 import { getSaintSeed, getSeedGrowthMultipliers, getSeedTrait } from "../data/saintSeeds.js";
@@ -455,8 +454,8 @@ export function createNewRun({ second = new Date().getSeconds(), runRngSeed = cr
   };
 }
 
-export function getSpecialGroup(state) {
-  return SPECIAL_EVENT_GROUPS[state.eventGroupId];
+export function getSpecialGroup(state, specialEventGroups = []) {
+  return specialEventGroups[state.eventGroupId] ?? null;
 }
 
 export function isNightDisplayPhase(state) {
@@ -688,8 +687,9 @@ export function chooseDayAction(state, action) {
   });
 }
 
-export function chooseSpecialEvent(state, option) {
-  const group = getSpecialGroup(state);
+export function chooseSpecialEvent(state, option, specialEventGroup) {
+  const group = specialEventGroup ?? getSpecialGroup(state);
+  if (!group) throw new Error(`Special event group is not loaded: ${state.eventGroupId}`);
   const stageIndex = state.specialProgress;
   let next = applyActionEffects(state, {
     ...option,
