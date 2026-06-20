@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Script Edit Index</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main id="script-edit-root" class="editor-shell">
+      <aside class="item-pane">
+        <div class="pane-head">
+          <strong>Script Edit Index</strong>
+          <button id="reindex-button" type="button">Re-index</button>
+        </div>
+        <input id="search-input" type="search" aria-label="Search by id, label, or file" />
+        <div id="entry-list" class="entry-list"></div>
+      </aside>
+      <section class="edit-pane">
+        <header class="edit-head">
+          <div>
+            <p id="selected-kind" class="eyebrow">No item</p>
+            <h1 id="selected-label">Select an editable item</h1>
+            <p id="selected-file"></p>
+          </div>
+          <button id="verify-button" type="button">Verify</button>
+        </header>
+        <textarea id="value-editor" spellcheck="false" disabled></textarea>
+        <div class="actions">
+          <button id="discard-button" type="button" disabled>Discard</button>
+          <button id="save-button" type="button" disabled>Save</button>
+        </div>
+      </section>
+      <aside class="context-pane">
+        <strong>Context</strong>
+        <pre id="context-output"></pre>
+      </aside>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

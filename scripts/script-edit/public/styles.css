@@ -1,0 +1,171 @@
+:root {
+  color-scheme: dark;
+  font-family: "Noto Sans KR", system-ui, sans-serif;
+  background: #101115;
+  color: #ece7dc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #101115;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid #5f6f7a;
+  background: #1d2630;
+  color: #f3ead9;
+  padding: 0.45rem 0.7rem;
+  border-radius: 6px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.editor-shell {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(420px, 1fr) minmax(280px, 360px);
+  height: 100vh;
+}
+
+.item-pane,
+.edit-pane,
+.context-pane {
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid #2c3238;
+}
+
+.item-pane,
+.context-pane {
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  gap: 12px;
+  background: #14181e;
+}
+
+.edit-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #101115;
+}
+
+.pane-head,
+.edit-head,
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#search-input {
+  width: 100%;
+  border: 1px solid #38444d;
+  background: #0f1216;
+  color: #ece7dc;
+  padding: 0.55rem 0.65rem;
+  border-radius: 6px;
+}
+
+.entry-list {
+  overflow: auto;
+  display: grid;
+  gap: 8px;
+}
+
+.entry-button {
+  width: 100%;
+  text-align: left;
+  border-color: #303942;
+  background: #171d24;
+}
+
+.entry-button.is-active {
+  border-color: #b7a36a;
+  background: #24251d;
+}
+
+.entry-kind,
+.eyebrow {
+  margin: 0;
+  color: #b7a36a;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.entry-label {
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.entry-file,
+#selected-file {
+  margin: 4px 0 0;
+  color: #9ba7ae;
+  font-family: Consolas, monospace;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+#selected-label {
+  margin: 2px 0;
+  font-size: 1.25rem;
+}
+
+#value-editor {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  resize: none;
+  border: 1px solid #38444d;
+  border-radius: 8px;
+  background: #0d0f13;
+  color: #f3ead9;
+  padding: 14px;
+  line-height: 1.7;
+  font-family: "Gowun Batang", "Noto Sans KR", serif;
+}
+
+#context-output {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  white-space: pre-wrap;
+  color: #c7d0d4;
+  font-family: Consolas, monospace;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 960px) {
+  .editor-shell {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .item-pane,
+  .edit-pane,
+  .context-pane {
+    min-height: 40vh;
+    border-right: 0;
+    border-bottom: 1px solid #2c3238;
+  }
+}

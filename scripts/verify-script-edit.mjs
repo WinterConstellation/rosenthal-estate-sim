@@ -145,4 +145,17 @@ try {
   rmSync(serverTestRoot, { recursive: true, force: true });
 }
 
+const packageJson = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+assert.equal(packageJson.scripts["script-edit:index"], "node scripts/script-edit/indexGenerator.mjs --write");
+assert.equal(packageJson.scripts["script-edit"], "node scripts/script-edit/server.mjs");
+const editorHtml = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "index.html"), "utf8");
+const editorJs = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "app.js"), "utf8");
+const editorCss = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "styles.css"), "utf8");
+assert.equal(editorHtml.includes("script-edit-root"), true);
+assert.equal(editorJs.includes("/api/index"), true);
+assert.equal(editorJs.includes("/api/item"), true);
+assert.equal(editorJs.includes("/api/reindex"), true);
+assert.equal(editorJs.includes("/api/verify"), true);
+assert.equal(editorCss.includes(".editor-shell"), true);
+
 console.log("Script edit verification passed.");
