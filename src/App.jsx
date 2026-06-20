@@ -49,6 +49,7 @@ import { loadSpecialEventGroups } from "./engine/scriptLoader.js";
 import { getEffectiveChoiceChance, getJob, getMarkName, getPassive, resolveChoice, truncateToTenth } from "./engine/rulesEngine.js";
 import { DialogueCard, normalizeDialogue } from "./components/DialogueCard.jsx";
 import { FirstDayHintModal } from "./components/FirstDayHintModal.jsx";
+import { formatPageMarker, getSacrificeProgress } from "./components/runMarkers.js";
 import { ResultOverlay } from "./screens/ResultOverlay.jsx";
 import {
   HORROR_DERIVED_META,
@@ -2273,6 +2274,8 @@ function App() {
     );
   }
 
+  const sacrificeProgress = getSacrificeProgress(game.sacrificeCount);
+
   const mainContent = (() => {
     if (game.phase === "seed-reveal") {
       return (
@@ -2503,7 +2506,7 @@ function App() {
           title="이 기록은 여기서 끊겨 있다."
           paragraphs={[
             `열린 축 · ${game.route === "altered" ? "변질 축" : "정상 축"}`,
-            `■■ ${game.sacrificeCount} / 3`,
+            `${sacrificeProgress.label} ${sacrificeProgress.value}`,
             `진실 단서 · ${game.truthFlags.truthDiscovered ? "확인함" : "확인하지 못함"}`,
             `선택 기록 · ${game.history.length}개`,
           ]}
@@ -2547,7 +2550,7 @@ function App() {
     <main className={appShellClass}>
       <HorrorTextOverlay game={game} isNight={effectiveIsNight} director={visibleHorrorDirector} />
       <header className="topbar">
-        <div className="dream-mark" aria-hidden="true">{game.day}번째 꿈 - {game.day}번째 밤</div>
+        <div className="dream-mark" aria-hidden="true">{formatPageMarker(game, effectiveIsNight)}</div>
         <div className="brand">
           <span className="brand__crest">{effectiveIsNight ? "夜" : "R"}</span>
           <div>
@@ -2562,8 +2565,8 @@ function App() {
         </div>
         <div className="topbar__actions">
           <div className="sacrifice-counter">
-            <span>■■</span>
-            <strong>{game.sacrificeCount ?? 0} / 3</strong>
+            <span>{sacrificeProgress.label}</span>
+            <strong>{sacrificeProgress.value}</strong>
           </div>
           <button type="button" onClick={() => setRulesOpen(true)}>규칙</button>
           <button type="button" onClick={() => setSaveOpen(true)}>저장 기록</button>

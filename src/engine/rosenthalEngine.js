@@ -571,6 +571,7 @@ function normalizeActionChoice(state, action, phaseKind = "day") {
     intentionalLoss: action.intentionalLoss,
     result: action.result,
     successChance: action.successChance,
+    fixedChance: action.fixedChance,
     failure: action.failure,
   };
   return { choice, phaseKind };
@@ -786,6 +787,7 @@ function actionFromOutcome(option, prefix) {
     title: option.label,
     tone: option.tone ?? (option.lossRisk ? "danger" : "neutral"),
     successChance: option.chance,
+    fixedChance: option.fixedChance,
     stats: option.success?.stats,
     resources: option.success?.resources,
     estate: option.success?.estate,
@@ -846,6 +848,7 @@ export function getFinaleOptions(state, currentFinale) {
       id: "leave-companion",
       label: "동행자를 남기고 문을 통과한다",
       chance: 1,
+      fixedChance: true,
       preview: "성공률 100% · 동행자 영구 실종 · 제물 조건 가능",
       success: { estate: { corruption: 2, stability: 1 }, resources: { fear: 4 } },
       intentionalLoss: "missing",

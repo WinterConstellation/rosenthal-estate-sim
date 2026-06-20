@@ -134,6 +134,7 @@
 - `choice--warning`, `choice--uneasy` 스타일 존재
 - 첫날 힌트 팝업의 export/import, App 장문 JSX 부재, 금지어 부재, 표시 상태, 기본값
 - 본문 지연 로딩의 `special-event-groups` manifest, loader dynamic import, pack export, `rosenthalContent.js` 직접 export 부재, App loader 사용
+- UI/표기/수치/카운터 보정의 page marker helper, `n번째 꿈` App 표시 제거, 성향 레벨 음수 보정 제외, 역방향 변화 색상, `leave-companion` 100% 고정, 제물 카운터 공개 시점
 
 ## 변경하지 않은 것
 
@@ -141,9 +142,9 @@
 - `night-critical`, `day-anomaly`, `day-critical` 추가 연출
 - 새 표식, 자원, 능력치, 분기, 저장 필드
 
-## 1순위 작업 묶음: UI/표기/수치/카운터 보정
+## 완료: UI/표기/수치/카운터 보정
 
-본문 지연 로딩보다 먼저 처리한다.
+2026-06-21 기준 완료했다.
 새 콘텐츠 확장이 아니라 현재 플레이 화면의 의미 오류를 바로잡는 작업이다.
 
 ### 1. DialogueCard 텍스트 계층 분리
@@ -267,6 +268,16 @@ Acceptance:
 - count 1 이상이면 의미가 드러난다.
 - 관련 선택 후 카운터가 즉시 바뀐다.
 
+완료 확인:
+- `src/components/runMarkers.js`에 page marker, 제물 카운터, 변화량 polarity helper를 분리했다.
+- App 상단 표기는 `formatPageMarker(game, effectiveIsNight)`를 사용하며 `App.jsx` 표시 코드에서 `n번째 꿈` 계열 문구를 제거했다.
+- `DialogueCard`는 제목/화자/본문 계층을 CSS와 함께 분리했다.
+- 성향 레벨 보정은 양수 능력치 변화에만 적용하고, 음수 변화는 배율을 타지 않는다.
+- 결과 변화 색상은 단순 부호가 아니라 `fear`, `corruption`, `missing`, 공포 특성 계열의 역방향 의미를 반영한다.
+- `leave-companion` 계열 선택은 실제 판정 경로까지 `fixedChance`를 통과시켜 성공률 100% 고정으로 처리한다.
+- 제물 카운터는 0일 때 은폐 표시, 1 이상부터 `제물 n / 3`로 공개한다.
+- `npm.cmd run verify`, `npm.cmd run build` 통과.
+
 ## 완료: 본문 지연 로딩 실험
 
 원격 핑퐁의 UI/표기/수치/카운터 보정 지시는 유지한다.
@@ -286,12 +297,11 @@ Acceptance:
 
 ## 다음 작업 후보
 
-1. UI/표기/수치/카운터 보정
-2. 표식 효과 밸런스 1차 정리
-3. 1일차 낮 튜토리얼 고정 스크립트 세부 정리
-4. 2일차 낮 약한 변주
-5. 3일차 시작쯤 최초 균열 발현 구조
-6. 추가 대형 본문 pack의 manifest/loader 확대 적용
+1. 표식 효과 밸런스 1차 정리
+2. 1일차 낮 튜토리얼 고정 스크립트 세부 정리
+3. 2일차 낮 약한 변주
+4. 3일차 시작쯤 최초 균열 발현 구조
+5. 추가 대형 본문 pack의 manifest/loader 확대 적용
 
 ## 파일 작성 규칙
 

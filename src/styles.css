@@ -168,12 +168,12 @@ button:focus-visible {
   justify-self: start;
   color: rgba(97, 67, 47, 0.84);
   font-family: "Gowun Batang", serif;
-  font-size: clamp(1.02rem, 2.4vw, 1.8rem);
+  font-size: 1.02rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: 1;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
   text-shadow: 0 2px 18px rgba(255, 250, 235, 0.72);
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .dream-mark::before,
@@ -1320,8 +1320,19 @@ button:focus-visible {
   transform: translateX(2px);
 }
 
+.dialogue-card__body {
+  display: grid;
+  gap: 10px;
+  padding-top: 16px;
+}
+
+.dialogue-card__title-block {
+  border-bottom: 1px solid rgba(214, 189, 123, 0.28);
+  padding-bottom: 10px;
+}
+
 .dialogue-card__speaker {
-  margin-top: 8px;
+  margin-top: 2px;
 }
 
 .speaker-label {
@@ -1371,15 +1382,16 @@ button:focus-visible {
 }
 
 .dialogue-card__title {
-  margin: 16px 0 0;
+  margin: 0;
   color: #e7e1d5;
   font-family: "Gowun Batang", serif;
-  font-size: 1.08rem;
+  font-size: 1.02rem;
+  line-height: 1.45;
 }
 
 .dialogue-card__text p {
   min-height: 2.9em;
-  margin: 9px 150px 0 0;
+  margin: 0 150px 0 0;
   color: #e7e1d5;
   font-family: "Gowun Batang", serif;
   font-size: 0.86rem;
@@ -1759,6 +1771,11 @@ button:focus-visible {
 .change-list .change--negative {
   border-color: #b54a4f;
   color: #d48b8e;
+}
+
+.change-list .change--neutral {
+  border-color: #d6bd7b;
+  color: #beb8ac;
 }
 
 .save-modal {

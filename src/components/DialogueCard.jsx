@@ -59,10 +59,16 @@ export function DialogueCard({ game, eyebrow, title, paragraphs, button, onConti
           )}
         </div>
       </div>
-      {title && <h2 className="dialogue-card__title">{title}</h2>}
-      <strong className={`speaker-label speaker-label--${speakerKind} dialogue-card__speaker`}>{currentSpeaker}</strong>
-      <div className="dialogue-card__text">
-        {currentLine && <p key={`${scriptKey}-${currentIndex}`}>{currentLine.text}</p>}
+      <div className="dialogue-card__body">
+        {title && (
+          <div className="dialogue-card__title-block">
+            <h2 className="dialogue-card__title">{title}</h2>
+          </div>
+        )}
+        <strong className={`speaker-label speaker-label--${speakerKind} dialogue-card__speaker`}>{currentSpeaker}</strong>
+        <div className="dialogue-card__text">
+          {currentLine && <p key={`${scriptKey}-${currentIndex}`}>{currentLine.text}</p>}
+        </div>
       </div>
       <div className="dialogue-card__controls">
         <button

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DialogueCard, normalizeDialogue } from "../components/DialogueCard.jsx";
+import { getChangeToneClass } from "../components/runMarkers.js";
 
 export function ResultOverlay({
   game,
@@ -60,7 +61,7 @@ export function ResultOverlay({
                 <div className="change-list">
                   {group.changes.map((change, index) => (
                     <span
-                      className={change.delta < 0 ? "change--negative" : "change--positive"}
+                      className={getChangeToneClass(change)}
                       key={`${change.group}-${change.key}-${index}`}
                       title={getChangeDetail(change)}
                     >

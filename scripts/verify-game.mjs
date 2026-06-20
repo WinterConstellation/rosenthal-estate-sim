@@ -86,6 +86,12 @@ import { loadScriptPack, loadSpecialEventGroups } from "../src/engine/scriptLoad
 import { getEffectiveChoiceChance, resolveChoice, roundToTenth, truncateToTenth } from "../src/engine/rulesEngine.js";
 import { seededRank } from "../src/engine/seed.js";
 import {
+  formatPageMarker,
+  getChangeToneClass,
+  getRecordPage,
+  getSacrificeProgress,
+} from "../src/components/runMarkers.js";
+import {
   HORROR_DERIVED_META,
   HORROR_TRAIT_META,
   LEGACY_STIGMA_MARK_MAP,
@@ -141,14 +147,21 @@ assert.equal(appSource.includes("function ResultOverlay"), false, "App.jsx 내�
 assert.equal(appSource.includes("function DialogueCard"), false, "App.jsx 내부 DialogueCard 함수는 공유 컴포넌트로 분리되어야 함");
 assert.equal(appSource.includes('from "./screens/ResultOverlay.jsx"'), true, "App.jsx는 ResultOverlay를 독립 컴포넌트에서 import해야 함");
 assert.equal(appSource.includes('from "./components/DialogueCard.jsx"'), true, "App.jsx는 DialogueCard를 공유 컴포넌트에서 import해야 함");
+assert.equal(appSource.includes('from "./components/runMarkers.js"'), true, "App.jsx는 page/counter 표시 helper를 사용해야 함");
+assert.equal(appSource.includes("번째 꿈"), false, "App.jsx에 n번째 꿈 표시 문구가 남으면 안 됨");
+assert.equal(appSource.includes("formatPageMarker(game, effectiveIsNight)"), true, "dream-mark는 page marker helper 결과를 렌더링해야 함");
+assert.equal(appSource.includes("getSacrificeProgress(game.sacrificeCount)"), true, "제물 카운터는 표시 helper를 사용해야 함");
 assert.equal(appSource.includes('from "./components/FirstDayHintModal.jsx"'), true, "App.jsx는 첫날 힌트 팝업을 독립 컴포넌트에서 import해야 함");
 assert.equal(appSource.includes("<FirstDayHintModal"), true, "App.jsx는 첫날 힌트 팝업을 렌더링해야 함");
 assert.equal(appSource.includes('const FIRST_DAY_HINT_VARIANT = "ledger-v2";'), true, "첫날 힌트는 저장 데이터와 구분되는 버전 플래그를 가져야 함");
 assert.equal(appSource.includes("firstDayHintOpen"), true, "첫날 힌트는 렌더 조건만이 아니라 별도 오픈 상태로 제어해야 함");
 assert.equal(appSource.includes("game.firstDayHintVariant !== FIRST_DAY_HINT_VARIANT"), true, "첫날 힌트는 이전 저장의 seen 값만으로 새 안내를 누르면 안 됨");
 assert.equal(resultOverlaySource.includes("export function ResultOverlay"), true, "ResultOverlay 독립 컴포넌트 export 필요");
+assert.equal(resultOverlaySource.includes("getChangeToneClass"), true, "ResultOverlay는 변화량 polarity helper를 사용해야 함");
 assert.equal(dialogueCardSource.includes("export function DialogueCard"), true, "DialogueCard 공유 컴포넌트 export 필요");
 assert.equal(dialogueCardSource.includes("export function normalizeDialogue"), true, "normalizeDialogue 공유 export 필요");
+assert.equal(dialogueCardSource.includes("dialogue-card__title-block"), true, "DialogueCard는 제목 블록을 분리해야 함");
+assert.equal(stylesSource.includes(".dialogue-card__title-block"), true, "DialogueCard 제목 구분선 스타일 필요");
 assert.equal(firstDayHintSource.includes("export function FirstDayHintModal"), true, "FirstDayHintModal 독립 컴포넌트 export 필요");
 assert.equal(firstDayHintSource.includes("useState"), true, "첫날 힌트는 단순 대사 복구가 아니라 단계형 팝업이어야 함");
 assert.equal(firstDayHintSource.includes("신임 영주 인계서"), true, "첫날 힌트는 로젠탈식 인계서 UI로 제시되어야 함");
@@ -509,6 +522,17 @@ assert.deepEqual(deterministicA.displayStats, baseStats);
 assert.deepEqual(deterministicA.specialSeedGrowthMultipliers, seed0.growthMultipliers);
 assert.deepEqual(deterministicA.specialSeedTrait, seed0.trait);
 assert.equal(deterministicA.meta.cycle, 1);
+assert.equal(getRecordPage(deterministicA), 1);
+assert.equal(formatPageMarker({ ...deterministicA, phase: "day", dayTurn: 0 }, false), "1페이지 · 1일차 · 오전");
+assert.equal(formatPageMarker({ ...deterministicA, phase: "day", dayTurn: 3 }, false), "1페이지 · 1일차 · 오후");
+assert.equal(formatPageMarker({ ...deterministicA, phase: "night-companion" }, true), "1페이지 · 1일차 · 밤");
+assert.deepEqual(getSacrificeProgress(0), { label: "■■", value: "0 / 3", revealed: false });
+assert.deepEqual(getSacrificeProgress(1), { label: "제물", value: "1 / 3", revealed: true });
+assert.equal(getChangeToneClass({ group: "자원", key: "fear", delta: 3 }), "change--negative");
+assert.equal(getChangeToneClass({ group: "영지", key: "corruption", delta: 2 }), "change--negative");
+assert.equal(getChangeToneClass({ group: "공포 특성", key: "intrusion", delta: 1 }), "change--negative");
+assert.equal(getChangeToneClass({ group: "자원", key: "fear", delta: -1 }), "change--positive");
+assert.equal(getChangeToneClass({ group: "능력치", key: "health", delta: 1 }), "change--positive");
 assert.deepEqual(deterministicA.horrorTraits, Object.fromEntries(Object.keys(HORROR_TRAIT_META).map((key) => [key, 0])));
 assert.deepEqual(deterministicA.derivedHorror, deriveHorrorState(deterministicA));
 assert.deepEqual(deterministicA.revealedHorrorTraits, []);
@@ -674,6 +698,27 @@ const leveledStatResult = resolveChoice({
 assert.equal(leveledStatResult.statDelta.insight, 3.2);
 assert.equal(leveledStatResult.statDelta.health, -2);
 assert.ok(leveledStatResult.traceLabels.includes("성향 레벨 · 통찰 x1.6"));
+const lifeLevelMeta = normalizeProgressMeta({ traitProgress: { life: { level: 5, xp: 0 } } });
+const lifeNegativeStatResult = resolveChoice({
+  ...deterministicA,
+  meta: lifeLevelMeta,
+  specialSeedTrait: null,
+}, {
+  id: "trait-level-negative-check",
+  stats: { health: -2 },
+});
+assert.equal(lifeNegativeStatResult.statDelta.health, -2);
+assert.equal(lifeNegativeStatResult.traceLabels.some((label) => label.includes("체력 x")), false);
+const lifePositiveStatResult = resolveChoice({
+  ...deterministicA,
+  meta: lifeLevelMeta,
+  specialSeedTrait: null,
+}, {
+  id: "trait-level-positive-check",
+  stats: { health: 2 },
+});
+assert.equal(lifePositiveStatResult.statDelta.health, 3);
+assert.ok(lifePositiveStatResult.traceLabels.includes("성향 레벨 · 체력 x1.5"));
 const nextCycleRun = advanceToNextCycle({
   ...deterministicA,
   ownedMarkIds: ["stigma-life-1", "stigma-divine-1"],
@@ -687,6 +732,7 @@ const nextCycleRun = advanceToNextCycle({
   },
 }, { second: 1, runRngSeed: "next-cycle-check" });
 assert.equal(nextCycleRun.meta.cycle, 2);
+assert.equal(formatPageMarker({ ...nextCycleRun, phase: "day", dayTurn: 0 }, false), "2페이지 · 1일차 · 오전");
 assert.deepEqual(nextCycleRun.meta.ownedMarkIds, ["stigma-life-1", "stigma-divine-1"]);
 assert.deepEqual(nextCycleRun.meta.loadoutMarkIds, []);
 assert.equal(nextCycleRun.meta.equippedMarkId, "stigma-divine-1");
@@ -837,8 +883,24 @@ const transformedExpedition = {
 };
 assert.equal(isExplorationOptionAvailable(transformedExpedition, secureOption), false);
 assert.equal(chooseExplorationOption(transformedExpedition, EXPLORATION_EVENTS[0], secureOption), transformedExpedition);
-assert.ok(getFinaleOptions(transformedExpedition, FINALES.find((finale) => finale.sacrifice))
+const sacrificeFinale = FINALES.find((finale) => finale.sacrifice);
+assert.ok(getFinaleOptions(transformedExpedition, sacrificeFinale)
   .every((option) => option.id !== "leave-companion"));
+const leaveCompanionOption = getFinaleOptions(operationalExpedition, sacrificeFinale)
+  .find((option) => option.id === "leave-companion");
+assert.equal(leaveCompanionOption.fixedChance, true);
+assert.equal(getEffectiveChoiceChance({
+  ...operationalExpedition,
+  phase: "night",
+  stats: { ...operationalExpedition.stats, resolve: -1 },
+  resources: { ...operationalExpedition.resources, fear: 100 },
+  estate: { ...operationalExpedition.estate, corruption: 100 },
+}, leaveCompanionOption.chance, leaveCompanionOption), 1);
+const leaveCompanionResult = chooseFinaleOption(operationalExpedition, sacrificeFinale, leaveCompanionOption);
+assert.equal(leaveCompanionResult.pendingResult.success, true);
+assert.ok(leaveCompanionResult.ruleTrace.includes("판정 · 확정"));
+assert.ok(leaveCompanionResult.pendingResult.notices.includes("판정 · 확정"));
+assert.equal(leaveCompanionResult.companionStates.maid.status, "missing");
 const nightStaminaCollapse = chooseExplorationOption({
   ...operationalExpedition,
   stats: { ...operationalExpedition.stats, stamina: 0 },

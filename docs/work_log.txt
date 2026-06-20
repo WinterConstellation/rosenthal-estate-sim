@@ -238,3 +238,9 @@
 - 기준: 오래된 로컬 핑퐁으로 신규 원격 지시를 덮지 않고, `꿈/회차 표기 보정` 등 최신 UI 보정 묶음을 다음 작업 후보에 유지했다.
 - 수정 파일: `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-21 00:22 KST
+- 작업: 핑퐁의 UI/표기/수치/카운터 보정 묶음을 실제 코드에 반영했다.
+- 구조: page marker와 제물 카운터, 변화량 polarity helper를 `runMarkers.js`로 분리하고, `leave-companion`은 실제 판정 경로까지 100% 고정 선택으로 통과시켰다. 성향 레벨 배율은 양수 능력치 변화에만 적용한다.
+- 수정 파일: `src/App.jsx`, `src/components/runMarkers.js`, `src/components/DialogueCard.jsx`, `src/screens/ResultOverlay.jsx`, `src/engine/rulesEngine.js`, `src/engine/rosenthalEngine.js`, `src/styles.css`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `npm.cmd run verify`, `npm.cmd run build`

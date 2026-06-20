@@ -169,9 +169,16 @@ function getSeedChanceAdjustment(game, choice, kind) {
   return null;
 }
 
+function isFixedChanceChoice(choice = {}) {
+  return choice.fixedChance === true || choice.id === "leave-companion";
+}
+
 export function getEffectiveChoiceChance(game, baseChance, choice = {}) {
   if (baseChance == null) return null;
   let chancePercent = clampNumber(asNumber(baseChance) * 100, 0, 100);
+  if (isFixedChanceChoice(choice)) {
+    return Number((chancePercent / 100).toFixed(3));
+  }
   if ((game?.stats?.resolve ?? 0) < 0) chancePercent *= 0.5;
   if (shouldApplyChancePressure(game)) {
     const pressureRule = getSeedChanceAdjustment(game, choice, "chance-pressure");
@@ -222,7 +229,7 @@ function applyTraitLevelStatModifiers(game, statDelta, trace) {
   Object.entries(statDelta).forEach(([key, value]) => {
     const amount = asNumber(value);
     const level = getStatTraitLevel(game?.meta, key);
-    if (amount === 0 || level <= 0) {
+    if (amount <= 0 || level <= 0) {
       statDelta[key] = amount;
       return;
     }
@@ -434,6 +441,7 @@ function applyPassive(passiveId, context, trace, slot) {
 
 export function resolveChoice(game, choice) {
   const baseChance = choice.successChance;
+  const fixedChance = isFixedChanceChoice(choice);
   const effectiveChance = getEffectiveChoiceChance(game, baseChance, choice);
   const outcomeSeed = game.runSeed ?? game.runRngSeed ?? "run";
   const historyLength = game.history?.length ?? 0;
@@ -451,17 +459,19 @@ export function resolveChoice(game, choice) {
   applyTraitLevelStatModifiers(game, statDelta, trace);
 
   if (baseChance != null) {
-    trace.push(success ? "판정 · 성공" : "판정 · 실패");
-    if ((game.stats?.resolve ?? 0) < 0) trace.push("결단 저하 · 성공 가능성 절반");
-    const pressure = shouldApplyChancePressure(game) ? getChoiceChancePressure(game) : 0;
-    const pressureRule = getSeedChanceAdjustment(game, choice, "chance-pressure");
-    const displayedPressure = Math.trunc(pressure * (pressureRule?.modifier?.multiplier ?? 1));
-    if (displayedPressure > 0) trace.push(`\uacf5\ud3ec/\uc774\uc0c1\ud604\uc0c1 \u00b7 \uc131\uacf5\ub960 -${displayedPressure}%`);
-    if (pressureRule) trace.push(`성인의 달 · ${pressureRule.text}`);
-    const markChance = getMarkChanceAdjustment(game, choice);
-    if (markChance !== 0) trace.push(`표식 · 성공률 ${markChance > 0 ? "+" : ""}${markChance.toFixed(1)}%`);
-    const finalChanceRule = getSeedChanceAdjustment(game, choice, "final-chance");
-    if (finalChanceRule) trace.push(`성인의 달 · ${finalChanceRule.text}`);
+    trace.push(fixedChance ? "판정 · 확정" : (success ? "판정 · 성공" : "판정 · 실패"));
+    if (!fixedChance) {
+      if ((game.stats?.resolve ?? 0) < 0) trace.push("결단 저하 · 성공 가능성 절반");
+      const pressure = shouldApplyChancePressure(game) ? getChoiceChancePressure(game) : 0;
+      const pressureRule = getSeedChanceAdjustment(game, choice, "chance-pressure");
+      const displayedPressure = Math.trunc(pressure * (pressureRule?.modifier?.multiplier ?? 1));
+      if (displayedPressure > 0) trace.push(`\uacf5\ud3ec/\uc774\uc0c1\ud604\uc0c1 \u00b7 \uc131\uacf5\ub960 -${displayedPressure}%`);
+      if (pressureRule) trace.push(`성인의 달 · ${pressureRule.text}`);
+      const markChance = getMarkChanceAdjustment(game, choice);
+      if (markChance !== 0) trace.push(`표식 · 성공률 ${markChance > 0 ? "+" : ""}${markChance.toFixed(1)}%`);
+      const finalChanceRule = getSeedChanceAdjustment(game, choice, "final-chance");
+      if (finalChanceRule) trace.push(`성인의 달 · ${finalChanceRule.text}`);
+    }
   }
 
   Object.entries(game.nextTurn).forEach(([key, value]) => {
