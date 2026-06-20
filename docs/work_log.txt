@@ -250,3 +250,9 @@
 - 구조: `currentRecordMarker`와 `nightRecordMarker`를 사용해 상단/밤 진입 UI가 같은 기록 표기 helper를 타게 하고, verify가 `App.jsx`의 `번째 밤` 잔재를 실패로 잡도록 추가했다.
 - 수정 파일: `src/App.jsx`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-21 00:47 KST
+- 작업: `headerTitle`을 page marker와 분리해 화면 성격 표기로 정리했다.
+- 구조: 밤은 `지하 기록`, 낮은 `영지 기록`, 그 외 기록 계열은 `기록 n일차`로 표시하고 verify에 해당 headerTitle 기준을 추가했다.
+- 수정 파일: `src/App.jsx`, `scripts/verify-game.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `npm.cmd run verify`, `npm.cmd run build`

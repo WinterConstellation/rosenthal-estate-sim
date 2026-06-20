@@ -2541,7 +2541,11 @@ function App() {
     : game.phase === "expedition"
       ? `${game.expedition.stepIndex + 1} / ${game.expedition.totalSteps}`
       : "—";
-  const headerTitle = effectiveIsNight ? "밤의 기록" : "영지 기록";
+  const headerTitle = effectiveIsNight
+    ? "지하 기록"
+    : game.phase === "day"
+      ? "영지 기록"
+      : `기록 ${game.day}일차`;
   const appShellClass = [
     "app-shell",
     effectiveIsNight ? "theme-night" : "theme-day",

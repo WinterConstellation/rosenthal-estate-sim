@@ -270,7 +270,8 @@ Acceptance:
 
 완료 확인:
 - `src/components/runMarkers.js`에 page marker, 제물 카운터, 변화량 polarity helper를 분리했다.
-- App 상단 표기와 밤 진입 eyebrow는 page marker helper를 사용하며 `App.jsx` 표시 코드에서 `n번째 꿈`/`n번째 밤` 계열 문구를 제거했다.
+- App 상단 `dream-mark`와 밤 진입 eyebrow는 page marker helper를 사용하며 `App.jsx` 표시 코드에서 `n번째 꿈`/`n번째 밤` 계열 문구를 제거했다.
+- `headerTitle`은 위치 표기를 반복하지 않고 `지하 기록`/`영지 기록`/`기록 n일차`로 화면 성격만 표시한다.
 - `DialogueCard`는 제목/화자/본문 계층을 CSS와 함께 분리했다.
 - 성향 레벨 보정은 양수 능력치 변화에만 적용하고, 음수 변화는 배율을 타지 않는다.
 - 결과 변화 색상은 단순 부호가 아니라 `fear`, `corruption`, `missing`, 공포 특성 계열의 역방향 의미를 반영한다.
