@@ -2545,7 +2545,7 @@ function App() {
     ? "지하 기록"
     : game.phase === "day"
       ? "영지 기록"
-      : `기록 ${game.day}일차`;
+      : "기록";
   const appShellClass = [
     "app-shell",
     effectiveIsNight ? "theme-night" : "theme-day",
