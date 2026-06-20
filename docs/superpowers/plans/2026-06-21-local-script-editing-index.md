@@ -56,6 +56,7 @@
 - Produces: `loadScriptEditConfig(projectRoot: string): object`
 - Produces: `ensureScriptEditConfig(projectRoot: string): object`
 - Produces: `normalizeProjectPath(projectRoot: string, rawPath: string): string`
+- Produces: `matchesPattern(pattern: string, relativePath: string): boolean`
 - Produces: `isScriptEditPathAllowed(config: object, relativePath: string): boolean`
 - Produces: `assertScriptEditPathAllowed(config: object, relativePath: string): void`
 
@@ -74,6 +75,7 @@ import {
   ensureScriptEditConfig,
   isScriptEditPathAllowed,
   loadScriptEditConfig,
+  matchesPattern,
   normalizeProjectPath,
 } from "./script-edit/pathPolicy.mjs";
 
@@ -87,6 +89,9 @@ assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/scrip
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/scriptManifest.js"), true);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/App.jsx"), false);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/engine/scriptLoader.js"), false);
+assert.equal(matchesPattern("src/engine/**", "src/engine/scriptLoader.js"), true);
+assert.equal(matchesPattern("src/data/scriptPacks/*.js", "src/data/scriptPacks/specialEventGroups.js"), true);
+assert.equal(matchesPattern("src/data/scriptPacks/*.js", "src/data/scriptPacks/nested/file.js"), false);
 assert.doesNotThrow(() => assertScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/scriptManifest.js"));
 assert.throws(() => assertScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/engine/scriptLoader.js"), /not editable/);
 
@@ -212,11 +217,25 @@ function escapeRegExp(value) {
 
 export function globToRegExp(pattern) {
   const normalized = toProjectSlashPath(pattern);
-  const parts = normalized.split("/");
-  const source = parts.map((part) => {
-    if (part === "**") return "(?:[^/]+/)*";
-    return escapeRegExp(part).replace(/\\\*/g, "[^/]*");
-  }).join("/");
+  let source = "";
+  for (let index = 0; index < normalized.length; index += 1) {
+    const char = normalized[index];
+    if (normalized.slice(index, index + 3) === "**/") {
+      source += "(?:[^/]+/)*";
+      index += 2;
+      continue;
+    }
+    if (normalized.slice(index, index + 2) === "**") {
+      source += ".*";
+      index += 1;
+      continue;
+    }
+    if (char === "*") {
+      source += "[^/]*";
+      continue;
+    }
+    source += escapeRegExp(char);
+  }
   return new RegExp(`^${source}$`);
 }
 
@@ -476,12 +495,14 @@ export function findPropertyLiteralSpan(objectSource, objectOffset, propertyName
 Create `scripts/script-edit/indexGenerator.mjs`. It must:
 
 - call `ensureScriptEditConfig(projectRoot)`,
-- import `src/data/scriptManifest.js`,
-- import `src/data/scriptPacks/specialEventGroups.js`,
+- read `src/data/scriptManifest.js` as source text and parse known manifest properties,
+- read `src/data/scriptPacks/specialEventGroups.js` as source text and parse known group/stage literals,
 - generate manifest entries for `triggerKey`, `kind`, `moduleKey`, `exportName`, `itemCount`, and `stageCount`,
 - generate script pack entries for stage title, text, left label, and right label,
 - store `sourceHash` for stale-index protection,
 - write `.script-edit/index.json` on `--write`.
+
+Do not use dynamic `import()` for project files in the index generator. The verification suite copies source files into temporary directories that do not have the repository's `package.json` module scope, so source-text parsing is the stable path.
 
 Use this entry shape for every item:
 
@@ -726,7 +747,10 @@ Create `scripts/script-edit/server.mjs`. It must:
 Use this startup behavior:
 
 ```js
-if (import.meta.url === `file://${process.argv[1].replace(/\\/g, "/")}`) {
+import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const server = createScriptEditServer({ projectRoot: process.cwd() });
   const address = await server.start();
   console.log(`Script editor: http://${address.host}:${address.port}/?token=${server.token}`);
