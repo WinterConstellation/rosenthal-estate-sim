@@ -21,7 +21,12 @@ const TUTORIAL_INTRO_CONTENT_FILE = "src/data/tutorial/introContent.js";
 const TUTORIAL_DAY_ACTION_CONTENT_FILE = "src/data/tutorial/dayActionContent.js";
 const TUTORIAL_NIGHT_CHOICE_CONTENT_FILE = "src/data/tutorial/nightChoiceContent.js";
 const TUTORIAL_ENDING_CONTENT_FILE = "src/data/tutorial/endingContent.js";
-const SYSTEM_CONTENT_FILE = "src/data/systemContent.js";
+const SYSTEM_META_CONTENT_FILE = "src/data/system/metaContent.js";
+const SYSTEM_ROLE_CONTENT_FILE = "src/data/system/roleContent.js";
+const SYSTEM_MARK_UNLOCK_CONTENT_FILE = "src/data/system/markUnlockContent.js";
+const SYSTEM_AFFINITY_MARK_CONTENT_FILE = "src/data/system/affinityMarkContent.js";
+const SYSTEM_STANDALONE_MARK_CONTENT_FILE = "src/data/system/standaloneMarkContent.js";
+const SYSTEM_HIDDEN_RULE_CONTENT_FILE = "src/data/system/hiddenRuleContent.js";
 const SPECIAL_EVENT_PACK_ID = "special-event-groups";
 
 const TEXT_FIELD_KIND = {
@@ -1052,8 +1057,8 @@ function addMetaObjectEntries(entries, { sourceFile, source, exportName, idPrefi
 }
 
 function buildSystemContentEntries(projectRoot, config) {
-  const sourceFile = normalizeProjectPath(projectRoot, SYSTEM_CONTENT_FILE);
-  const source = readUtf8Lf(projectRoot, sourceFile);
+  let sourceFile = normalizeProjectPath(projectRoot, SYSTEM_META_CONTENT_FILE);
+  let source = readUtf8Lf(projectRoot, sourceFile);
   const entries = [];
 
   for (const exportName of ["RESOURCE_META", "STAT_META", "TRAIT_META", "HORROR_TRAIT_META", "HORROR_DERIVED_META"]) {
@@ -1067,6 +1072,9 @@ function buildSystemContentEntries(projectRoot, config) {
       verify: config.verify,
     });
   }
+
+  sourceFile = normalizeProjectPath(projectRoot, SYSTEM_ROLE_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
 
   addObjectArrayEntries(entries, {
     sourceFile,
@@ -1086,6 +1094,9 @@ function buildSystemContentEntries(projectRoot, config) {
     textFields: ["name", "description"],
     verify: config.verify,
   });
+
+  sourceFile = normalizeProjectPath(projectRoot, SYSTEM_MARK_UNLOCK_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
 
   const loadoutRange = findExportConstInitializer(source, "MARK_LOADOUT_LIMIT");
   const loadoutLiteral = readLiteralAt(source, loadoutRange.start, loadoutRange.end);
@@ -1132,6 +1143,9 @@ function buildSystemContentEntries(projectRoot, config) {
     }
   });
 
+  sourceFile = normalizeProjectPath(projectRoot, SYSTEM_AFFINITY_MARK_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
+
   const affinityGroupsRange = findExportConstInitializer(source, "AFFINITY_MARK_GROUPS");
   collectTopLevelObjectRangesInArray(source, affinityGroupsRange).forEach((groupRange, groupIndex) => {
     const affinity = sanitizeIdPart(getFirstLiteralProperty(source, groupRange, "affinity")?.value, `${groupIndex + 1}`);
@@ -1166,6 +1180,9 @@ function buildSystemContentEntries(projectRoot, config) {
     }
   });
 
+  sourceFile = normalizeProjectPath(projectRoot, SYSTEM_STANDALONE_MARK_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
+
   addObjectArrayEntries(entries, {
     sourceFile,
     source,
@@ -1176,6 +1193,10 @@ function buildSystemContentEntries(projectRoot, config) {
     includeNumbers: (property) => ["carryEffect", "equipEffect", "unlockCondition"].includes(property.path[0]),
     verify: config.verify,
   });
+
+  sourceFile = normalizeProjectPath(projectRoot, SYSTEM_ROLE_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
+
   addObjectArrayEntries(entries, {
     sourceFile,
     source,
@@ -1185,6 +1206,9 @@ function buildSystemContentEntries(projectRoot, config) {
     textFields: ["name", "description"],
     verify: config.verify,
   });
+
+  sourceFile = normalizeProjectPath(projectRoot, SYSTEM_HIDDEN_RULE_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
 
   const hiddenRulesRange = findExportConstInitializer(source, "HIDDEN_RUN_RULES");
   for (const field of ["flaw", "taboo"]) {

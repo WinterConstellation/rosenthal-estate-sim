@@ -67,6 +67,8 @@
 - `src/data/rosenthalContent.js`: Rosenthal 런타임 import 호환용 wrapper
 - `src/data/tutorial/*.js`: 튜토리얼 화면/구형 낮·밤 진행/엔딩·포기 결과 수정 원본
 - `src/data/tutorialContent.js`: 튜토리얼 런타임 import 호환용 aggregate wrapper
+- `src/data/system/*.js`: 시스템 메타, 직업/칭호/패시브, 표식 해금, 성향 표식, 독립 표식, 숨은 규칙 수정 원본
+- `src/data/systemContent.js`: 시스템 런타임 import 호환용 aggregate wrapper
 - `src/engine/rosenthalEngine.js`: 상태 전이, 판정, 제물, 분기, 포기, 유품 처리
 - `src/engine/saveManager.js`: 자동 저장과 수동 저장 슬롯
 - 기존 `systemRules.js`와 `rulesEngine.js`: 성향, 직업, 칭호, 도감/휴대/장착 표식, 패시브 및 효과 적용 순서

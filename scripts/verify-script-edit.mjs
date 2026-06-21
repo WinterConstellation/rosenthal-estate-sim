@@ -31,14 +31,23 @@ const TUTORIAL_EDIT_SOURCE_FILES = [
   "src/data/tutorial/nightChoiceContent.js",
   "src/data/tutorial/endingContent.js",
 ];
+const SYSTEM_EDIT_SOURCE_FILES = [
+  "src/data/system/metaContent.js",
+  "src/data/system/roleContent.js",
+  "src/data/system/markUnlockContent.js",
+  "src/data/system/affinityMarkContent.js",
+  "src/data/system/standaloneMarkContent.js",
+  "src/data/system/hiddenRuleContent.js",
+];
 
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/scriptPacks/*.js"), true);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/rosenthal/*.js"), true);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/tutorial/*.js"), true);
-assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/systemContent.js"), true);
+assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/system/*.js"), true);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/rosenthalContent.js"), false);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/rosenthalScriptContent.js"), false);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/tutorialContent.js"), false);
+assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/systemContent.js"), false);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/rules/systemRules.js"), false);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/rules/tutorialRules.js"), false);
 assert.equal(normalizeProjectPath(repoRoot, "src/data/scriptManifest.js"), "src/data/scriptManifest.js");
@@ -54,7 +63,10 @@ for (const sourceFile of TUTORIAL_EDIT_SOURCE_FILES) {
   assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, sourceFile), true);
 }
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/tutorialContent.js"), false);
-assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/systemContent.js"), true);
+for (const sourceFile of SYSTEM_EDIT_SOURCE_FILES) {
+  assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, sourceFile), true);
+}
+assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/systemContent.js"), false);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/App.jsx"), false);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/engine/scriptLoader.js"), false);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/rules/systemRules.js"), false);
@@ -136,9 +148,19 @@ assert.equal(index.entries.find((entry) => entry.id === "tutorial:worker-name-ch
 assert.equal(index.entries.find((entry) => entry.id === "tutorial:forfeit:day").sourceFile, "src/data/tutorial/endingContent.js");
 assert.equal(index.entries.some((entry) => entry.id.startsWith("tutorial:") && entry.sourceFile === "src/data/tutorialContent.js"), false);
 const ruleThreshold = index.entries.find((entry) => entry.id === "rules:mark-branch-unlock:purification-hint:condition:stigma");
-assert.equal(ruleThreshold.sourceFile, "src/data/systemContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "rules:resource-meta:food:label").sourceFile, "src/data/system/metaContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "rules:job:steward:name").sourceFile, "src/data/system/roleContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "rules:title:accepted-lord:description").sourceFile, "src/data/system/roleContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "rules:passive:careful-stockpile:description").sourceFile, "src/data/system/roleContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "rules:mark-loadout-limit").sourceFile, "src/data/system/markUnlockContent.js");
+assert.equal(ruleThreshold.sourceFile, "src/data/system/markUnlockContent.js");
 assert.equal(ruleThreshold.valueType, "number");
 assert.equal(ruleThreshold.value, 3);
+assert.equal(index.entries.find((entry) => entry.id === "rules:affinity-mark-group:life:capstone-count").sourceFile, "src/data/system/affinityMarkContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "rules:affinity-mark:life:stigma:1:name").sourceFile, "src/data/system/affinityMarkContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "rules:standalone-mark:stigma-standalone-first-bell:codexText").sourceFile, "src/data/system/standaloneMarkContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "rules:hidden-run-rule:flaw:1").sourceFile, "src/data/system/hiddenRuleContent.js");
+assert.equal(index.entries.some((entry) => entry.id.startsWith("rules:") && entry.sourceFile === "src/data/systemContent.js"), false);
 const duplicateEditableValues = new Map();
 for (const entry of index.entries) {
   if (typeof entry.value !== "string") continue;
@@ -164,6 +186,7 @@ try {
   mkdirSync(join(tempEditRoot, "src", "data", "scriptPacks"), { recursive: true });
   mkdirSync(join(tempEditRoot, "src", "data", "rosenthal"), { recursive: true });
   mkdirSync(join(tempEditRoot, "src", "data", "tutorial"), { recursive: true });
+  mkdirSync(join(tempEditRoot, "src", "data", "system"), { recursive: true });
   mkdirSync(join(tempEditRoot, "src", "data"), { recursive: true });
   mkdirSync(join(tempEditRoot, "src", "rules"), { recursive: true });
   mkdirSync(join(tempEditRoot, ".script-edit"), { recursive: true });
@@ -175,7 +198,9 @@ try {
   for (const sourceFile of TUTORIAL_EDIT_SOURCE_FILES) {
     copyFileSync(join(repoRoot, ...sourceFile.split("/")), join(tempEditRoot, ...sourceFile.split("/")));
   }
-  copyFileSync(join(repoRoot, "src", "data", "systemContent.js"), join(tempEditRoot, "src", "data", "systemContent.js"));
+  for (const sourceFile of SYSTEM_EDIT_SOURCE_FILES) {
+    copyFileSync(join(repoRoot, ...sourceFile.split("/")), join(tempEditRoot, ...sourceFile.split("/")));
+  }
   writeFileSync(join(tempEditRoot, ".script-edit", "config.json"), JSON.stringify(DEFAULT_SCRIPT_EDIT_CONFIG, null, 2), "utf8");
   await writeScriptEditIndex(tempEditRoot);
   const itemId = "script-pack:special-event-groups:blank-ledger:stage-1:text";
@@ -213,6 +238,7 @@ try {
   mkdirSync(join(serverTestRoot, "src", "data", "scriptPacks"), { recursive: true });
   mkdirSync(join(serverTestRoot, "src", "data", "rosenthal"), { recursive: true });
   mkdirSync(join(serverTestRoot, "src", "data", "tutorial"), { recursive: true });
+  mkdirSync(join(serverTestRoot, "src", "data", "system"), { recursive: true });
   mkdirSync(join(serverTestRoot, "src", "data"), { recursive: true });
   mkdirSync(join(serverTestRoot, "src", "rules"), { recursive: true });
   mkdirSync(join(serverTestRoot, ".script-edit"), { recursive: true });
@@ -224,7 +250,9 @@ try {
   for (const sourceFile of TUTORIAL_EDIT_SOURCE_FILES) {
     copyFileSync(join(repoRoot, ...sourceFile.split("/")), join(serverTestRoot, ...sourceFile.split("/")));
   }
-  copyFileSync(join(repoRoot, "src", "data", "systemContent.js"), join(serverTestRoot, "src", "data", "systemContent.js"));
+  for (const sourceFile of SYSTEM_EDIT_SOURCE_FILES) {
+    copyFileSync(join(repoRoot, ...sourceFile.split("/")), join(serverTestRoot, ...sourceFile.split("/")));
+  }
   writeFileSync(join(serverTestRoot, ".script-edit", "config.json"), JSON.stringify({
     ...DEFAULT_SCRIPT_EDIT_CONFIG,
     verify: ["node -e \"process.exit(0)\""],
@@ -278,6 +306,12 @@ const tutorialDayActionContentSource = readFileSync(join(repoRoot, "src", "data"
 const tutorialNightChoiceContentSource = readFileSync(join(repoRoot, "src", "data", "tutorial", "nightChoiceContent.js"), "utf8");
 const tutorialEndingContentSource = readFileSync(join(repoRoot, "src", "data", "tutorial", "endingContent.js"), "utf8");
 const systemContentSource = readFileSync(join(repoRoot, "src", "data", "systemContent.js"), "utf8");
+const systemMetaContentSource = readFileSync(join(repoRoot, "src", "data", "system", "metaContent.js"), "utf8");
+const systemRoleContentSource = readFileSync(join(repoRoot, "src", "data", "system", "roleContent.js"), "utf8");
+const systemMarkUnlockContentSource = readFileSync(join(repoRoot, "src", "data", "system", "markUnlockContent.js"), "utf8");
+const systemAffinityMarkContentSource = readFileSync(join(repoRoot, "src", "data", "system", "affinityMarkContent.js"), "utf8");
+const systemStandaloneMarkContentSource = readFileSync(join(repoRoot, "src", "data", "system", "standaloneMarkContent.js"), "utf8");
+const systemHiddenRuleContentSource = readFileSync(join(repoRoot, "src", "data", "system", "hiddenRuleContent.js"), "utf8");
 const systemRulesSource = readFileSync(join(repoRoot, "src", "rules", "systemRules.js"), "utf8");
 assert.equal(existsSync(join(repoRoot, "src", "rules", "tutorialRules.js")), false);
 assert.equal(rosenthalDayContentSource.includes("export const DAY_ACTIONS"), true);
@@ -312,9 +346,26 @@ assert.equal(tutorialNightChoiceContentSource.includes("export const NIGHT_CHOIC
 assert.equal(tutorialEndingContentSource.includes("export const ENDINGS"), true);
 assert.equal(tutorialEndingContentSource.includes("export const WORKER_NAME_CHOICES"), true);
 assert.equal(tutorialEndingContentSource.includes("export const FORFEIT_RESULTS"), true);
-assert.equal(systemContentSource.includes("export const RESOURCE_META"), true);
-assert.equal(systemContentSource.includes("export const AFFINITY_MARK_GROUPS"), true);
-assert.equal(systemContentSource.includes("export const HIDDEN_RUN_RULES"), true);
+assert.equal(systemContentSource.includes("./system/metaContent.js"), true);
+assert.equal(systemContentSource.includes("./system/roleContent.js"), true);
+assert.equal(systemContentSource.includes("./system/markUnlockContent.js"), true);
+assert.equal(systemContentSource.includes("./system/affinityMarkContent.js"), true);
+assert.equal(systemContentSource.includes("./system/standaloneMarkContent.js"), true);
+assert.equal(systemContentSource.includes("./system/hiddenRuleContent.js"), true);
+assert.equal(systemContentSource.includes("export const RESOURCE_META"), false);
+assert.equal(systemContentSource.includes("export const AFFINITY_MARK_GROUPS"), false);
+assert.equal(systemContentSource.includes("export const HIDDEN_RUN_RULES"), false);
+assert.equal(systemMetaContentSource.includes("export const RESOURCE_META"), true);
+assert.equal(systemMetaContentSource.includes("export const HORROR_DERIVED_META"), true);
+assert.equal(systemRoleContentSource.includes("export const JOBS"), true);
+assert.equal(systemRoleContentSource.includes("export const TITLES"), true);
+assert.equal(systemRoleContentSource.includes("export const PASSIVES"), true);
+assert.equal(systemMarkUnlockContentSource.includes("export const MARK_LOADOUT_LIMIT"), true);
+assert.equal(systemMarkUnlockContentSource.includes("export const MARK_BRANCH_UNLOCKS"), true);
+assert.equal(systemAffinityMarkContentSource.includes("export const AFFINITY_MARK_GROUPS"), true);
+assert.equal(systemStandaloneMarkContentSource.includes("export const STANDALONE_MARKS"), true);
+assert.equal(systemStandaloneMarkContentSource.includes("export const LEGACY_STIGMA_MARK_MAP"), true);
+assert.equal(systemHiddenRuleContentSource.includes("export const HIDDEN_RUN_RULES"), true);
 assert.equal(systemRulesSource.includes("../data/systemContent.js"), true);
 assert.equal(systemRulesSource.includes("export const RESOURCE_META"), false);
 assert.equal(systemRulesSource.includes("export const AFFINITY_MARK_GROUPS"), false);

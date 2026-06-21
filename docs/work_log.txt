@@ -370,3 +370,9 @@
 - 구조: `src/data/tutorialContent.js`는 기존 import 호환용 aggregate wrapper로 남기고, 실제 저장 대상은 `src/data/tutorial/introContent.js`, `dayActionContent.js`, `nightChoiceContent.js`, `endingContent.js`가 된다. 수정 인덱스 allowlist는 `src/data/tutorial/*.js`를 허용한다.
 - 수정 파일: `.script-edit/config.json`, `.understand-anything/*`, `src/data/tutorial/*`, `src/data/tutorialContent.js`, `src/rules/README.md`, `scripts/script-edit/indexGenerator.mjs`, `scripts/script-edit/pathPolicy.mjs`, `scripts/verify-game.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`
+
+2026-06-21 18:49 KST
+- 작업: 시스템 규칙/표식/패시브/숨은 규칙 수정 원본을 단일 wrapper에서 세부 데이터 파일로 분리했다.
+- 구조: `src/data/systemContent.js`는 기존 import 호환용 aggregate wrapper로 남기고, 실제 저장 대상은 `src/data/system/metaContent.js`, `roleContent.js`, `markUnlockContent.js`, `affinityMarkContent.js`, `standaloneMarkContent.js`, `hiddenRuleContent.js`가 된다. 수정 인덱스 allowlist는 `src/data/system/*.js`를 허용한다.
+- 수정 파일: `.script-edit/config.json`, `.understand-anything/*`, `src/data/system/*`, `src/data/systemContent.js`, `src/rules/README.md`, `scripts/script-edit/indexGenerator.mjs`, `scripts/script-edit/pathPolicy.mjs`, `scripts/verify-game.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`
