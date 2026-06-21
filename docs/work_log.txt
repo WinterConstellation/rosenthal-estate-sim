@@ -310,3 +310,9 @@
 - 구조: `sourceFile` 기준 접이식 폴더를 만들고, 항목 선택은 active 상태만 갱신해 목록 DOM을 재생성하지 않는다. 관련 의도 주석을 코드에 추가했다.
 - 수정 파일: `.understand-anything/*`, `scripts/script-edit/public/app.js`, `scripts/script-edit/public/styles.css`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run build`, Edge headless screenshot
+
+2026-06-21 16:44 KST
+- 작업: 로컬 스크립트 편집 에디터 왼쪽 목록의 스크롤바가 보이지 않던 문제를 수정했다.
+- 구조: `.entry-list`를 `overflow-y: scroll`로 고정하고 stable scrollbar gutter와 명시적 WebKit 스크롤바 스타일을 추가했다.
+- 수정 파일: `.understand-anything/*`, `scripts/script-edit/public/styles.css`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run build`, Edge headless screenshot

@@ -124,11 +124,30 @@ button:disabled {
 .entry-list {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  /* Keep the left pane scrollbar visible; hidden/auto scrollbars made the folder list feel unscrollable. */
+  overflow-x: hidden;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #7f8d93 #10151b;
   display: grid;
   align-content: start;
   gap: 8px;
   padding-right: 2px;
+}
+
+.entry-list::-webkit-scrollbar {
+  width: 11px;
+}
+
+.entry-list::-webkit-scrollbar-track {
+  background: #10151b;
+}
+
+.entry-list::-webkit-scrollbar-thumb {
+  background: #7f8d93;
+  border: 3px solid #10151b;
+  border-radius: 999px;
 }
 
 .entry-folder {
