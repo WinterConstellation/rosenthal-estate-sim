@@ -59,6 +59,17 @@ assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:stage-1:titl
 assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:stage-1:text"), true);
 assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:stage-1:left-label"), true);
 assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:stage-1:right-label"), true);
+assert.equal(ids.has("rosenthal:day-action:fields:title"), true);
+assert.equal(ids.has("rosenthal:day-action:fields:result"), true);
+assert.equal(ids.has("rosenthal:prologue:line-1"), true);
+assert.equal(ids.has("tutorial:day-action:documents:title"), true);
+assert.equal(ids.has("tutorial:day-action:documents:weight"), true);
+assert.equal(ids.has("tutorial:night-choice:knight:result"), true);
+assert.equal(ids.has("tutorial:forfeit:day"), true);
+assert.equal(ids.has("rules:mark-loadout-limit"), true);
+assert.equal(ids.has("rules:mark-branch-unlock:purification-hint:condition:stigma"), true);
+assert.equal(ids.has("rules:passive:careful-stockpile:description"), true);
+assert.equal(ids.has("rules:hidden-run-rule:flaw:1"), true);
 const blankText = index.entries.find((entry) => entry.id === "script-pack:special-event-groups:blank-ledger:stage-1:text");
 assert.equal(blankText.kind, "dialogue");
 assert.equal(blankText.sourceFile, "src/data/scriptPacks/specialEventGroups.js");
@@ -66,6 +77,14 @@ assert.equal(blankText.locator.type, "source-span");
 assert.equal(Number.isInteger(blankText.locator.start), true);
 assert.equal(Number.isInteger(blankText.locator.end), true);
 assert.equal(blankText.value, "새 장부 앞 일곱 장은 날짜만 남아 있다.");
+const tutorialWeight = index.entries.find((entry) => entry.id === "tutorial:day-action:documents:weight");
+assert.equal(tutorialWeight.kind, "number");
+assert.equal(tutorialWeight.valueType, "number");
+assert.equal(tutorialWeight.value, 8);
+const ruleThreshold = index.entries.find((entry) => entry.id === "rules:mark-branch-unlock:purification-hint:condition:stigma");
+assert.equal(ruleThreshold.sourceFile, "src/rules/systemRules.js");
+assert.equal(ruleThreshold.valueType, "number");
+assert.equal(ruleThreshold.value, 3);
 const writtenIndex = await writeScriptEditIndex(repoRoot);
 assert.equal(writtenIndex.entries.length, index.entries.length);
 assert.equal(existsSync(getScriptEditIndexPath(repoRoot)), true);
@@ -76,9 +95,13 @@ const tempEditRoot = mkdtempSync(join(tmpdir(), "script-edit-save-"));
 try {
   mkdirSync(join(tempEditRoot, "src", "data", "scriptPacks"), { recursive: true });
   mkdirSync(join(tempEditRoot, "src", "data"), { recursive: true });
+  mkdirSync(join(tempEditRoot, "src", "rules"), { recursive: true });
   mkdirSync(join(tempEditRoot, ".script-edit"), { recursive: true });
   copyFileSync(join(repoRoot, "src", "data", "scriptManifest.js"), join(tempEditRoot, "src", "data", "scriptManifest.js"));
   copyFileSync(join(repoRoot, "src", "data", "scriptPacks", "specialEventGroups.js"), join(tempEditRoot, "src", "data", "scriptPacks", "specialEventGroups.js"));
+  copyFileSync(join(repoRoot, "src", "data", "rosenthalContent.js"), join(tempEditRoot, "src", "data", "rosenthalContent.js"));
+  copyFileSync(join(repoRoot, "src", "rules", "tutorialRules.js"), join(tempEditRoot, "src", "rules", "tutorialRules.js"));
+  copyFileSync(join(repoRoot, "src", "rules", "systemRules.js"), join(tempEditRoot, "src", "rules", "systemRules.js"));
   writeFileSync(join(tempEditRoot, ".script-edit", "config.json"), JSON.stringify(DEFAULT_SCRIPT_EDIT_CONFIG, null, 2), "utf8");
   await writeScriptEditIndex(tempEditRoot);
   const itemId = "script-pack:special-event-groups:blank-ledger:stage-1:text";
@@ -115,9 +138,13 @@ const serverTestRoot = mkdtempSync(join(tmpdir(), "script-edit-server-"));
 try {
   mkdirSync(join(serverTestRoot, "src", "data", "scriptPacks"), { recursive: true });
   mkdirSync(join(serverTestRoot, "src", "data"), { recursive: true });
+  mkdirSync(join(serverTestRoot, "src", "rules"), { recursive: true });
   mkdirSync(join(serverTestRoot, ".script-edit"), { recursive: true });
   copyFileSync(join(repoRoot, "src", "data", "scriptManifest.js"), join(serverTestRoot, "src", "data", "scriptManifest.js"));
   copyFileSync(join(repoRoot, "src", "data", "scriptPacks", "specialEventGroups.js"), join(serverTestRoot, "src", "data", "scriptPacks", "specialEventGroups.js"));
+  copyFileSync(join(repoRoot, "src", "data", "rosenthalContent.js"), join(serverTestRoot, "src", "data", "rosenthalContent.js"));
+  copyFileSync(join(repoRoot, "src", "rules", "tutorialRules.js"), join(serverTestRoot, "src", "rules", "tutorialRules.js"));
+  copyFileSync(join(repoRoot, "src", "rules", "systemRules.js"), join(serverTestRoot, "src", "rules", "systemRules.js"));
   writeFileSync(join(serverTestRoot, ".script-edit", "config.json"), JSON.stringify({
     ...DEFAULT_SCRIPT_EDIT_CONFIG,
     verify: ["node -e \"process.exit(0)\""],

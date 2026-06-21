@@ -7,12 +7,35 @@ import {
   toProjectSlashPath,
 } from "./pathPolicy.mjs";
 import { readUtf8Lf, sha256Text, writeJsonLf } from "./sourceText.mjs";
-import { findPropertyLiteralSpan, parseStageCalls } from "./sourceScanner.mjs";
+import { findPropertyLiteralSpan, parseStageCalls, readStringLiteral } from "./sourceScanner.mjs";
 
 const INDEX_VERSION = "1.0.0";
 const MANIFEST_FILE = "src/data/scriptManifest.js";
 const SPECIAL_EVENT_GROUPS_FILE = "src/data/scriptPacks/specialEventGroups.js";
+const ROSENTHAL_CONTENT_FILE = "src/data/rosenthalContent.js";
+const TUTORIAL_RULES_FILE = "src/rules/tutorialRules.js";
+const SYSTEM_RULES_FILE = "src/rules/systemRules.js";
 const SPECIAL_EVENT_PACK_ID = "special-event-groups";
+
+const TEXT_FIELD_KIND = {
+  button: "choiceLabel",
+  codexText: "dialogue",
+  description: "description",
+  detail: "description",
+  icon: "label",
+  label: "label",
+  name: "label",
+  paragraph: "dialogue",
+  preview: "description",
+  relation: "description",
+  result: "dialogue",
+  reveal: "dialogue",
+  sourceHint: "description",
+  subtitle: "scriptTitle",
+  tag: "label",
+  text: "dialogue",
+  title: "scriptTitle",
+};
 
 function parseLiteral(raw) {
   const trimmed = raw.trim();
@@ -30,6 +53,415 @@ function getValueType(value) {
   return "singleLineText";
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isWhitespace(char) {
+  return /\s/.test(char ?? "");
+}
+
+function skipWhitespaceAndComments(source, index, end = source.length) {
+  let cursor = index;
+  while (cursor < end) {
+    if (isWhitespace(source[cursor])) {
+      cursor += 1;
+      continue;
+    }
+    if (source.slice(cursor, cursor + 2) === "//") {
+      const nextLine = source.indexOf("\n", cursor + 2);
+      cursor = nextLine < 0 ? end : nextLine + 1;
+      continue;
+    }
+    if (source.slice(cursor, cursor + 2) === "/*") {
+      const close = source.indexOf("*/", cursor + 2);
+      cursor = close < 0 ? end : close + 2;
+      continue;
+    }
+    break;
+  }
+  return cursor;
+}
+
+function skipTemplateLiteral(source, index, end = source.length) {
+  for (let cursor = index + 1; cursor < end; cursor += 1) {
+    if (source[cursor] === "\\") {
+      cursor += 1;
+      continue;
+    }
+    if (source[cursor] === "`") return cursor + 1;
+  }
+  throw new Error("Unterminated template literal");
+}
+
+function skipIgnoredToken(source, index, end = source.length) {
+  if (source[index] === "\"" || source[index] === "'") return readStringLiteral(source, index).literalEnd;
+  if (source[index] === "`") return skipTemplateLiteral(source, index, end);
+  if (source.slice(index, index + 2) === "//") {
+    const nextLine = source.indexOf("\n", index + 2);
+    return nextLine < 0 ? end : nextLine + 1;
+  }
+  if (source.slice(index, index + 2) === "/*") {
+    const close = source.indexOf("*/", index + 2);
+    return close < 0 ? end : close + 2;
+  }
+  return index;
+}
+
+function trimRange(source, start, end) {
+  let cleanStart = start;
+  let cleanEnd = end;
+  while (cleanStart < cleanEnd && isWhitespace(source[cleanStart])) cleanStart += 1;
+  while (cleanEnd > cleanStart && isWhitespace(source[cleanEnd - 1])) cleanEnd -= 1;
+  return { start: cleanStart, end: cleanEnd };
+}
+
+function findBalancedRange(source, start) {
+  const open = source[start];
+  const closeFor = { "{": "}", "[": "]", "(": ")" };
+  const close = closeFor[open];
+  if (!close) throw new Error(`Expected balanced opener at ${start}`);
+  const stack = [close];
+  for (let cursor = start + 1; cursor < source.length; cursor += 1) {
+    const skipped = skipIgnoredToken(source, cursor);
+    if (skipped !== cursor) {
+      cursor = skipped - 1;
+      continue;
+    }
+    const char = source[cursor];
+    if (closeFor[char]) {
+      stack.push(closeFor[char]);
+      continue;
+    }
+    if (char === stack.at(-1)) {
+      stack.pop();
+      if (stack.length === 0) {
+        return { start, end: cursor + 1, text: source.slice(start, cursor + 1) };
+      }
+    }
+  }
+  throw new Error(`Unclosed ${open} at ${start}`);
+}
+
+function findExportConstInitializer(source, exportName) {
+  const pattern = new RegExp(`export\\s+const\\s+${escapeRegExp(exportName)}\\s*=\\s*`);
+  const match = pattern.exec(source);
+  if (!match) throw new Error(`Missing export const ${exportName}`);
+  const start = skipWhitespaceAndComments(source, match.index + match[0].length);
+  const first = source[start];
+  if (first === "{" || first === "[" || first === "(") return findBalancedRange(source, start);
+  if (first === "\"" || first === "'") {
+    const literal = readStringLiteral(source, start);
+    return { start: literal.literalStart, end: literal.literalEnd, text: source.slice(literal.literalStart, literal.literalEnd) };
+  }
+  const end = source.indexOf(";", start);
+  if (end < 0) throw new Error(`Missing semicolon for export const ${exportName}`);
+  const range = trimRange(source, start, end);
+  return { ...range, text: source.slice(range.start, range.end) };
+}
+
+function readLiteralAt(source, index, end = source.length) {
+  const start = skipWhitespaceAndComments(source, index, end);
+  const char = source[start];
+  if (char === "\"" || char === "'") {
+    const literal = readStringLiteral(source, start);
+    if (literal.literalEnd > end) return null;
+    return {
+      start: literal.literalStart,
+      end: literal.literalEnd,
+      raw: source.slice(literal.literalStart, literal.literalEnd),
+      value: literal.value,
+      valueType: "singleLineText",
+    };
+  }
+  const remainder = source.slice(start, end);
+  const numberMatch = /^-?\d+(?:\.\d+)?/.exec(remainder);
+  if (numberMatch) {
+    return {
+      start,
+      end: start + numberMatch[0].length,
+      raw: numberMatch[0],
+      value: Number(numberMatch[0]),
+      valueType: "number",
+    };
+  }
+  if (remainder.startsWith("true") && !/[A-Za-z0-9_$]/.test(remainder[4] ?? "")) {
+    return { start, end: start + 4, raw: "true", value: true, valueType: "boolean" };
+  }
+  if (remainder.startsWith("false") && !/[A-Za-z0-9_$]/.test(remainder[5] ?? "")) {
+    return { start, end: start + 5, raw: "false", value: false, valueType: "boolean" };
+  }
+  return null;
+}
+
+function readPropertyKey(source, index, end) {
+  const start = skipWhitespaceAndComments(source, index, end);
+  if (source[start] === "\"" || source[start] === "'") {
+    const literal = readStringLiteral(source, start);
+    return { key: literal.value, start: literal.literalStart, end: literal.literalEnd };
+  }
+  if (source[start] === "..." || source[start] === "[" || source[start] == null) return null;
+  let cursor = start;
+  while (
+    cursor < end
+    && !isWhitespace(source[cursor])
+    && ![":", ",", "{", "}", "[", "]", "(", ")"].includes(source[cursor])
+  ) {
+    cursor += 1;
+  }
+  if (cursor === start) return null;
+  return { key: source.slice(start, cursor), start, end: cursor };
+}
+
+function findPropertyValueRange(source, objectRange, propertyName) {
+  const rangeEnd = objectRange.end - 1;
+  let cursor = objectRange.start + 1;
+  while (cursor < rangeEnd) {
+    cursor = skipWhitespaceAndComments(source, cursor, rangeEnd);
+    if (cursor >= rangeEnd) break;
+    const skipped = skipIgnoredToken(source, cursor, rangeEnd);
+    if (skipped !== cursor) {
+      cursor = skipped;
+      continue;
+    }
+    const key = readPropertyKey(source, cursor, rangeEnd);
+    if (!key) {
+      cursor += 1;
+      continue;
+    }
+    cursor = skipWhitespaceAndComments(source, key.end, rangeEnd);
+    if (source[cursor] !== ":") {
+      cursor = key.end + 1;
+      continue;
+    }
+    const valueStart = skipWhitespaceAndComments(source, cursor + 1, rangeEnd);
+    let valueEnd = valueStart;
+    if (["{", "[", "("].includes(source[valueStart])) {
+      valueEnd = findBalancedRange(source, valueStart).end;
+    } else {
+      const literal = readLiteralAt(source, valueStart, rangeEnd);
+      valueEnd = literal?.end ?? valueStart;
+    }
+    if (key.key === propertyName) {
+      return { start: valueStart, end: valueEnd, text: source.slice(valueStart, valueEnd) };
+    }
+    cursor = valueEnd;
+  }
+  return null;
+}
+
+function collectObjectLiteralProperties(source, objectRange, path = []) {
+  const results = [];
+  const rangeEnd = objectRange.end - 1;
+  let cursor = objectRange.start + 1;
+  while (cursor < rangeEnd) {
+    cursor = skipWhitespaceAndComments(source, cursor, rangeEnd);
+    if (source[cursor] === ",") {
+      cursor += 1;
+      continue;
+    }
+    if (cursor >= rangeEnd || source[cursor] === "}") break;
+    const key = readPropertyKey(source, cursor, rangeEnd);
+    if (!key) {
+      cursor += 1;
+      continue;
+    }
+    cursor = skipWhitespaceAndComments(source, key.end, rangeEnd);
+    if (source[cursor] !== ":") {
+      while (cursor < rangeEnd && source[cursor] !== ",") cursor += 1;
+      continue;
+    }
+    const valueStart = skipWhitespaceAndComments(source, cursor + 1, rangeEnd);
+    const nextPath = [...path, key.key];
+    if (source[valueStart] === "{") {
+      const nested = findBalancedRange(source, valueStart);
+      results.push(...collectObjectLiteralProperties(source, nested, nextPath));
+      cursor = nested.end;
+      continue;
+    }
+    if (source[valueStart] === "[") {
+      cursor = findBalancedRange(source, valueStart).end;
+      continue;
+    }
+    const literal = readLiteralAt(source, valueStart, rangeEnd);
+    if (literal) {
+      results.push({ path: nextPath, field: nextPath.join("."), ...literal });
+      cursor = literal.end;
+      continue;
+    }
+    while (cursor < rangeEnd && source[cursor] !== ",") cursor += 1;
+  }
+  return results;
+}
+
+function collectTopLevelObjectRangesInArray(source, arrayRange) {
+  const ranges = [];
+  let cursor = arrayRange.start + 1;
+  const end = arrayRange.end - 1;
+  while (cursor < end) {
+    cursor = skipWhitespaceAndComments(source, cursor, end);
+    if (source[cursor] === ",") {
+      cursor += 1;
+      continue;
+    }
+    if (source[cursor] === "{") {
+      const objectRange = findBalancedRange(source, cursor);
+      ranges.push(objectRange);
+      cursor = objectRange.end;
+      continue;
+    }
+    const skipped = skipIgnoredToken(source, cursor, end);
+    if (skipped !== cursor) {
+      cursor = skipped;
+      continue;
+    }
+    cursor += 1;
+  }
+  return ranges;
+}
+
+function collectTopLevelObjectValues(source, objectRange) {
+  const values = [];
+  const end = objectRange.end - 1;
+  let cursor = objectRange.start + 1;
+  while (cursor < end) {
+    cursor = skipWhitespaceAndComments(source, cursor, end);
+    if (source[cursor] === ",") {
+      cursor += 1;
+      continue;
+    }
+    const key = readPropertyKey(source, cursor, end);
+    if (!key) {
+      cursor += 1;
+      continue;
+    }
+    cursor = skipWhitespaceAndComments(source, key.end, end);
+    if (source[cursor] !== ":") {
+      cursor = key.end + 1;
+      continue;
+    }
+    const valueStart = skipWhitespaceAndComments(source, cursor + 1, end);
+    if (source[valueStart] === "{") {
+      const valueRange = findBalancedRange(source, valueStart);
+      values.push({ key: key.key, range: valueRange });
+      cursor = valueRange.end;
+      continue;
+    }
+    cursor += 1;
+  }
+  return values;
+}
+
+function collectStringLiteralsInRange(source, range) {
+  const literals = [];
+  let cursor = range.start;
+  while (cursor < range.end) {
+    const skipped = skipIgnoredToken(source, cursor, range.end);
+    if (skipped !== cursor) {
+      if (source[cursor] === "\"" || source[cursor] === "'") {
+        const literal = readStringLiteral(source, cursor);
+        literals.push({
+          start: literal.literalStart,
+          end: literal.literalEnd,
+          raw: source.slice(literal.literalStart, literal.literalEnd),
+          value: literal.value,
+          valueType: "singleLineText",
+        });
+      }
+      cursor = skipped;
+      continue;
+    }
+    cursor += 1;
+  }
+  return literals;
+}
+
+function collectStringLiteralsInArray(source, arrayRange) {
+  return collectStringLiteralsInRange(source, { start: arrayRange.start + 1, end: arrayRange.end - 1 });
+}
+
+function collectFunctionCallRanges(source, range, functionName) {
+  const calls = [];
+  let cursor = range.start;
+  while (cursor < range.end) {
+    const skipped = skipIgnoredToken(source, cursor, range.end);
+    if (skipped !== cursor) {
+      cursor = skipped;
+      continue;
+    }
+    const before = source[cursor - 1] ?? "";
+    if (
+      source.slice(cursor, cursor + functionName.length) === functionName
+      && !/[A-Za-z0-9_$]/.test(before)
+      && !/[A-Za-z0-9_$]/.test(source[cursor + functionName.length] ?? "")
+    ) {
+      const parenStart = skipWhitespaceAndComments(source, cursor + functionName.length, range.end);
+      if (source[parenStart] === "(") {
+        const parenRange = findBalancedRange(source, parenStart);
+        calls.push({ start: cursor, end: parenRange.end, parenRange });
+        cursor = parenRange.end;
+        continue;
+      }
+    }
+    cursor += 1;
+  }
+  return calls;
+}
+
+function parseCallArguments(source, parenRange) {
+  const args = [];
+  let depth = 0;
+  let argStart = parenRange.start + 1;
+  const end = parenRange.end - 1;
+  for (let cursor = argStart; cursor < end; cursor += 1) {
+    const skipped = skipIgnoredToken(source, cursor, end);
+    if (skipped !== cursor) {
+      cursor = skipped - 1;
+      continue;
+    }
+    const char = source[cursor];
+    if (["{", "[", "("].includes(char)) {
+      depth += 1;
+      continue;
+    }
+    if (["}", "]", ")"].includes(char)) {
+      depth -= 1;
+      continue;
+    }
+    if (char === "," && depth === 0) {
+      args.push(trimRange(source, argStart, cursor));
+      argStart = cursor + 1;
+    }
+  }
+  args.push(trimRange(source, argStart, end));
+  return args;
+}
+
+function readArgumentLiteral(source, argument) {
+  const literal = readLiteralAt(source, argument.start, argument.end);
+  if (!literal) return null;
+  const after = skipWhitespaceAndComments(source, literal.end, argument.end);
+  return after === argument.end ? literal : null;
+}
+
+function getFirstLiteralProperty(source, objectRange, propertyName) {
+  const propertyRange = findPropertyValueRange(source, objectRange, propertyName);
+  if (!propertyRange) return null;
+  return readLiteralAt(source, propertyRange.start, propertyRange.end);
+}
+
+function sanitizeIdPart(value, fallback = "item") {
+  const safe = String(value ?? "")
+    .trim()
+    .replace(/[^A-Za-z0-9_.-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return safe || fallback;
+}
+
+function fieldKind(field, fallback = "data") {
+  return TEXT_FIELD_KIND[field.split(".").at(-1)] ?? TEXT_FIELD_KIND[field] ?? fallback;
+}
+
 function makeEntry({ id, kind, label, sourceFile, source, start, end, value, valueType, field, verify }) {
   return {
     id,
@@ -40,9 +472,26 @@ function makeEntry({ id, kind, label, sourceFile, source, start, end, value, val
     locator: { type: "source-span", start, end },
     editableFields: [{ name: "value", type: valueType }],
     field,
+    valueType,
     value,
     verify,
   };
+}
+
+function pushLiteralEntry(entries, { id, kind, label, sourceFile, source, literal, field, valueType, verify }) {
+  entries.push(makeEntry({
+    id,
+    kind,
+    label,
+    sourceFile,
+    source,
+    start: literal.start,
+    end: literal.end,
+    value: literal.value,
+    valueType: valueType ?? literal.valueType ?? getValueType(literal.value),
+    field,
+    verify,
+  }));
 }
 
 function findFirstObjectAfter(source, marker) {
@@ -133,12 +582,623 @@ function buildSpecialEventEntries(projectRoot, config) {
   return entries;
 }
 
+function addStringArrayEntries(entries, { sourceFile, source, range, idPrefix, labelPrefix, kind = "dialogue", field = "text", verify }) {
+  collectStringLiteralsInArray(source, range).forEach((literal, index) => {
+    pushLiteralEntry(entries, {
+      id: `${idPrefix}:line-${index + 1}`,
+      kind,
+      label: `${labelPrefix} / Line ${index + 1}`,
+      sourceFile,
+      source,
+      literal,
+      field,
+      valueType: kind === "dialogue" ? "multilineText" : "singleLineText",
+      verify,
+    });
+  });
+}
+
+function addObjectTextFields(entries, { sourceFile, source, objectRange, idPrefix, labelPrefix, fields, verify }) {
+  const properties = collectObjectLiteralProperties(source, objectRange);
+  for (const field of fields) {
+    const property = properties.find((candidate) => candidate.field === field && typeof candidate.value === "string");
+    if (!property) continue;
+    pushLiteralEntry(entries, {
+      id: `${idPrefix}:${sanitizeIdPart(field.replace(/\./g, "-"), "field")}`,
+      kind: fieldKind(field),
+      label: `${labelPrefix} / ${field}`,
+      sourceFile,
+      source,
+      literal: property,
+      field,
+      valueType: fieldKind(field) === "dialogue" ? "multilineText" : "singleLineText",
+      verify,
+    });
+  }
+}
+
+function addObjectNumericFields(entries, { sourceFile, source, objectRange, idPrefix, labelPrefix, include, verify }) {
+  const properties = collectObjectLiteralProperties(source, objectRange);
+  const seen = new Map();
+  for (const property of properties) {
+    if (typeof property.value !== "number") continue;
+    if (include && !include(property)) continue;
+    const baseSuffix = property.field === "weight"
+      ? "weight"
+      : `effect:${sanitizeIdPart(property.field.replace(/\./g, "-"), "number")}`;
+    const count = (seen.get(baseSuffix) ?? 0) + 1;
+    seen.set(baseSuffix, count);
+    const suffix = count === 1 ? baseSuffix : `${baseSuffix}-${count}`;
+    pushLiteralEntry(entries, {
+      id: `${idPrefix}:${suffix}`,
+      kind: "number",
+      label: `${labelPrefix} / ${property.field}`,
+      sourceFile,
+      source,
+      literal: property,
+      field: property.field,
+      valueType: "number",
+      verify,
+    });
+  }
+}
+
+function addObjectArrayEntries(entries, { sourceFile, source, exportName, idPrefix, labelPrefix, textFields = [], includeNumbers, verify }) {
+  const range = findExportConstInitializer(source, exportName);
+  collectTopLevelObjectRangesInArray(source, range).forEach((objectRange, index) => {
+    const itemId = sanitizeIdPart(getFirstLiteralProperty(source, objectRange, "id")?.value, `${index + 1}`);
+    const itemPrefix = `${idPrefix}:${itemId}`;
+    const itemLabel = `${labelPrefix} / ${itemId}`;
+    addObjectTextFields(entries, {
+      sourceFile,
+      source,
+      objectRange,
+      idPrefix: itemPrefix,
+      labelPrefix: itemLabel,
+      fields: textFields,
+      verify,
+    });
+    if (includeNumbers) {
+      addObjectNumericFields(entries, {
+        sourceFile,
+        source,
+        objectRange,
+        idPrefix: itemPrefix,
+        labelPrefix: itemLabel,
+        include: includeNumbers,
+        verify,
+      });
+    }
+  });
+}
+
+function buildRosenthalContentEntries(projectRoot, config) {
+  const sourceFile = normalizeProjectPath(projectRoot, ROSENTHAL_CONTENT_FILE);
+  const source = readUtf8Lf(projectRoot, sourceFile);
+  const entries = [];
+
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "DAY_CATEGORIES",
+    idPrefix: "rosenthal:day-category",
+    labelPrefix: "Rosenthal Day Category",
+    textFields: ["label"],
+    verify: config.verify,
+  });
+
+  const dayActionsRange = findExportConstInitializer(source, "DAY_ACTIONS");
+  collectFunctionCallRanges(source, dayActionsRange, "day").forEach((call) => {
+    const args = parseCallArguments(source, call.parenRange);
+    const actionId = sanitizeIdPart(readArgumentLiteral(source, args[1])?.value, "day-action");
+    const title = readArgumentLiteral(source, args[2]);
+    const result = readArgumentLiteral(source, args[3]);
+    const balance = readArgumentLiteral(source, args[5]);
+    if (title) {
+      pushLiteralEntry(entries, {
+        id: `rosenthal:day-action:${actionId}:title`,
+        kind: "scriptTitle",
+        label: `Rosenthal Day Action / ${actionId} / Title`,
+        sourceFile,
+        source,
+        literal: title,
+        field: "title",
+        verify: config.verify,
+      });
+    }
+    if (result) {
+      pushLiteralEntry(entries, {
+        id: `rosenthal:day-action:${actionId}:result`,
+        kind: "dialogue",
+        label: `Rosenthal Day Action / ${actionId} / Result`,
+        sourceFile,
+        source,
+        literal: result,
+        field: "result",
+        valueType: "multilineText",
+        verify: config.verify,
+      });
+    }
+    if (balance) {
+      pushLiteralEntry(entries, {
+        id: `rosenthal:day-action:${actionId}:balance`,
+        kind: "balance",
+        label: `Rosenthal Day Action / ${actionId} / Balance`,
+        sourceFile,
+        source,
+        literal: balance,
+        field: "balance",
+        verify: config.verify,
+      });
+    }
+  });
+
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "CORE_NPCS",
+    idPrefix: "rosenthal:core-npc",
+    labelPrefix: "Rosenthal Core NPC",
+    textFields: ["label", "name", "relation"],
+    verify: config.verify,
+  });
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "UNNAMED_COMPANIONS",
+    idPrefix: "rosenthal:companion",
+    labelPrefix: "Rosenthal Companion",
+    textFields: ["label", "name", "reveal", "keepsake"],
+    verify: config.verify,
+  });
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "DIRECTIONS",
+    idPrefix: "rosenthal:direction",
+    labelPrefix: "Rosenthal Direction",
+    textFields: ["label", "text"],
+    verify: config.verify,
+  });
+
+  const eventTitlesRange = findFirstObjectAfter(source, "EVENT_TITLES");
+  for (const directionId of ["stairs", "archive", "waterway", "chapel"]) {
+    const titlesRange = findPropertyValueRange(source, eventTitlesRange, directionId);
+    if (!titlesRange) continue;
+    collectStringLiteralsInArray(source, titlesRange).forEach((literal, index) => {
+      pushLiteralEntry(entries, {
+        id: `rosenthal:event-title:${directionId}:${index + 1}`,
+        kind: "scriptTitle",
+        label: `Rosenthal Exploration Event / ${directionId} / Title ${index + 1}`,
+        sourceFile,
+        source,
+        literal,
+        field: "title",
+        verify: config.verify,
+      });
+    });
+  }
+
+  const finalesRange = findExportConstInitializer(source, "FINALES");
+  collectFunctionCallRanges(source, finalesRange, "finale").forEach((call) => {
+    const args = parseCallArguments(source, call.parenRange);
+    const finaleId = sanitizeIdPart(readArgumentLiteral(source, args[0])?.value, "finale");
+    const title = readArgumentLiteral(source, args[3]);
+    const text = readArgumentLiteral(source, args[4]);
+    if (title) {
+      pushLiteralEntry(entries, {
+        id: `rosenthal:finale:${finaleId}:title`,
+        kind: "scriptTitle",
+        label: `Rosenthal Finale / ${finaleId} / Title`,
+        sourceFile,
+        source,
+        literal: title,
+        field: "title",
+        verify: config.verify,
+      });
+    }
+    if (text) {
+      pushLiteralEntry(entries, {
+        id: `rosenthal:finale:${finaleId}:text`,
+        kind: "dialogue",
+        label: `Rosenthal Finale / ${finaleId} / Text`,
+        sourceFile,
+        source,
+        literal: text,
+        field: "text",
+        valueType: "multilineText",
+        verify: config.verify,
+      });
+    }
+  });
+
+  addStringArrayEntries(entries, {
+    sourceFile,
+    source,
+    range: findExportConstInitializer(source, "PROLOGUE"),
+    idPrefix: "rosenthal:prologue",
+    labelPrefix: "Rosenthal Prologue",
+    verify: config.verify,
+  });
+  addStringArrayEntries(entries, {
+    sourceFile,
+    source,
+    range: findExportConstInitializer(source, "NIGHT_OPENING"),
+    idPrefix: "rosenthal:night-opening",
+    labelPrefix: "Rosenthal Night Opening",
+    verify: config.verify,
+  });
+
+  const dayEightRange = findExportConstInitializer(source, "DAY_EIGHT_SCRIPTS");
+  for (const route of ["normal", "altered"]) {
+    const routeRange = findPropertyValueRange(source, dayEightRange, route);
+    if (!routeRange) continue;
+    addStringArrayEntries(entries, {
+      sourceFile,
+      source,
+      range: routeRange,
+      idPrefix: `rosenthal:day-eight:${route}`,
+      labelPrefix: `Rosenthal Day Eight / ${route}`,
+      verify: config.verify,
+    });
+  }
+
+  return entries;
+}
+
+function buildTutorialRulesEntries(projectRoot, config) {
+  const sourceFile = normalizeProjectPath(projectRoot, TUTORIAL_RULES_FILE);
+  const source = readUtf8Lf(projectRoot, sourceFile);
+  const entries = [];
+
+  const prologueRange = findExportConstInitializer(source, "PROLOGUE");
+  addObjectTextFields(entries, {
+    sourceFile,
+    source,
+    objectRange: prologueRange,
+    idPrefix: "tutorial:prologue",
+    labelPrefix: "Tutorial Prologue",
+    fields: ["tag", "title"],
+    verify: config.verify,
+  });
+  const prologueText = findPropertyValueRange(source, prologueRange, "text");
+  if (prologueText) {
+    addStringArrayEntries(entries, {
+      sourceFile,
+      source,
+      range: prologueText,
+      idPrefix: "tutorial:prologue:text",
+      labelPrefix: "Tutorial Prologue Text",
+      verify: config.verify,
+    });
+  }
+
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "DAY_OPENING_SCRIPT",
+    idPrefix: "tutorial:day-opening",
+    labelPrefix: "Tutorial Day Opening",
+    textFields: ["text"],
+    verify: config.verify,
+  });
+  addStringArrayEntries(entries, {
+    sourceFile,
+    source,
+    range: findExportConstInitializer(source, "DAY_PERIODS"),
+    idPrefix: "tutorial:day-period",
+    labelPrefix: "Tutorial Day Period",
+    kind: "label",
+    field: "label",
+    verify: config.verify,
+  });
+
+  const interludesRange = findExportConstInitializer(source, "DAY_INTERLUDES");
+  collectTopLevelObjectRangesInArray(source, interludesRange).forEach((objectRange, index) => {
+    const prefix = `tutorial:day-interlude:${index + 1}`;
+    addObjectTextFields(entries, {
+      sourceFile,
+      source,
+      objectRange,
+      idPrefix: prefix,
+      labelPrefix: `Tutorial Day Interlude / ${index + 1}`,
+      fields: ["tag", "title", "button"],
+      verify: config.verify,
+    });
+    const paragraphs = findPropertyValueRange(source, objectRange, "paragraphs");
+    if (paragraphs) {
+      addStringArrayEntries(entries, {
+        sourceFile,
+        source,
+        range: paragraphs,
+        idPrefix: `${prefix}:paragraph`,
+        labelPrefix: `Tutorial Day Interlude / ${index + 1} / Paragraph`,
+        field: "paragraph",
+        verify: config.verify,
+      });
+    }
+  });
+
+  const endingsRange = findExportConstInitializer(source, "ENDINGS");
+  for (const ending of collectTopLevelObjectValues(source, endingsRange)) {
+    const prefix = `tutorial:ending:${sanitizeIdPart(ending.key, "ending")}`;
+    addObjectTextFields(entries, {
+      sourceFile,
+      source,
+      objectRange: ending.range,
+      idPrefix: prefix,
+      labelPrefix: `Tutorial Ending / ${ending.key}`,
+      fields: ["tag", "title", "subtitle"],
+      verify: config.verify,
+    });
+    const paragraphs = findPropertyValueRange(source, ending.range, "paragraphs");
+    if (paragraphs) {
+      addStringArrayEntries(entries, {
+        sourceFile,
+        source,
+        range: paragraphs,
+        idPrefix: `${prefix}:paragraph`,
+        labelPrefix: `Tutorial Ending / ${ending.key} / Paragraph`,
+        field: "paragraph",
+        verify: config.verify,
+      });
+    }
+  }
+
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "NIGHT_ENTRY_SCRIPT",
+    idPrefix: "tutorial:night-entry",
+    labelPrefix: "Tutorial Night Entry",
+    textFields: ["text"],
+    verify: config.verify,
+  });
+
+  const includeTutorialNumber = (property) => (
+    property.field === "weight"
+    || ["affinities", "traits", "stats", "resources", "estate", "requires"].includes(property.path[0])
+  );
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "DAY_ACTIONS",
+    idPrefix: "tutorial:day-action",
+    labelPrefix: "Tutorial Day Action",
+    textFields: ["title", "result"],
+    includeNumbers: includeTutorialNumber,
+    verify: config.verify,
+  });
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "NIGHT_CHOICES",
+    idPrefix: "tutorial:night-choice",
+    labelPrefix: "Tutorial Night Choice",
+    textFields: ["title", "target", "result"],
+    includeNumbers: includeTutorialNumber,
+    verify: config.verify,
+  });
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "WORKER_NAME_CHOICES",
+    idPrefix: "tutorial:worker-name-choice",
+    labelPrefix: "Tutorial Worker Name Choice",
+    textFields: ["title", "result"],
+    includeNumbers: includeTutorialNumber,
+    verify: config.verify,
+  });
+
+  const forfeitRange = findExportConstInitializer(source, "FORFEIT_RESULTS");
+  for (const property of collectObjectLiteralProperties(source, forfeitRange)) {
+    if (property.path.length !== 1 || typeof property.value !== "string") continue;
+    pushLiteralEntry(entries, {
+      id: `tutorial:forfeit:${sanitizeIdPart(property.field, "result")}`,
+      kind: "dialogue",
+      label: `Tutorial Forfeit / ${property.field}`,
+      sourceFile,
+      source,
+      literal: property,
+      field: property.field,
+      valueType: "multilineText",
+      verify: config.verify,
+    });
+  }
+
+  return entries;
+}
+
+function addMetaObjectEntries(entries, { sourceFile, source, exportName, idPrefix, labelPrefix, fields, verify }) {
+  const range = findExportConstInitializer(source, exportName);
+  for (const item of collectTopLevelObjectValues(source, range)) {
+    addObjectTextFields(entries, {
+      sourceFile,
+      source,
+      objectRange: item.range,
+      idPrefix: `${idPrefix}:${sanitizeIdPart(item.key, "item")}`,
+      labelPrefix: `${labelPrefix} / ${item.key}`,
+      fields,
+      verify,
+    });
+  }
+}
+
+function buildSystemRulesEntries(projectRoot, config) {
+  const sourceFile = normalizeProjectPath(projectRoot, SYSTEM_RULES_FILE);
+  const source = readUtf8Lf(projectRoot, sourceFile);
+  const entries = [];
+
+  for (const exportName of ["RESOURCE_META", "STAT_META", "TRAIT_META", "HORROR_TRAIT_META", "HORROR_DERIVED_META"]) {
+    addMetaObjectEntries(entries, {
+      sourceFile,
+      source,
+      exportName,
+      idPrefix: `rules:${exportName.toLowerCase().replaceAll("_", "-")}`,
+      labelPrefix: exportName,
+      fields: ["label", "detail", "stat", "icon"],
+      verify: config.verify,
+    });
+  }
+
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "JOBS",
+    idPrefix: "rules:job",
+    labelPrefix: "Rules Job",
+    textFields: ["name", "title"],
+    verify: config.verify,
+  });
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "TITLES",
+    idPrefix: "rules:title",
+    labelPrefix: "Rules Title",
+    textFields: ["name", "description"],
+    verify: config.verify,
+  });
+
+  const loadoutRange = findExportConstInitializer(source, "MARK_LOADOUT_LIMIT");
+  const loadoutLiteral = readLiteralAt(source, loadoutRange.start, loadoutRange.end);
+  if (loadoutLiteral) {
+    pushLiteralEntry(entries, {
+      id: "rules:mark-loadout-limit",
+      kind: "number",
+      label: "Rules / Mark Loadout Limit",
+      sourceFile,
+      source,
+      literal: loadoutLiteral,
+      field: "MARK_LOADOUT_LIMIT",
+      valueType: "number",
+      verify: config.verify,
+    });
+  }
+
+  const unlocksRange = findExportConstInitializer(source, "MARK_BRANCH_UNLOCKS");
+  collectTopLevelObjectRangesInArray(source, unlocksRange).forEach((objectRange, index) => {
+    const unlockId = sanitizeIdPart(getFirstLiteralProperty(source, objectRange, "id")?.value, `${index + 1}`);
+    addObjectTextFields(entries, {
+      sourceFile,
+      source,
+      objectRange,
+      idPrefix: `rules:mark-branch-unlock:${unlockId}`,
+      labelPrefix: `Rules Mark Branch Unlock / ${unlockId}`,
+      fields: ["label"],
+      verify: config.verify,
+    });
+    for (const property of collectObjectLiteralProperties(source, objectRange)) {
+      if (property.path[0] !== "condition" || typeof property.value !== "number") continue;
+      const conditionKey = sanitizeIdPart(property.path.at(-1), "value");
+      pushLiteralEntry(entries, {
+        id: `rules:mark-branch-unlock:${unlockId}:condition:${conditionKey}`,
+        kind: "number",
+        label: `Rules Mark Branch Unlock / ${unlockId} / condition.${property.path.at(-1)}`,
+        sourceFile,
+        source,
+        literal: property,
+        field: property.field,
+        valueType: "number",
+        verify: config.verify,
+      });
+    }
+  });
+
+  const affinityGroupsRange = findExportConstInitializer(source, "AFFINITY_MARK_GROUPS");
+  collectTopLevelObjectRangesInArray(source, affinityGroupsRange).forEach((groupRange, groupIndex) => {
+    const affinity = sanitizeIdPart(getFirstLiteralProperty(source, groupRange, "affinity")?.value, `${groupIndex + 1}`);
+    const capstone = collectObjectLiteralProperties(source, groupRange).find((property) => property.field === "capstoneCount");
+    if (capstone) {
+      pushLiteralEntry(entries, {
+        id: `rules:affinity-mark-group:${affinity}:capstone-count`,
+        kind: "number",
+        label: `Rules Affinity Mark Group / ${affinity} / capstoneCount`,
+        sourceFile,
+        source,
+        literal: capstone,
+        field: "capstoneCount",
+        valueType: "number",
+        verify: config.verify,
+      });
+    }
+    for (const kind of ["stigma", "brand"]) {
+      const arrayRange = findPropertyValueRange(source, groupRange, kind);
+      if (!arrayRange) continue;
+      collectTopLevelObjectRangesInArray(source, arrayRange).forEach((markRange, markIndex) => {
+        addObjectTextFields(entries, {
+          sourceFile,
+          source,
+          objectRange: markRange,
+          idPrefix: `rules:affinity-mark:${affinity}:${kind}:${markIndex + 1}`,
+          labelPrefix: `Rules Affinity Mark / ${affinity} / ${kind} / ${markIndex + 1}`,
+          fields: ["name", "tier"],
+          verify: config.verify,
+        });
+      });
+    }
+  });
+
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "STANDALONE_MARKS",
+    idPrefix: "rules:standalone-mark",
+    labelPrefix: "Rules Standalone Mark",
+    textFields: ["name", "description", "codexText", "sourceHint"],
+    includeNumbers: (property) => ["carryEffect", "equipEffect", "unlockCondition"].includes(property.path[0]),
+    verify: config.verify,
+  });
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "PASSIVES",
+    idPrefix: "rules:passive",
+    labelPrefix: "Rules Passive",
+    textFields: ["name", "description"],
+    verify: config.verify,
+  });
+
+  const hiddenRulesRange = findExportConstInitializer(source, "HIDDEN_RUN_RULES");
+  for (const field of ["flaw", "taboo"]) {
+    const arrayRange = findPropertyValueRange(source, hiddenRulesRange, field);
+    if (!arrayRange) continue;
+    collectStringLiteralsInArray(source, arrayRange).forEach((literal, index) => {
+      pushLiteralEntry(entries, {
+        id: `rules:hidden-run-rule:${field}:${index + 1}`,
+        kind: "dialogue",
+        label: `Rules Hidden Run Rule / ${field} / ${index + 1}`,
+        sourceFile,
+        source,
+        literal,
+        field,
+        valueType: "multilineText",
+        verify: config.verify,
+      });
+    });
+  }
+
+  return entries;
+}
+
+function assertUniqueEntryIds(entries) {
+  const seen = new Set();
+  for (const entry of entries) {
+    if (seen.has(entry.id)) throw new Error(`Duplicate script edit entry id: ${entry.id}`);
+    seen.add(entry.id);
+  }
+}
+
 export async function buildScriptEditIndex(projectRoot) {
   const config = ensureScriptEditConfig(projectRoot);
   const entries = [
     ...buildManifestEntries(projectRoot, config),
     ...buildSpecialEventEntries(projectRoot, config),
+    ...buildRosenthalContentEntries(projectRoot, config),
+    ...buildTutorialRulesEntries(projectRoot, config),
+    ...buildSystemRulesEntries(projectRoot, config),
   ];
+  assertUniqueEntryIds(entries);
   return {
     version: INDEX_VERSION,
     generatedAt: new Date().toISOString(),
