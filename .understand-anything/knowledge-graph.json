@@ -16,8 +16,8 @@
       "Understand Anything"
     ],
     "description": "A local estate simulation with manifest-driven script packs and a graph-linked safe editing index.",
-    "analyzedAt": "2026-06-21T07:07:31.252Z",
-    "gitCommitHash": "adb7fbe4eb2618acffecb846cdb7ff8b3886d1e1"
+    "analyzedAt": "2026-06-21T07:09:19.034Z",
+    "gitCommitHash": "38f59feb66d3cd201eae06ce27acf6c888bd8793"
   },
   "nodes": [
     {
