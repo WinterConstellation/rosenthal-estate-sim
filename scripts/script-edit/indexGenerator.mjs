@@ -43,6 +43,7 @@ const TEXT_FIELD_KIND = {
   result: "dialogue",
   reveal: "dialogue",
   sourceHint: "description",
+  speaker: "speaker",
   subtitle: "scriptTitle",
   tag: "label",
   text: "dialogue",
@@ -956,7 +957,7 @@ function buildTutorialContentEntries(projectRoot, config) {
     exportName: "DAY_OPENING_SCRIPT",
     idPrefix: "tutorial:day-opening",
     labelPrefix: "Tutorial Day Opening",
-    textFields: ["text"],
+    textFields: ["speaker", "text"],
     verify: config.verify,
   });
   addStringArrayEntries(entries, {

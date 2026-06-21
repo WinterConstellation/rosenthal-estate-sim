@@ -16,8 +16,8 @@
       "Understand Anything"
     ],
     "description": "A local estate simulation with manifest-driven script packs and a graph-linked safe editing index.",
-    "analyzedAt": "2026-06-21T10:02:18.613Z",
-    "gitCommitHash": "b68f018a2893fc3c8a52ce6273f07426e791cae6"
+    "analyzedAt": "2026-06-21T12:07:54.544Z",
+    "gitCommitHash": "d613edf2c9e0158ffd7109340a97ed16584252a6"
   },
   "nodes": [
     {
@@ -804,7 +804,7 @@
       "filePath": "scripts/script-edit/indexGenerator.mjs",
       "lineRange": [
         1,
-        1323
+        1324
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -991,7 +991,7 @@
       "filePath": "scripts/verify-script-edit.mjs",
       "lineRange": [
         1,
-        486
+        494
       ],
       "summary": "Project file included in the Understand Anything graph.",
       "tags": [
@@ -1025,7 +1025,7 @@
       "filePath": "docs/pingpong.txt",
       "lineRange": [
         1,
-        389
+        391
       ],
       "summary": "Project documentation and handoff context.",
       "tags": [
@@ -1075,7 +1075,7 @@
       "filePath": "docs/work_log.txt",
       "lineRange": [
         1,
-        379
+        385
       ],
       "summary": "Project documentation and handoff context.",
       "tags": [
@@ -12399,6 +12399,36 @@
       }
     },
     {
+      "id": "concept:script-edit:tutorial:day-opening:1:speaker",
+      "type": "concept",
+      "name": "Tutorial Day Opening / 1 / speaker",
+      "filePath": "src/data/tutorial/introContent.js",
+      "lineRange": [
+        33,
+        33
+      ],
+      "summary": "Editable speaker item from src/data/tutorial/introContent.js. This node is linked to the local script edit API and writes back to the original source span. Field type: singleLineText.",
+      "tags": [
+        "editable",
+        "speaker",
+        "speaker",
+        "script-edit-index"
+      ],
+      "complexity": "simple",
+      "languageNotes": "그래프에서 이 노드를 선택하면 수정용 인덱스 ID로 원본 파일의 정확한 위치를 편집할 수 있습니다.",
+      "scriptEdit": {
+        "id": "tutorial:day-opening:1:speaker",
+        "kind": "speaker",
+        "field": "speaker",
+        "folderPath": [
+          "Tutorial Day Opening",
+          "1"
+        ],
+        "apiBase": "http://127.0.0.1:3799",
+        "token": "understand-edit"
+      }
+    },
+    {
       "id": "concept:script-edit:tutorial:day-opening:1:text",
       "type": "concept",
       "name": "Tutorial Day Opening / 1 / text",
@@ -12423,6 +12453,36 @@
         "folderPath": [
           "Tutorial Day Opening",
           "1"
+        ],
+        "apiBase": "http://127.0.0.1:3799",
+        "token": "understand-edit"
+      }
+    },
+    {
+      "id": "concept:script-edit:tutorial:day-opening:2:speaker",
+      "type": "concept",
+      "name": "Tutorial Day Opening / 2 / speaker",
+      "filePath": "src/data/tutorial/introContent.js",
+      "lineRange": [
+        37,
+        37
+      ],
+      "summary": "Editable speaker item from src/data/tutorial/introContent.js. This node is linked to the local script edit API and writes back to the original source span. Field type: singleLineText.",
+      "tags": [
+        "editable",
+        "speaker",
+        "speaker",
+        "script-edit-index"
+      ],
+      "complexity": "simple",
+      "languageNotes": "그래프에서 이 노드를 선택하면 수정용 인덱스 ID로 원본 파일의 정확한 위치를 편집할 수 있습니다.",
+      "scriptEdit": {
+        "id": "tutorial:day-opening:2:speaker",
+        "kind": "speaker",
+        "field": "speaker",
+        "folderPath": [
+          "Tutorial Day Opening",
+          "2"
         ],
         "apiBase": "http://127.0.0.1:3799",
         "token": "understand-edit"
@@ -35679,10 +35739,26 @@
     },
     {
       "source": "file:src/data/tutorial/introContent.js",
+      "target": "concept:script-edit:tutorial:day-opening:1:speaker",
+      "type": "contains",
+      "direction": "forward",
+      "description": "src/data/tutorial/introContent.js contains editable item tutorial:day-opening:1:speaker",
+      "weight": 1
+    },
+    {
+      "source": "file:src/data/tutorial/introContent.js",
       "target": "concept:script-edit:tutorial:day-opening:1:text",
       "type": "contains",
       "direction": "forward",
       "description": "src/data/tutorial/introContent.js contains editable item tutorial:day-opening:1:text",
+      "weight": 1
+    },
+    {
+      "source": "file:src/data/tutorial/introContent.js",
+      "target": "concept:script-edit:tutorial:day-opening:2:speaker",
+      "type": "contains",
+      "direction": "forward",
+      "description": "src/data/tutorial/introContent.js contains editable item tutorial:day-opening:2:speaker",
       "weight": 1
     },
     {
@@ -41327,7 +41403,9 @@
         "concept:script-edit:rosenthal:day-eight:altered:line-3",
         "concept:script-edit:tutorial:prologue:tag",
         "concept:script-edit:tutorial:prologue:title",
+        "concept:script-edit:tutorial:day-opening:1:speaker",
         "concept:script-edit:tutorial:day-opening:1:text",
+        "concept:script-edit:tutorial:day-opening:2:speaker",
         "concept:script-edit:tutorial:day-opening:2:text",
         "concept:script-edit:tutorial:day-period:line-1",
         "concept:script-edit:tutorial:day-period:line-2",

@@ -109,6 +109,7 @@ assert.equal(ids.has("rosenthal:prologue:line-1"), true);
 assert.equal(ids.has("rosenthal:night-opening:line-1"), true);
 assert.equal(ids.has("tutorial:prologue:text:line-1"), false);
 assert.equal(ids.has("tutorial:night-entry:1:text"), false);
+assert.equal(ids.has("tutorial:day-opening:1:speaker"), true);
 assert.equal(ids.has("tutorial:day-action:documents:title"), true);
 assert.equal(ids.has("tutorial:day-action:documents:weight"), true);
 assert.equal(ids.has("tutorial:night-choice:knight:result"), true);
@@ -146,6 +147,11 @@ assert.equal(tutorialDayOpeningOne.insert?.type, "object-array-item");
 assert.equal(tutorialDayOpeningOne.insert?.defaults?.speaker, "npc:scribe");
 assert.equal(tutorialDayOpeningOne.insert?.fields?.some((field) => field.name === "speaker"), true);
 assert.equal(tutorialDayOpeningOne.insert?.fields?.some((field) => field.name === "text"), true);
+const tutorialDayOpeningSpeakerOne = index.entries.find((entry) => entry.id === "tutorial:day-opening:1:speaker");
+assert.equal(tutorialDayOpeningSpeakerOne.kind, "speaker");
+assert.equal(tutorialDayOpeningSpeakerOne.sourceFile, "src/data/tutorial/introContent.js");
+assert.equal(tutorialDayOpeningSpeakerOne.value, "npc:scribe");
+assert.equal(tutorialDayOpeningSpeakerOne.insert, undefined);
 assert.equal(index.entries.find((entry) => entry.id === "tutorial:day-interlude:1:paragraph:line-1").sourceFile, "src/data/tutorial/introContent.js");
 const tutorialInterludeLineOne = index.entries.find((entry) => entry.id === "tutorial:day-interlude:1:paragraph:line-1");
 assert.equal(tutorialInterludeLineOne.insert?.type, "string-array-item");
@@ -230,6 +236,7 @@ try {
   const introAfterInsert = readFileSync(join(tempEditRoot, "src", "data", "tutorial", "introContent.js"), "utf8");
   assert.equal(introAfterInsert.includes('speaker: "narration"'), true);
   assert.equal(introAfterInsert.includes('text: "테스트용 추가 튜토리얼 대사"'), true);
+  assert.equal(getEditableItem(tempEditRoot, "tutorial:day-opening:2:speaker").value, "narration");
   assert.equal(getEditableItem(tempEditRoot, "tutorial:day-opening:2:text").value, "테스트용 추가 튜토리얼 대사");
   const stringInsertResult = await applyScriptInsert(tempEditRoot, {
     id: "tutorial:day-interlude:1:paragraph:line-1",
@@ -318,6 +325,7 @@ try {
   });
   assert.equal(insertResponse.status, 200);
   assert.equal((await insertResponse.json()).changedFile, "src/data/tutorial/introContent.js");
+  assert.equal(getEditableItem(serverTestRoot, "tutorial:day-opening:2:speaker").value, "narration");
   assert.equal(getEditableItem(serverTestRoot, "tutorial:day-opening:2:text").value, "서버 추가 튜토리얼 대사");
   const missing = await fetch(`${base}/api/item?token=test-token&id=missing`);
   assert.equal(missing.status, 404);

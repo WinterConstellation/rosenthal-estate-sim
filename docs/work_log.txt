@@ -382,3 +382,9 @@
 - 구조: 편집 인덱스가 object-array 대사턴과 string-array 대사/문단 항목에 삽입 위치 메타를 붙이고, `/api/insert`가 allowlist/source hash 검사를 거쳐 새 배열 원소를 저장한 뒤 재색인한다.
 - 수정 파일: `.understand-anything/*`, `scripts/script-edit/editorStore.mjs`, `scripts/script-edit/indexGenerator.mjs`, `scripts/script-edit/server.mjs`, `scripts/script-edit/public/*`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`
+
+2026-06-21 21:08 KST
+- 작업: 튜토리얼 낮 진입 대사턴의 speaker 필드를 로컬 스크립트 편집 인덱스에 노출했다.
+- 구조: `tutorial:day-opening:*:speaker` 항목을 추가해 대사턴 삽입 뒤 화자도 에디터에서 직접 수정할 수 있게 했다.
+- 수정 파일: `.understand-anything/*`, `scripts/script-edit/indexGenerator.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`
