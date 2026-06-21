@@ -406,3 +406,9 @@
 - 구조: `NIGHT_ENTRY_SCRIPT`의 본문은 Rosenthal 원문 참조로 유지해 중복 편집을 막고, 튜토리얼 파일이 소유한 `tutorial:night-entry:*:speaker` 3개만 편집 항목으로 추가했다.
 - 수정 파일: `.understand-anything/*`, `scripts/script-edit/indexGenerator.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`
+
+2026-06-22 00:53 KST
+- 작업: 튜토리얼 밤 진입 speaker 매핑을 대사턴 단위 이동/삭제 대상으로 확장했다.
+- 구조: `NIGHT_ENTRY_SCRIPT` 본문은 계속 Rosenthal 원문 참조로 두고, `tutorial:night-entry:*:speaker` 항목에 배열 행 `item` 범위만 붙여 중복 본문 없이 위/아래 이동과 삭제를 지원한다.
+- 수정 파일: `.understand-anything/*`, `scripts/script-edit/indexGenerator.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`

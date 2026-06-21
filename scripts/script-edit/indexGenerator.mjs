@@ -751,7 +751,7 @@ function addObjectNumericFields(entries, { sourceFile, source, objectRange, idPr
   }
 }
 
-function addObjectArrayEntries(entries, { sourceFile, source, exportName, idPrefix, labelPrefix, textFields = [], includeNumbers, verify }) {
+function addObjectArrayEntries(entries, { sourceFile, source, exportName, idPrefix, labelPrefix, textFields = [], includeNumbers, verify, itemActions = false }) {
   const range = findExportConstInitializer(source, exportName);
   const objectRanges = collectTopLevelObjectRangesInArray(source, range);
   const itemRanges = makeArrayItemRanges(source, objectRanges);
@@ -761,7 +761,7 @@ function addObjectArrayEntries(entries, { sourceFile, source, exportName, idPref
     const insert = textFields.includes("text") && typeof speaker === "string"
       ? makeObjectArrayInsert(source, objectRange, { speaker })
       : null;
-    const item = insert ? makeArrayItemOperation("object-array-item", itemRanges, index) : null;
+    const item = insert || itemActions ? makeArrayItemOperation("object-array-item", itemRanges, index) : null;
     const itemPrefix = `${idPrefix}:${itemId}`;
     const itemLabel = `${labelPrefix} / ${itemId}`;
     addObjectTextFields(entries, {
@@ -1012,6 +1012,7 @@ function buildTutorialContentEntries(projectRoot, config) {
     idPrefix: "tutorial:night-entry",
     labelPrefix: "Tutorial Night Entry",
     textFields: ["speaker"],
+    itemActions: true,
     verify: config.verify,
   });
   addStringArrayEntries(entries, {

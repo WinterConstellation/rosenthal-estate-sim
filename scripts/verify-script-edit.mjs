@@ -175,7 +175,9 @@ assert.equal(tutorialNightEntrySpeakerOne.kind, "speaker");
 assert.equal(tutorialNightEntrySpeakerOne.sourceFile, "src/data/tutorial/introContent.js");
 assert.equal(tutorialNightEntrySpeakerOne.value, "npc:maid");
 assert.equal(tutorialNightEntrySpeakerOne.insert, undefined);
-assert.equal(tutorialNightEntrySpeakerOne.item, undefined);
+assert.equal(tutorialNightEntrySpeakerOne.item?.type, "object-array-item");
+assert.equal(tutorialNightEntrySpeakerOne.item?.previous, null);
+assert.notEqual(tutorialNightEntrySpeakerOne.item?.next, null);
 const tutorialInterludeLineOne = index.entries.find((entry) => entry.id === "tutorial:day-interlude:1:paragraph:line-1");
 assert.equal(tutorialInterludeLineOne.insert?.type, "string-array-item");
 assert.equal(tutorialInterludeLineOne.insert?.fields?.some((field) => field.name === "text"), true);
@@ -290,6 +292,17 @@ try {
   assert.equal(getEditableItem(tempEditRoot, "tutorial:day-interlude:1:paragraph:line-1").value, "테스트용 추가 인터루드 문단");
   await applyScriptDelete(tempEditRoot, { id: "tutorial:day-interlude:1:paragraph:line-1" });
   assert.equal(getEditableItem(tempEditRoot, "tutorial:day-interlude:1:paragraph:line-1").value, "당신은 선택을 해야 한다. 그 뒤에 무엇이 기다리고 있을지는 아무도 알려주지 않는다.");
+  const nightEntryMoveResult = await applyScriptMove(tempEditRoot, {
+    id: "tutorial:night-entry:2:speaker",
+    direction: "up",
+  });
+  assert.equal(nightEntryMoveResult.changedFile, "src/data/tutorial/introContent.js");
+  assert.equal(getEditableItem(tempEditRoot, "tutorial:night-entry:1:speaker").value, "npc:maid");
+  assert.equal(getEditableItem(tempEditRoot, "tutorial:night-entry:1:speaker").insert, undefined);
+  const nightEntryDeleteResult = await applyScriptDelete(tempEditRoot, { id: "tutorial:night-entry:1:speaker" });
+  assert.equal(nightEntryDeleteResult.changedFile, "src/data/tutorial/introContent.js");
+  assert.equal(getEditableItem(tempEditRoot, "tutorial:night-entry:1:speaker").value, "npc:maid");
+  assert.equal(getEditableItem(tempEditRoot, "tutorial:night-entry:1:speaker").item?.previous, null);
   const staleIndex = JSON.parse(readFileSync(join(tempEditRoot, ".script-edit", "index.json"), "utf8"));
   staleIndex.entries.find((entry) => entry.id === itemId).sourceHash = "stale";
   writeFileSync(join(tempEditRoot, ".script-edit", "index.json"), JSON.stringify(staleIndex, null, 2), "utf8");
