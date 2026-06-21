@@ -5,7 +5,7 @@ import {
   TITLES,
   TRAIT_META,
 } from "../rules/systemRules.js";
-import { DAY_ACTIONS, NIGHT_CHOICES } from "../rules/tutorialRules.js";
+import { DAY_ACTIONS, NIGHT_CHOICES } from "../data/tutorialContent.js";
 import { createRunSeed, seededPick, seededRank, seededValue } from "./seed.js";
 import { deriveStats } from "./rulesEngine.js";
 

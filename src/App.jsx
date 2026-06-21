@@ -71,7 +71,7 @@ import {
   DAY_OPENING_SCRIPT,
   NIGHT_ENTRY_SCRIPT,
   PROLOGUE,
-} from "./rules/tutorialRules.js";
+} from "./data/tutorialContent.js";
 
 const LABELS = {
   health: "체력",

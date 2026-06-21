@@ -26,7 +26,7 @@ import {
   NIGHT_ENTRY_SCRIPT,
   PROLOGUE as USER_PROLOGUE,
   WORKER_NAME_CHOICES,
-} from "../src/rules/tutorialRules.js";
+} from "../src/data/tutorialContent.js";
 import {
   advanceToNextCycle,
   applyPermanentLoss,
@@ -185,6 +185,8 @@ assert.equal(stylesSource.includes(".choice--warning"), true, "단순 비용/불
 assert.equal(stylesSource.includes(".choice--uneasy"), true, "불길한 징조용 uneasy 선택지 스타일 alias 필요");
 assert.equal(stylesSource.includes(".first-day-hint-modal"), true, "첫날 힌트 팝업 스타일 필요");
 assert.equal(rulesEngineSource.includes("../rules/tutorialRules.js"), false, "rulesEngine은 구형 튜토리얼 진행 데이터를 직접 import하지 않는다");
+assert.equal(legacyProgressionEngineSource.includes("../data/tutorialContent.js"), true, "legacyProgressionEngine은 구형 진행 데이터를 data/tutorialContent.js에서 읽는다");
+assert.equal(legacyProgressionEngineSource.includes("../rules/tutorialRules.js"), false, "legacyProgressionEngine은 rules/tutorialRules.js를 다시 import하지 않는다");
 for (const legacyExport of [
   "createInitialGame",
   "getCriticalState",

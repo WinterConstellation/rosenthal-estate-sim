@@ -13,7 +13,7 @@ const INDEX_VERSION = "1.0.0";
 const MANIFEST_FILE = "src/data/scriptManifest.js";
 const SPECIAL_EVENT_GROUPS_FILE = "src/data/scriptPacks/specialEventGroups.js";
 const ROSENTHAL_CONTENT_FILE = "src/data/rosenthalContent.js";
-const TUTORIAL_RULES_FILE = "src/rules/tutorialRules.js";
+const TUTORIAL_CONTENT_FILE = "src/data/tutorialContent.js";
 const SYSTEM_RULES_FILE = "src/rules/systemRules.js";
 const SPECIAL_EVENT_PACK_ID = "special-event-groups";
 
@@ -855,8 +855,8 @@ function buildRosenthalContentEntries(projectRoot, config) {
   return entries;
 }
 
-function buildTutorialRulesEntries(projectRoot, config) {
-  const sourceFile = normalizeProjectPath(projectRoot, TUTORIAL_RULES_FILE);
+function buildTutorialContentEntries(projectRoot, config) {
+  const sourceFile = normalizeProjectPath(projectRoot, TUTORIAL_CONTENT_FILE);
   const source = readUtf8Lf(projectRoot, sourceFile);
   const entries = [];
 
@@ -1187,7 +1187,7 @@ export async function buildScriptEditIndex(projectRoot) {
     ...buildManifestEntries(projectRoot, config),
     ...buildSpecialEventEntries(projectRoot, config),
     ...buildRosenthalContentEntries(projectRoot, config),
-    ...buildTutorialRulesEntries(projectRoot, config),
+    ...buildTutorialContentEntries(projectRoot, config),
     ...buildSystemRulesEntries(projectRoot, config),
   ];
   assertUniqueEntryIds(entries);
