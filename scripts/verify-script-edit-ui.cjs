@@ -4,6 +4,7 @@ const { pathToFileURL } = require("node:url");
 
 const projectRoot = process.cwd();
 const token = "script-edit-ui-test";
+const initialItemId = "script-pack:special-event-groups:blank-ledger:stage-1:text";
 
 function moduleUrl(relativePath) {
   return pathToFileURL(join(projectRoot, relativePath)).href;
@@ -27,6 +28,28 @@ async function waitForScrollableList(win) {
         }
         if (Date.now() - startedAt > 5000) {
           reject(new Error("Timed out waiting for a scrollable script edit list"));
+          return;
+        }
+        setTimeout(tick, 50);
+      };
+      tick();
+    })
+  `);
+}
+
+async function waitForSelectedItem(win) {
+  await win.webContents.executeJavaScript(`
+    new Promise((resolve, reject) => {
+      const startedAt = Date.now();
+      const tick = () => {
+        const active = document.querySelector(".entry-button.is-active");
+        const value = document.querySelector("#value-editor")?.value;
+        if (active?.dataset.entryId === ${JSON.stringify(initialItemId)} && value === "새 장부 앞 일곱 장은 날짜만 남아 있다.") {
+          resolve(true);
+          return;
+        }
+        if (Date.now() - startedAt > 5000) {
+          reject(new Error("Timed out waiting for initial script-edit item selection"));
           return;
         }
         setTimeout(tick, 50);
@@ -87,8 +110,9 @@ async function main() {
       show: false,
       webPreferences: { contextIsolation: true },
     });
-    await win.loadURL(`http://${address.host}:${address.port}/?token=${token}&v=ui-scroll-verify`);
+    await win.loadURL(`http://${address.host}:${address.port}/?token=${token}&id=${encodeURIComponent(initialItemId)}&v=ui-scroll-verify`);
     await waitForScrollableList(win);
+    await waitForSelectedItem(win);
     const folderState = await readFolderState(win);
     if (folderState.nestedFolders <= 0 || folderState.depthOneFolders <= 0) {
       throw new Error("Nested script edit folders were not rendered");

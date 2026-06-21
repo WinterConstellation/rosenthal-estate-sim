@@ -1,5 +1,4 @@
 import { createServer } from "node:http";
-import { randomBytes } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -17,6 +16,7 @@ import { writeScriptEditIndex } from "./indexGenerator.mjs";
 
 const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_PORT = 3799;
+const DEFAULT_TOKEN = "understand-edit";
 
 function setCorsHeaders(res) {
   res.setHeader("access-control-allow-origin", "*");
@@ -80,7 +80,7 @@ function runVerify(projectRoot, command) {
 
 export function createScriptEditServer({
   projectRoot = process.cwd(),
-  token = randomBytes(16).toString("hex"),
+  token = DEFAULT_TOKEN,
   host = DEFAULT_HOST,
   port = DEFAULT_PORT,
 } = {}) {

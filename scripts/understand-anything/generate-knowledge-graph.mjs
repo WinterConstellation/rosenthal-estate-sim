@@ -170,6 +170,13 @@ function scriptEditSummary(entry) {
   return `Editable ${entry.field ?? "value"} item from ${entry.sourceFile}. This node is linked to the local script edit API and writes back to the original source span. Field type: ${type}.`;
 }
 
+function scriptEditEditorUrl(entry) {
+  const url = new URL("/", SCRIPT_EDIT_API_BASE.endsWith("/") ? SCRIPT_EDIT_API_BASE : `${SCRIPT_EDIT_API_BASE}/`);
+  url.searchParams.set("token", SCRIPT_EDIT_TOKEN);
+  url.searchParams.set("id", entry.id);
+  return url.toString();
+}
+
 function buildGraph() {
   const files = collectProjectFiles();
   const nodes = files.map((path) => ({
@@ -213,6 +220,7 @@ function buildGraph() {
         folderPath: entry.folderPath ?? [],
         apiBase: SCRIPT_EDIT_API_BASE,
         token: SCRIPT_EDIT_TOKEN,
+        editorUrl: scriptEditEditorUrl(entry),
       },
     });
     const fileNodeId = `file:${entry.sourceFile}`;

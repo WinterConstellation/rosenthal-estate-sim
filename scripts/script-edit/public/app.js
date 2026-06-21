@@ -1,4 +1,6 @@
-const token = new URLSearchParams(window.location.search).get("token") || "";
+const urlParams = new URLSearchParams(window.location.search);
+const token = urlParams.get("token") || "";
+const initialItemId = urlParams.get("id") || "";
 const state = {
   entries: [],
   selected: null,
@@ -171,6 +173,13 @@ function updateActiveEntry() {
   }
 }
 
+function scrollActiveEntryIntoView() {
+  const activeButton = entryList.querySelector(".entry-button.is-active");
+  if (!activeButton) return;
+  activeButton.scrollIntoView({ block: "center" });
+  queueEntryScrollbarUpdate();
+}
+
 function getEntryScrollbarMetrics() {
   const trackPadding = 2;
   const scrollHeight = entryList.scrollHeight;
@@ -224,6 +233,13 @@ function setSelected(item) {
   updateActiveEntry();
 }
 
+async function selectEntryById(id, { scrollIntoView = false } = {}) {
+  const item = await api(`/api/item?id=${encodeURIComponent(id)}`);
+  setSelected(item);
+  if (scrollIntoView) scrollActiveEntryIntoView();
+  return item;
+}
+
 function clearSelected() {
   state.selected = null;
   selectedKind.textContent = "No item";
@@ -275,7 +291,7 @@ function createEntryButton(entry) {
   button.querySelector(".entry-file").textContent = entry.field ? `${entry.field} · ${entry.id}` : entry.id;
   button.addEventListener("click", async () => {
     try {
-      setSelected(await api(`/api/item?id=${encodeURIComponent(entry.id)}`));
+      await selectEntryById(entry.id);
     } catch (error) {
       showContext(error.message);
     }
@@ -340,6 +356,14 @@ async function refreshIndex({ preserveScroll = true, scrollTop } = {}) {
 
 async function loadIndex() {
   const index = await refreshIndex({ preserveScroll: false });
+  if (initialItemId) {
+    try {
+      await selectEntryById(initialItemId, { scrollIntoView: true });
+      return;
+    } catch (error) {
+      showContext(error.message);
+    }
+  }
   showContext({ entries: state.entries.length, generatedAt: index.generatedAt });
 }
 

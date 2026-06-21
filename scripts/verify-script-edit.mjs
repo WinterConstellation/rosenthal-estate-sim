@@ -328,6 +328,7 @@ try {
     verify: ["node -e \"process.exit(0)\""],
   }, null, 2), "utf8");
   await writeScriptEditIndex(serverTestRoot);
+  assert.equal(createScriptEditServer({ projectRoot: serverTestRoot, port: 0 }).token, "understand-edit");
   const server = createScriptEditServer({ projectRoot: serverTestRoot, token: "test-token", port: 0, openBrowser: false });
   const address = await server.start();
   const base = `http://${address.host}:${address.port}`;
@@ -474,6 +475,11 @@ const graphJson = JSON.parse(readFileSync(join(repoRoot, ".understand-anything",
 assert.equal(graphJson.nodes.some((node) => node.id === "file:src/data/scriptManifest.js"), true);
 assert.equal(graphJson.nodes.some((node) => node.id === "file:src/engine/scriptLoader.js"), true);
 assert.equal(graphJson.nodes.some((node) => node.scriptEdit?.id === "script-pack:special-event-groups:blank-ledger:stage-1:text"), true);
+const graphEditableText = graphJson.nodes.find((node) => node.scriptEdit?.id === "script-pack:special-event-groups:blank-ledger:stage-1:text");
+assert.equal(graphEditableText.scriptEdit.apiBase, "http://127.0.0.1:3799");
+assert.equal(graphEditableText.scriptEdit.token, "understand-edit");
+assert.equal(new URL(graphEditableText.scriptEdit.editorUrl).searchParams.get("token"), "understand-edit");
+assert.equal(new URL(graphEditableText.scriptEdit.editorUrl).searchParams.get("id"), "script-pack:special-event-groups:blank-ledger:stage-1:text");
 assert.equal(graphJson.nodes.some((node) => node.scriptEdit?.folderPath?.includes("Stage 1")), true);
 assert.equal(graphJson.layers.some((layer) => layer.id === "layer:editable-index"), true);
 const editorHtml = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "index.html"), "utf8");
@@ -508,6 +514,8 @@ assert.equal(editorJs.includes("entry-folder"), true);
 assert.equal(editorJs.includes("updateActiveEntry"), true);
 assert.equal(editorJs.includes("Do not rebuild the 1000+ item list on selection"), true);
 assert.equal(editorJs.includes("updateEntryScrollbar"), true);
+assert.equal(editorJs.includes("initialItemId"), true);
+assert.equal(editorJs.includes("selectEntryById"), true);
 assert.equal(editorJs.includes("insert-before-button"), true);
 assert.equal(editorJs.includes("insert-after-button"), true);
 assert.equal(editorJs.includes("delete-item-button"), true);
