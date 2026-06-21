@@ -2,6 +2,8 @@ const token = new URLSearchParams(window.location.search).get("token") || "";
 const state = {
   entries: [],
   selected: null,
+  openFolders: new Set(),
+  closedFolders: new Set(),
 };
 
 const entryList = document.querySelector("#entry-list");
@@ -56,6 +58,35 @@ function populateFilters() {
   setSelectOptions(fileFilter, files, "All files");
 }
 
+function groupEntriesByFile(entries) {
+  const groups = new Map();
+  for (const entry of entries) {
+    const sourceFile = entry.sourceFile || "Unknown source";
+    if (!groups.has(sourceFile)) groups.set(sourceFile, []);
+    groups.get(sourceFile).push(entry);
+  }
+  return [...groups.entries()].map(([sourceFile, groupEntries]) => ({ sourceFile, entries: groupEntries }));
+}
+
+function isFolderOpen(sourceFile) {
+  if (state.closedFolders.has(sourceFile)) return false;
+  if (state.openFolders.has(sourceFile)) return true;
+  return true;
+}
+
+function updateActiveEntry() {
+  for (const button of entryList.querySelectorAll(".entry-button.is-active")) {
+    button.classList.remove("is-active");
+  }
+  if (!state.selected) return;
+  const selectedButton = [...entryList.querySelectorAll(".entry-button")]
+    .find((button) => button.dataset.entryId === state.selected.id);
+  if (!selectedButton) return;
+  selectedButton.classList.add("is-active");
+  const folder = selectedButton.closest(".entry-folder");
+  if (folder instanceof HTMLDetailsElement) folder.open = true;
+}
+
 function setSelected(item) {
   state.selected = item;
   selectedKind.textContent = item.kind;
@@ -66,7 +97,8 @@ function setSelected(item) {
   saveButton.disabled = false;
   discardButton.disabled = false;
   showContext(item);
-  renderEntries();
+  // Do not rebuild the 1000+ item list on selection; replacing nodes resets the user's scroll position.
+  updateActiveEntry();
 }
 
 function getFilteredEntries() {
@@ -88,40 +120,78 @@ function getFilteredEntries() {
   });
 }
 
-function renderEntries() {
+function createEntryButton(entry) {
+  const button = document.createElement("button");
+  const preview = formatEntryPreview(entry);
+  button.type = "button";
+  button.dataset.entryId = entry.id;
+  button.className = `entry-button${state.selected?.id === entry.id ? " is-active" : ""}`;
+  button.innerHTML = `
+    <div class="entry-kind">${entry.kind}</div>
+    <div class="entry-label"></div>
+    <div class="entry-value"></div>
+    <div class="entry-file"></div>
+  `;
+  button.querySelector(".entry-label").textContent = entry.label;
+  button.querySelector(".entry-value").textContent = preview;
+  button.querySelector(".entry-value").hidden = !preview;
+  button.querySelector(".entry-file").textContent = entry.field ? `${entry.field} · ${entry.id}` : entry.id;
+  button.addEventListener("click", async () => {
+    try {
+      setSelected(await api(`/api/item?id=${encodeURIComponent(entry.id)}`));
+    } catch (error) {
+      showContext(error.message);
+    }
+  });
+  return button;
+}
+
+function createFolder({ sourceFile, entries }) {
+  const folder = document.createElement("details");
+  folder.className = "entry-folder";
+  folder.open = isFolderOpen(sourceFile);
+  folder.addEventListener("toggle", () => {
+    if (folder.open) {
+      state.openFolders.add(sourceFile);
+      state.closedFolders.delete(sourceFile);
+    } else {
+      state.closedFolders.add(sourceFile);
+      state.openFolders.delete(sourceFile);
+    }
+  });
+
+  const summary = document.createElement("summary");
+  summary.className = "folder-summary";
+  summary.innerHTML = `
+    <span class="folder-name"></span>
+    <span class="folder-count"></span>
+  `;
+  summary.querySelector(".folder-name").textContent = sourceFile;
+  summary.querySelector(".folder-count").textContent = String(entries.length);
+
+  const items = document.createElement("div");
+  items.className = "folder-items";
+  items.replaceChildren(...entries.map(createEntryButton));
+
+  folder.replaceChildren(summary, items);
+  return folder;
+}
+
+function renderEntries({ preserveScroll = true } = {}) {
   const entries = getFilteredEntries();
+  const scrollTop = preserveScroll ? entryList.scrollTop : 0;
   entryCount.textContent = `${entries.length} / ${state.entries.length}`;
-  entryList.replaceChildren(...entries.map((entry) => {
-    const button = document.createElement("button");
-    const preview = formatEntryPreview(entry);
-    button.type = "button";
-    button.className = `entry-button${state.selected?.id === entry.id ? " is-active" : ""}`;
-    button.innerHTML = `
-      <div class="entry-kind">${entry.kind}</div>
-      <div class="entry-label"></div>
-      <div class="entry-value"></div>
-      <div class="entry-file"></div>
-    `;
-    button.querySelector(".entry-label").textContent = entry.label;
-    button.querySelector(".entry-value").textContent = preview;
-    button.querySelector(".entry-value").hidden = !preview;
-    button.querySelector(".entry-file").textContent = entry.sourceFile;
-    button.addEventListener("click", async () => {
-      try {
-        setSelected(await api(`/api/item?id=${encodeURIComponent(entry.id)}`));
-      } catch (error) {
-        showContext(error.message);
-      }
-    });
-    return button;
-  }));
+  // Filtering and reindexing rebuild folder nodes; restore scroll so the left pane does not jump.
+  entryList.replaceChildren(...groupEntriesByFile(entries).map(createFolder));
+  entryList.scrollTop = scrollTop;
+  updateActiveEntry();
 }
 
 async function loadIndex() {
   const index = await api("/api/index");
   state.entries = index.entries || [];
   populateFilters();
-  renderEntries();
+  renderEntries({ preserveScroll: false });
   showContext({ entries: state.entries.length, generatedAt: index.generatedAt });
 }
 
@@ -151,7 +221,7 @@ reindexButton.addEventListener("click", async () => {
     const result = await api("/api/reindex", { method: "POST" });
     state.entries = result.entries || [];
     populateFilters();
-    renderEntries();
+    renderEntries({ preserveScroll: false });
     showContext({ reindexed: true, entries: state.entries.length });
   } catch (error) {
     showContext(error.message);
@@ -166,9 +236,9 @@ verifyButton.addEventListener("click", async () => {
   }
 });
 
-searchInput.addEventListener("input", renderEntries);
-kindFilter.addEventListener("change", renderEntries);
-fileFilter.addEventListener("change", renderEntries);
+searchInput.addEventListener("input", () => renderEntries({ preserveScroll: false }));
+kindFilter.addEventListener("change", () => renderEntries({ preserveScroll: false }));
+fileFilter.addEventListener("change", () => renderEntries({ preserveScroll: false }));
 
 if (!token) {
   showContext("Missing token in URL.");

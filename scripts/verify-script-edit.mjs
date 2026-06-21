@@ -204,8 +204,17 @@ assert.equal(editorJs.includes("/api/verify"), true);
 assert.equal(editorJs.includes("formatEntryPreview"), true);
 assert.equal(editorJs.includes("entry.value"), true);
 assert.equal(editorJs.includes("entry-count"), true);
+assert.equal(editorJs.includes("groupEntriesByFile"), true);
+assert.equal(editorJs.includes("entry-folder"), true);
+assert.equal(editorJs.includes("updateActiveEntry"), true);
+assert.equal(editorJs.includes("Do not rebuild the 1000+ item list on selection"), true);
+const setSelectedBody = editorJs.match(/function setSelected\(item\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+assert.equal(setSelectedBody.includes("renderEntries("), false);
+assert.equal(setSelectedBody.includes("updateActiveEntry"), true);
 assert.equal(editorCss.includes(".editor-shell"), true);
 assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?flex:\s*1;[\s\S]*?min-height:\s*0;/);
 assert.equal(editorCss.includes(".entry-value"), true);
+assert.equal(editorCss.includes(".entry-folder"), true);
+assert.equal(editorCss.includes(".folder-summary"), true);
 
 console.log("Script edit verification passed.");

@@ -131,6 +131,57 @@ button:disabled {
   padding-right: 2px;
 }
 
+.entry-folder {
+  min-width: 0;
+  border: 1px solid #2c3741;
+  border-radius: 7px;
+  background: #111820;
+  overflow: hidden;
+}
+
+.folder-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 9px 10px;
+  color: #d8d0be;
+  font-family: Consolas, monospace;
+  font-size: 0.78rem;
+  user-select: none;
+}
+
+.folder-summary::-webkit-details-marker {
+  display: none;
+}
+
+.folder-summary::before {
+  content: "+";
+  color: #b7a36a;
+  font-weight: 700;
+}
+
+.entry-folder[open] > .folder-summary::before {
+  content: "-";
+}
+
+.folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-count {
+  color: #9ba7ae;
+}
+
+.folder-items {
+  display: grid;
+  gap: 8px;
+  padding: 0 8px 8px;
+}
+
 .entry-button {
   width: 100%;
   min-width: 0;

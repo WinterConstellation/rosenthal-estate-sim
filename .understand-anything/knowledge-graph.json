@@ -16,8 +16,8 @@
       "Understand Anything"
     ],
     "description": "A local estate simulation with manifest-driven script packs and a graph-linked safe editing index.",
-    "analyzedAt": "2026-06-21T07:16:09.492Z",
-    "gitCommitHash": "246650a37769750258987a3ea435995b53823f09"
+    "analyzedAt": "2026-06-21T07:40:18.841Z",
+    "gitCommitHash": "ba1e40b47ac442f94d68aa0e7a0d3d74b865e8d3"
   },
   "nodes": [
     {
@@ -548,7 +548,7 @@
       "filePath": "scripts/script-edit/public/app.js",
       "lineRange": [
         1,
-        178
+        248
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -582,7 +582,7 @@
       "filePath": "scripts/script-edit/public/styles.css",
       "lineRange": [
         1,
-        236
+        287
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -684,7 +684,7 @@
       "filePath": "scripts/verify-script-edit.mjs",
       "lineRange": [
         1,
-        212
+        221
       ],
       "summary": "Project file included in the Understand Anything graph.",
       "tags": [
@@ -718,7 +718,7 @@
       "filePath": "docs/pingpong.txt",
       "lineRange": [
         1,
-        369
+        370
       ],
       "summary": "Project documentation and handoff context.",
       "tags": [
@@ -768,7 +768,7 @@
       "filePath": "docs/work_log.txt",
       "lineRange": [
         1,
-        307
+        313
       ],
       "summary": "Project documentation and handoff context.",
       "tags": [
