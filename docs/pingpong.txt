@@ -333,6 +333,14 @@ Acceptance:
 - `.script-edit/index.json`과 backups는 생성물로 Git에 올리지 않는다.
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
 
+## 임시 기록: Understand Anything 시각화 그래프 로컬 작업 푸시
+
+- `scripts/understand-anything/generate-knowledge-graph.mjs`가 `.script-edit/index.json` 기반으로 `.understand-anything/knowledge-graph.json`, `meta.json`, `config.json`을 생성한다.
+- `package.json`의 실행 명령은 `npm.cmd run understand:graph`이다.
+- `scripts/script-edit/server.mjs`는 외부 시각화 도구 연동을 위해 CORS preflight와 `SCRIPT_EDIT_TOKEN` 환경변수 토큰을 받는다.
+- 현재 시각화 산출물은 정리/재설계 전 로컬 작업 보존용으로 레포에 올린다.
+- 확인: `npm.cmd run verify`, `npm.cmd run build`
+
 ## 2순위: 표식 효과 밸런스
 
 구조가 고정되기 전에 표식 효과를 많이 바꾸지 않는다.

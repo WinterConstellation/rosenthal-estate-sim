@@ -70,6 +70,7 @@ const writtenIndex = await writeScriptEditIndex(repoRoot);
 assert.equal(writtenIndex.entries.length, index.entries.length);
 assert.equal(existsSync(getScriptEditIndexPath(repoRoot)), true);
 assert.equal(JSON.parse(readFileSync(getScriptEditIndexPath(repoRoot), "utf8")).entries.length, index.entries.length);
+await import("./understand-anything/generate-knowledge-graph.mjs");
 
 const tempEditRoot = mkdtempSync(join(tmpdir(), "script-edit-save-"));
 try {
@@ -148,6 +149,12 @@ try {
 const packageJson = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 assert.equal(packageJson.scripts["script-edit:index"], "node scripts/script-edit/indexGenerator.mjs --write");
 assert.equal(packageJson.scripts["script-edit"], "node scripts/script-edit/server.mjs");
+assert.equal(packageJson.scripts["understand:graph"], "npm run script-edit:index && node scripts/understand-anything/generate-knowledge-graph.mjs");
+const graphJson = JSON.parse(readFileSync(join(repoRoot, ".understand-anything", "knowledge-graph.json"), "utf8"));
+assert.equal(graphJson.nodes.some((node) => node.id === "file:src/data/scriptManifest.js"), true);
+assert.equal(graphJson.nodes.some((node) => node.id === "file:src/engine/scriptLoader.js"), true);
+assert.equal(graphJson.nodes.some((node) => node.scriptEdit?.id === "script-pack:special-event-groups:blank-ledger:stage-1:text"), true);
+assert.equal(graphJson.layers.some((layer) => layer.id === "layer:editable-index"), true);
 const editorHtml = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "index.html"), "utf8");
 const editorJs = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "app.js"), "utf8");
 const editorCss = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "styles.css"), "utf8");

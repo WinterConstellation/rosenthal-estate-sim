@@ -15,6 +15,7 @@
     "verify": "node scripts/verify-game.mjs",
     "script-edit:index": "node scripts/script-edit/indexGenerator.mjs --write",
     "script-edit": "node scripts/script-edit/server.mjs",
+    "understand:graph": "npm run script-edit:index && node scripts/understand-anything/generate-knowledge-graph.mjs",
     "app": "npm run build && electron .",
     "dist:win": "node scripts/build-windows.mjs"
   },

@@ -11,8 +11,15 @@ import { writeScriptEditIndex } from "./indexGenerator.mjs";
 const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_PORT = 3799;
 
+function setCorsHeaders(res) {
+  res.setHeader("access-control-allow-origin", "*");
+  res.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
+  res.setHeader("access-control-allow-headers", "content-type");
+}
+
 function sendJson(res, statusCode, payload) {
   res.statusCode = statusCode;
+  setCorsHeaders(res);
   res.setHeader("content-type", "application/json; charset=utf-8");
   res.end(JSON.stringify(payload));
 }
@@ -145,6 +152,12 @@ export function createScriptEditServer({
     start() {
       httpServer = createServer((req, res) => {
         const url = new URL(req.url ?? "/", `http://${host}:${port}`);
+        if (req.method === "OPTIONS") {
+          res.statusCode = 204;
+          setCorsHeaders(res);
+          res.end();
+          return;
+        }
         if (url.pathname.startsWith("/api/")) {
           void handleApi(req, res, url);
           return;
@@ -177,7 +190,10 @@ export function createScriptEditServer({
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const server = createScriptEditServer({ projectRoot: process.cwd() });
+  const server = createScriptEditServer({
+    projectRoot: process.cwd(),
+    token: process.env.SCRIPT_EDIT_TOKEN,
+  });
   const address = await server.start();
   console.log(`Script editor: http://${address.host}:${address.port}/?token=${server.token}`);
 }
