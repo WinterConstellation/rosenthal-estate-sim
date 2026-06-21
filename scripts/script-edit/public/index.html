@@ -11,9 +11,14 @@
       <aside class="item-pane">
         <div class="pane-head">
           <strong>Script Edit Index</strong>
+          <span id="entry-count">0 / 0</span>
           <button id="reindex-button" type="button">Re-index</button>
         </div>
         <input id="search-input" type="search" aria-label="Search by id, label, or file" />
+        <div class="pane-tools">
+          <select id="kind-filter" aria-label="Filter by kind"></select>
+          <select id="file-filter" aria-label="Filter by file"></select>
+        </div>
         <div id="entry-list" class="entry-list"></div>
       </aside>
       <section class="edit-pane">

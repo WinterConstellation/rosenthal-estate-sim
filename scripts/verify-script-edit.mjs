@@ -194,10 +194,18 @@ const editorHtml = readFileSync(join(repoRoot, "scripts", "script-edit", "public
 const editorJs = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "app.js"), "utf8");
 const editorCss = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "styles.css"), "utf8");
 assert.equal(editorHtml.includes("script-edit-root"), true);
+assert.equal(editorHtml.includes("entry-count"), true);
+assert.equal(editorHtml.includes("kind-filter"), true);
+assert.equal(editorHtml.includes("file-filter"), true);
 assert.equal(editorJs.includes("/api/index"), true);
 assert.equal(editorJs.includes("/api/item"), true);
 assert.equal(editorJs.includes("/api/reindex"), true);
 assert.equal(editorJs.includes("/api/verify"), true);
+assert.equal(editorJs.includes("formatEntryPreview"), true);
+assert.equal(editorJs.includes("entry.value"), true);
+assert.equal(editorJs.includes("entry-count"), true);
 assert.equal(editorCss.includes(".editor-shell"), true);
+assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?flex:\s*1;[\s\S]*?min-height:\s*0;/);
+assert.equal(editorCss.includes(".entry-value"), true);
 
 console.log("Script edit verification passed.");

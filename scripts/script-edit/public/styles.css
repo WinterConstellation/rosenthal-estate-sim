@@ -5,13 +5,19 @@
   color: #ece7dc;
 }
 
+html {
+  height: 100%;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  height: 100%;
   min-height: 100vh;
+  overflow: hidden;
   background: #101115;
 }
 
@@ -38,7 +44,9 @@ button:disabled {
 .editor-shell {
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(420px, 1fr) minmax(280px, 360px);
-  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .item-pane,
@@ -46,6 +54,7 @@ button:disabled {
 .context-pane {
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
   border-right: 1px solid #2c3238;
 }
 
@@ -73,6 +82,18 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-shrink: 0;
+}
+
+.pane-head {
+  flex-wrap: wrap;
+}
+
+#entry-count {
+  color: #9ba7ae;
+  font-family: Consolas, monospace;
+  font-size: 0.78rem;
+  margin-left: auto;
 }
 
 #search-input {
@@ -84,17 +105,40 @@ button:disabled {
   border-radius: 6px;
 }
 
+.pane-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+#kind-filter,
+#file-filter {
+  min-width: 0;
+  border: 1px solid #38444d;
+  background: #0f1216;
+  color: #ece7dc;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+}
+
 .entry-list {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   display: grid;
+  align-content: start;
   gap: 8px;
+  padding-right: 2px;
 }
 
 .entry-button {
   width: 100%;
+  min-width: 0;
   text-align: left;
   border-color: #303942;
   background: #171d24;
+  display: grid;
+  gap: 4px;
 }
 
 .entry-button.is-active {
@@ -112,13 +156,22 @@ button:disabled {
 }
 
 .entry-label {
-  margin-top: 4px;
   font-weight: 700;
+}
+
+.entry-value {
+  color: #d8d0be;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .entry-file,
 #selected-file {
-  margin: 4px 0 0;
+  margin: 0;
   color: #9ba7ae;
   font-family: Consolas, monospace;
   font-size: 0.78rem;
@@ -134,6 +187,7 @@ button:disabled {
   flex: 1;
   min-height: 0;
   width: 100%;
+  overflow: auto;
   resize: none;
   border: 1px solid #38444d;
   border-radius: 8px;
@@ -146,6 +200,7 @@ button:disabled {
 
 #context-output {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   margin: 0;
   white-space: pre-wrap;
@@ -155,10 +210,15 @@ button:disabled {
 }
 
 @media (max-width: 960px) {
+  body {
+    overflow: auto;
+  }
+
   .editor-shell {
     grid-template-columns: 1fr;
     height: auto;
     min-height: 100vh;
+    overflow: visible;
   }
 
   .item-pane,
@@ -167,5 +227,9 @@ button:disabled {
     min-height: 40vh;
     border-right: 0;
     border-bottom: 1px solid #2c3238;
+  }
+
+  .entry-list {
+    max-height: 46vh;
   }
 }
