@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Script Edit Index</title>
-    <link rel="stylesheet" href="/styles.css?v=insert-turns" />
+    <link rel="stylesheet" href="/styles.css?v=item-actions" />
   </head>
   <body>
     <main id="script-edit-root" class="editor-shell">
@@ -40,6 +40,14 @@
           <button id="discard-button" type="button" disabled>Discard</button>
           <button id="save-button" type="button" disabled>Save</button>
         </div>
+        <section id="item-action-pane" class="item-action-pane" hidden>
+          <strong>항목 정리</strong>
+          <div class="item-actions">
+            <button id="move-up-button" type="button">위로</button>
+            <button id="move-down-button" type="button">아래로</button>
+            <button id="delete-item-button" class="danger-button" type="button">삭제</button>
+          </div>
+        </section>
         <section id="insert-pane" class="insert-pane" hidden>
           <strong>대사 추가</strong>
           <label id="insert-speaker-field">
@@ -61,6 +69,6 @@
         <pre id="context-output"></pre>
       </aside>
     </main>
-    <script type="module" src="/app.js?v=insert-turns"></script>
+    <script type="module" src="/app.js?v=item-actions"></script>
   </body>
 </html>

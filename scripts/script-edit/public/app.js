@@ -17,6 +17,10 @@ const valueEditor = document.querySelector("#value-editor");
 const contextOutput = document.querySelector("#context-output");
 const saveButton = document.querySelector("#save-button");
 const discardButton = document.querySelector("#discard-button");
+const itemActionPane = document.querySelector("#item-action-pane");
+const deleteItemButton = document.querySelector("#delete-item-button");
+const moveUpButton = document.querySelector("#move-up-button");
+const moveDownButton = document.querySelector("#move-down-button");
 const insertPane = document.querySelector("#insert-pane");
 const insertSpeakerField = document.querySelector("#insert-speaker-field");
 const insertSpeaker = document.querySelector("#insert-speaker");
@@ -44,14 +48,14 @@ function showContext(value) {
   contextOutput.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
-function setInsertControls(item) {
-  const canInsert = item.insert?.type === "object-array-item";
+function setInsertControls(item = {}) {
+  const canInsert = Boolean(item.insert?.type);
   insertPane.hidden = !canInsert;
-  insertSpeaker.disabled = !canInsert;
+  const hasSpeaker = Boolean(item.insert?.fields?.some((field) => field.name === "speaker"));
+  insertSpeaker.disabled = !canInsert || !hasSpeaker;
   insertText.disabled = !canInsert;
   insertBeforeButton.disabled = !canInsert;
   insertAfterButton.disabled = !canInsert;
-  const hasSpeaker = Boolean(item.insert?.fields?.some((field) => field.name === "speaker"));
   insertSpeakerField.hidden = !hasSpeaker;
   if (!canInsert) {
     insertSpeaker.value = "";
@@ -60,6 +64,14 @@ function setInsertControls(item) {
   }
   insertSpeaker.value = hasSpeaker ? (item.insert.defaults?.speaker || "narration") : "";
   insertText.value = "";
+}
+
+function setItemActionControls(item = {}) {
+  const canActOnItem = Boolean(item.item?.range);
+  itemActionPane.hidden = !canActOnItem;
+  deleteItemButton.disabled = !canActOnItem;
+  moveUpButton.disabled = !item.item?.previous;
+  moveDownButton.disabled = !item.item?.next;
 }
 
 function formatEntryPreview(entry) {
@@ -206,8 +218,23 @@ function setSelected(item) {
   saveButton.disabled = false;
   discardButton.disabled = false;
   setInsertControls(item);
+  setItemActionControls(item);
   showContext(item);
   // Do not rebuild the 1000+ item list on selection; replacing nodes resets the user's scroll position.
+  updateActiveEntry();
+}
+
+function clearSelected() {
+  state.selected = null;
+  selectedKind.textContent = "No item";
+  selectedLabel.textContent = "Select an editable item";
+  selectedFile.textContent = "";
+  valueEditor.disabled = true;
+  valueEditor.value = "";
+  saveButton.disabled = true;
+  discardButton.disabled = true;
+  setInsertControls();
+  setItemActionControls();
   updateActiveEntry();
 }
 
@@ -372,12 +399,85 @@ async function insertDialogueTurn(direction) {
   }
 }
 
+function findEntryLike(item) {
+  // Move operations can change position-based ids, so keep the same visible item selected by content.
+  return state.entries.find((entry) => (
+    entry.sourceFile === item.sourceFile
+    && entry.field === item.field
+    && entry.kind === item.kind
+    && entry.value === item.value
+  )) ?? state.entries.find((entry) => entry.id === item.id);
+}
+
+async function moveSelectedItem(direction) {
+  if (!state.selected?.item) return;
+  try {
+    const selectedBeforeMove = state.selected;
+    const scrollTop = entryList.scrollTop;
+    const result = await api("/api/move", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: selectedBeforeMove.id, direction }),
+    });
+    await refreshIndex({ preserveScroll: true, scrollTop });
+    const movedEntry = findEntryLike(selectedBeforeMove);
+    if (movedEntry) {
+      setSelected(await api(`/api/item?id=${encodeURIComponent(movedEntry.id)}`));
+    }
+    entryList.scrollTop = scrollTop;
+    queueEntryScrollbarUpdate();
+    showContext(result);
+  } catch (error) {
+    showContext(error.message);
+  }
+}
+
+async function deleteSelectedItem() {
+  if (!state.selected?.item) return;
+  if (!window.confirm("선택한 대사/문단 항목 전체를 삭제할까요?")) return;
+  try {
+    const filteredEntries = getFilteredEntries();
+    const selectedIndex = Math.max(0, filteredEntries.findIndex((entry) => entry.id === state.selected.id));
+    const scrollTop = entryList.scrollTop;
+    const result = await api("/api/delete", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: state.selected.id }),
+    });
+    await refreshIndex({ preserveScroll: true, scrollTop });
+    const nextEntries = getFilteredEntries();
+    const nextEntry = nextEntries[Math.min(selectedIndex, nextEntries.length - 1)];
+    if (nextEntry) {
+      setSelected(await api(`/api/item?id=${encodeURIComponent(nextEntry.id)}`));
+    } else {
+      clearSelected();
+    }
+    entryList.scrollTop = scrollTop;
+    queueEntryScrollbarUpdate();
+    showContext(result);
+  } catch (error) {
+    showContext(error.message);
+  }
+}
+
 insertBeforeButton.addEventListener("click", () => {
   void insertDialogueTurn("before");
 });
 
 insertAfterButton.addEventListener("click", () => {
   void insertDialogueTurn("after");
+});
+
+moveUpButton.addEventListener("click", () => {
+  void moveSelectedItem("up");
+});
+
+moveDownButton.addEventListener("click", () => {
+  void moveSelectedItem("down");
+});
+
+deleteItemButton.addEventListener("click", () => {
+  void deleteSelectedItem();
 });
 
 discardButton.addEventListener("click", () => {

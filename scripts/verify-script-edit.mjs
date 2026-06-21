@@ -13,7 +13,13 @@ import {
   matchesPattern,
   normalizeProjectPath,
 } from "./script-edit/pathPolicy.mjs";
-import { applyScriptEdit, applyScriptInsert, getEditableItem } from "./script-edit/editorStore.mjs";
+import {
+  applyScriptDelete,
+  applyScriptEdit,
+  applyScriptInsert,
+  applyScriptMove,
+  getEditableItem,
+} from "./script-edit/editorStore.mjs";
 import { buildScriptEditIndex, writeScriptEditIndex } from "./script-edit/indexGenerator.mjs";
 import { createScriptEditServer } from "./script-edit/server.mjs";
 
@@ -147,16 +153,27 @@ assert.equal(tutorialDayOpeningOne.insert?.type, "object-array-item");
 assert.equal(tutorialDayOpeningOne.insert?.defaults?.speaker, "npc:scribe");
 assert.equal(tutorialDayOpeningOne.insert?.fields?.some((field) => field.name === "speaker"), true);
 assert.equal(tutorialDayOpeningOne.insert?.fields?.some((field) => field.name === "text"), true);
+assert.equal(tutorialDayOpeningOne.item?.type, "object-array-item");
+assert.equal(Number.isInteger(tutorialDayOpeningOne.item?.range?.start), true);
+assert.equal(Number.isInteger(tutorialDayOpeningOne.item?.range?.end), true);
+assert.equal(tutorialDayOpeningOne.item?.previous, null);
+assert.notEqual(tutorialDayOpeningOne.item?.next, null);
 const tutorialDayOpeningSpeakerOne = index.entries.find((entry) => entry.id === "tutorial:day-opening:1:speaker");
 assert.equal(tutorialDayOpeningSpeakerOne.kind, "speaker");
 assert.equal(tutorialDayOpeningSpeakerOne.sourceFile, "src/data/tutorial/introContent.js");
 assert.equal(tutorialDayOpeningSpeakerOne.value, "npc:scribe");
 assert.equal(tutorialDayOpeningSpeakerOne.insert, undefined);
+assert.equal(tutorialDayOpeningSpeakerOne.item?.type, "object-array-item");
+const tutorialDayOpeningTwo = index.entries.find((entry) => entry.id === "tutorial:day-opening:2:text");
+assert.notEqual(tutorialDayOpeningTwo.item?.previous, null);
 assert.equal(index.entries.find((entry) => entry.id === "tutorial:day-interlude:1:paragraph:line-1").sourceFile, "src/data/tutorial/introContent.js");
 const tutorialInterludeLineOne = index.entries.find((entry) => entry.id === "tutorial:day-interlude:1:paragraph:line-1");
 assert.equal(tutorialInterludeLineOne.insert?.type, "string-array-item");
 assert.equal(tutorialInterludeLineOne.insert?.fields?.some((field) => field.name === "text"), true);
 assert.equal(tutorialInterludeLineOne.insert?.fields?.some((field) => field.name === "speaker"), false);
+assert.equal(tutorialInterludeLineOne.item?.type, "string-array-item");
+assert.equal(tutorialInterludeLineOne.item?.previous, null);
+assert.notEqual(tutorialInterludeLineOne.item?.next, null);
 assert.equal(index.entries.find((entry) => entry.id === "tutorial:night-choice:knight:result").sourceFile, "src/data/tutorial/nightChoiceContent.js");
 assert.equal(index.entries.find((entry) => entry.id === "tutorial:ending:peacefulLord:title").sourceFile, "src/data/tutorial/endingContent.js");
 assert.equal(index.entries.find((entry) => entry.id === "tutorial:worker-name-choice:remember-worker:title").sourceFile, "src/data/tutorial/endingContent.js");
@@ -238,6 +255,17 @@ try {
   assert.equal(introAfterInsert.includes('text: "테스트용 추가 튜토리얼 대사"'), true);
   assert.equal(getEditableItem(tempEditRoot, "tutorial:day-opening:2:speaker").value, "narration");
   assert.equal(getEditableItem(tempEditRoot, "tutorial:day-opening:2:text").value, "테스트용 추가 튜토리얼 대사");
+  const moveResult = await applyScriptMove(tempEditRoot, {
+    id: "tutorial:day-opening:2:text",
+    direction: "up",
+  });
+  assert.equal(moveResult.changedFile, "src/data/tutorial/introContent.js");
+  assert.equal(getEditableItem(tempEditRoot, "tutorial:day-opening:1:speaker").value, "narration");
+  assert.equal(getEditableItem(tempEditRoot, "tutorial:day-opening:1:text").value, "테스트용 추가 튜토리얼 대사");
+  const deleteResult = await applyScriptDelete(tempEditRoot, { id: "tutorial:day-opening:1:text" });
+  assert.equal(deleteResult.changedFile, "src/data/tutorial/introContent.js");
+  assert.equal(getEditableItem(tempEditRoot, "tutorial:day-opening:1:speaker").value, "npc:scribe");
+  assert.equal(getEditableItem(tempEditRoot, "tutorial:day-opening:1:text").value, "오늘 처리하실 일을 정리했습니다. 처음 보시는 항목부터 설명드리겠습니다.");
   const stringInsertResult = await applyScriptInsert(tempEditRoot, {
     id: "tutorial:day-interlude:1:paragraph:line-1",
     direction: "after",
@@ -245,6 +273,14 @@ try {
   });
   assert.equal(stringInsertResult.changedFile, "src/data/tutorial/introContent.js");
   assert.equal(getEditableItem(tempEditRoot, "tutorial:day-interlude:1:paragraph:line-2").value, "테스트용 추가 인터루드 문단");
+  const stringMoveResult = await applyScriptMove(tempEditRoot, {
+    id: "tutorial:day-interlude:1:paragraph:line-2",
+    direction: "up",
+  });
+  assert.equal(stringMoveResult.changedFile, "src/data/tutorial/introContent.js");
+  assert.equal(getEditableItem(tempEditRoot, "tutorial:day-interlude:1:paragraph:line-1").value, "테스트용 추가 인터루드 문단");
+  await applyScriptDelete(tempEditRoot, { id: "tutorial:day-interlude:1:paragraph:line-1" });
+  assert.equal(getEditableItem(tempEditRoot, "tutorial:day-interlude:1:paragraph:line-1").value, "당신은 선택을 해야 한다. 그 뒤에 무엇이 기다리고 있을지는 아무도 알려주지 않는다.");
   const staleIndex = JSON.parse(readFileSync(join(tempEditRoot, ".script-edit", "index.json"), "utf8"));
   staleIndex.entries.find((entry) => entry.id === itemId).sourceHash = "stale";
   writeFileSync(join(tempEditRoot, ".script-edit", "index.json"), JSON.stringify(staleIndex, null, 2), "utf8");
@@ -327,6 +363,20 @@ try {
   assert.equal((await insertResponse.json()).changedFile, "src/data/tutorial/introContent.js");
   assert.equal(getEditableItem(serverTestRoot, "tutorial:day-opening:2:speaker").value, "narration");
   assert.equal(getEditableItem(serverTestRoot, "tutorial:day-opening:2:text").value, "서버 추가 튜토리얼 대사");
+  const moveResponse = await fetch(`${base}/api/move?token=test-token`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id: "tutorial:day-opening:2:text", direction: "up" }),
+  });
+  assert.equal(moveResponse.status, 200);
+  assert.equal(getEditableItem(serverTestRoot, "tutorial:day-opening:1:text").value, "서버 추가 튜토리얼 대사");
+  const deleteResponse = await fetch(`${base}/api/delete?token=test-token`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id: "tutorial:day-opening:1:text" }),
+  });
+  assert.equal(deleteResponse.status, 200);
+  assert.equal(getEditableItem(serverTestRoot, "tutorial:day-opening:1:text").value, "오늘 처리하실 일을 정리했습니다. 처음 보시는 항목부터 설명드리겠습니다.");
   const missing = await fetch(`${base}/api/item?token=test-token&id=missing`);
   assert.equal(missing.status, 404);
   const verifyResponse = await fetch(`${base}/api/verify?token=test-token`, { method: "POST" });
@@ -432,8 +482,8 @@ const editorCss = readFileSync(join(repoRoot, "scripts", "script-edit", "public"
 const editorUiVerify = readFileSync(join(repoRoot, "scripts", "verify-script-edit-ui.cjs"), "utf8");
 assert.equal(packageJson.scripts["script-edit:verify-ui"], "electron scripts/verify-script-edit-ui.cjs");
 assert.equal(editorHtml.includes("script-edit-root"), true);
-assert.equal(editorHtml.includes("/styles.css?v=insert-turns"), true);
-assert.equal(editorHtml.includes("/app.js?v=insert-turns"), true);
+assert.equal(editorHtml.includes("/styles.css?v=item-actions"), true);
+assert.equal(editorHtml.includes("/app.js?v=item-actions"), true);
 assert.equal(editorHtml.includes("entry-count"), true);
 assert.equal(editorHtml.includes("kind-filter"), true);
 assert.equal(editorHtml.includes("file-filter"), true);
@@ -443,6 +493,8 @@ assert.equal(editorHtml.includes("entry-scrollbar-thumb"), true);
 assert.equal(editorJs.includes("/api/index"), true);
 assert.equal(editorJs.includes("/api/item"), true);
 assert.equal(editorJs.includes("/api/insert"), true);
+assert.equal(editorJs.includes("/api/delete"), true);
+assert.equal(editorJs.includes("/api/move"), true);
 assert.equal(editorJs.includes("/api/reindex"), true);
 assert.equal(editorJs.includes("/api/verify"), true);
 assert.equal(editorJs.includes("formatEntryPreview"), true);
@@ -458,6 +510,9 @@ assert.equal(editorJs.includes("Do not rebuild the 1000+ item list on selection"
 assert.equal(editorJs.includes("updateEntryScrollbar"), true);
 assert.equal(editorJs.includes("insert-before-button"), true);
 assert.equal(editorJs.includes("insert-after-button"), true);
+assert.equal(editorJs.includes("delete-item-button"), true);
+assert.equal(editorJs.includes("move-up-button"), true);
+assert.equal(editorJs.includes("move-down-button"), true);
 assert.equal(editorJs.includes("entryList.addEventListener(\"scroll\""), true);
 assert.equal(editorJs.includes("Native scrollbars can disappear under OS overlay settings"), true);
 const setSelectedBody = editorJs.match(/function setSelected\(item\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
@@ -482,6 +537,7 @@ assert.match(editorCss, /\.entry-folder\s*\{[\s\S]*?flex-shrink:\s*0;/);
 assert.equal(editorCss.includes("Do not use CSS grid for the folder list"), true);
 assert.equal(editorCss.includes(".entry-value"), true);
 assert.equal(editorCss.includes(".insert-pane"), true);
+assert.equal(editorCss.includes(".item-action-pane"), true);
 assert.equal(editorCss.includes(".entry-folder"), true);
 assert.equal(editorCss.includes(".folder-summary"), true);
 assert.equal(editorUiVerify.includes("sendInputEvent"), true);

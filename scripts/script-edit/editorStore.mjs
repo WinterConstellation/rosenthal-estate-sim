@@ -35,6 +35,25 @@ function assertSourceIsFresh(source, entry) {
   }
 }
 
+function assertSourceRange(source, range, label, entry) {
+  if (
+    !range
+    || !Number.isInteger(range.start)
+    || !Number.isInteger(range.end)
+    || range.start < 0
+    || range.end <= range.start
+    || range.end > source.length
+  ) {
+    throw new Error(`Invalid ${label} range for ${entry.id}`);
+  }
+}
+
+function assertEditableArrayItem(entry) {
+  if (!["object-array-item", "string-array-item"].includes(entry.item?.type)) {
+    throw new Error(`Editable item does not support item actions: ${entry.id}`);
+  }
+}
+
 function writeBackupRecord(projectRoot, entry, sourceBefore, replacement) {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const backupRelativePath = `.script-edit/backups/${stamp}-${entry.id.replace(/[^A-Za-z0-9_.-]+/g, "_")}.json`;
@@ -134,6 +153,88 @@ export async function applyScriptInsert(projectRoot, edit) {
     changedFile: sourceFile,
     backupFile,
     direction,
+    reindexed: true,
+  };
+}
+
+export async function applyScriptDelete(projectRoot, edit) {
+  const entry = getEditableItem(projectRoot, edit.id);
+  const config = loadScriptEditConfig(projectRoot);
+  const sourceFile = normalizeProjectPath(projectRoot, entry.sourceFile);
+  assertScriptEditPathAllowed(config, sourceFile);
+  assertEditableArrayItem(entry);
+
+  const source = readUtf8Lf(projectRoot, sourceFile);
+  assertSourceIsFresh(source, entry);
+  assertSourceRange(source, entry.item.range, "item", entry);
+
+  const backupFile = writeBackupRecord(projectRoot, entry, source, "[delete item]");
+  writeUtf8Lf(projectRoot, sourceFile, `${source.slice(0, entry.item.range.start)}${source.slice(entry.item.range.end)}`);
+  await writeScriptEditIndex(projectRoot);
+
+  return {
+    id: entry.id,
+    changedFile: sourceFile,
+    backupFile,
+    reindexed: true,
+  };
+}
+
+export async function applyScriptMove(projectRoot, edit) {
+  const entry = getEditableItem(projectRoot, edit.id);
+  const config = loadScriptEditConfig(projectRoot);
+  const sourceFile = normalizeProjectPath(projectRoot, entry.sourceFile);
+  assertScriptEditPathAllowed(config, sourceFile);
+  assertEditableArrayItem(entry);
+  if (!["up", "down"].includes(edit.direction)) {
+    throw new Error(`Unsupported move direction for ${entry.id}`);
+  }
+
+  const source = readUtf8Lf(projectRoot, sourceFile);
+  assertSourceIsFresh(source, entry);
+  const current = entry.item.range;
+  const sibling = edit.direction === "up" ? entry.item.previous : entry.item.next;
+  if (!sibling) {
+    throw new Error(`Editable item cannot move ${edit.direction}: ${entry.id}`);
+  }
+  assertSourceRange(source, current, "item", entry);
+  assertSourceRange(source, sibling, `${edit.direction} sibling`, entry);
+
+  // Swap whole item chunks so commas and indentation stay attached to their rows.
+  let nextSource;
+  if (edit.direction === "up") {
+    if (!(sibling.start < sibling.end && sibling.end <= current.start)) {
+      throw new Error(`Invalid move-up ranges for ${entry.id}`);
+    }
+    nextSource = [
+      source.slice(0, sibling.start),
+      source.slice(current.start, current.end),
+      source.slice(sibling.end, current.start),
+      source.slice(sibling.start, sibling.end),
+      source.slice(current.end),
+    ].join("");
+  } else {
+    if (!(current.start < current.end && current.end <= sibling.start)) {
+      throw new Error(`Invalid move-down ranges for ${entry.id}`);
+    }
+    nextSource = [
+      source.slice(0, current.start),
+      source.slice(sibling.start, sibling.end),
+      source.slice(current.end, sibling.start),
+      source.slice(current.start, current.end),
+      source.slice(sibling.end),
+    ].join("");
+  }
+
+  const backupFile = writeBackupRecord(projectRoot, entry, source, `[move ${edit.direction}]`);
+  writeUtf8Lf(projectRoot, sourceFile, nextSource);
+  await writeScriptEditIndex(projectRoot);
+
+  return {
+    id: entry.id,
+    changedFile: sourceFile,
+    backupFile,
+    direction: edit.direction,
     reindexed: true,
   };
 }

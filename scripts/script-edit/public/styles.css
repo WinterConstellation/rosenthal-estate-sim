@@ -321,6 +321,7 @@ button:disabled {
   font-family: "Gowun Batang", "Noto Sans KR", serif;
 }
 
+.item-action-pane,
 .insert-pane {
   flex-shrink: 0;
   display: grid;
@@ -333,6 +334,21 @@ button:disabled {
 
 .insert-pane[hidden] {
   display: none;
+}
+
+.item-action-pane[hidden] {
+  display: none;
+}
+
+.item-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.danger-button {
+  border-color: #8c4f55;
+  background: #322026;
 }
 
 .insert-pane label {
