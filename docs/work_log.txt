@@ -376,3 +376,9 @@
 - 구조: `src/data/systemContent.js`는 기존 import 호환용 aggregate wrapper로 남기고, 실제 저장 대상은 `src/data/system/metaContent.js`, `roleContent.js`, `markUnlockContent.js`, `affinityMarkContent.js`, `standaloneMarkContent.js`, `hiddenRuleContent.js`가 된다. 수정 인덱스 allowlist는 `src/data/system/*.js`를 허용한다.
 - 수정 파일: `.script-edit/config.json`, `.understand-anything/*`, `src/data/system/*`, `src/data/systemContent.js`, `src/rules/README.md`, `scripts/script-edit/indexGenerator.mjs`, `scripts/script-edit/pathPolicy.mjs`, `scripts/verify-game.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`
+
+2026-06-21 19:02 KST
+- 작업: 로컬 스크립트 편집 에디터에 선택한 대사/문단 항목 기준 앞/뒤 삽입 기능을 추가했다.
+- 구조: 편집 인덱스가 object-array 대사턴과 string-array 대사/문단 항목에 삽입 위치 메타를 붙이고, `/api/insert`가 allowlist/source hash 검사를 거쳐 새 배열 원소를 저장한 뒤 재색인한다.
+- 수정 파일: `.understand-anything/*`, `scripts/script-edit/editorStore.mjs`, `scripts/script-edit/indexGenerator.mjs`, `scripts/script-edit/server.mjs`, `scripts/script-edit/public/*`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`

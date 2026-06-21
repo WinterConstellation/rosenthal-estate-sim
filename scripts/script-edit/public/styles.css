@@ -321,6 +321,50 @@ button:disabled {
   font-family: "Gowun Batang", "Noto Sans KR", serif;
 }
 
+.insert-pane {
+  flex-shrink: 0;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #2f3a43;
+  border-radius: 8px;
+  background: #14181e;
+}
+
+.insert-pane[hidden] {
+  display: none;
+}
+
+.insert-pane label {
+  display: grid;
+  gap: 4px;
+  color: #c7d0d4;
+  font-size: 0.82rem;
+}
+
+#insert-speaker,
+#insert-text {
+  width: 100%;
+  border: 1px solid #38444d;
+  border-radius: 6px;
+  background: #0d0f13;
+  color: #f3ead9;
+  padding: 8px 10px;
+}
+
+#insert-text {
+  min-height: 82px;
+  resize: vertical;
+  line-height: 1.6;
+  font-family: "Gowun Batang", "Noto Sans KR", serif;
+}
+
+.insert-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 #context-output {
   flex: 1;
   min-height: 0;

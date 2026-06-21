@@ -53,6 +53,26 @@ function writeBackupRecord(projectRoot, entry, sourceBefore, replacement) {
   return backupRelativePath;
 }
 
+function formatInsertedObject(insert, fields = {}) {
+  const speaker = fields.speaker == null || fields.speaker === ""
+    ? (insert.defaults?.speaker ?? "narration")
+    : fields.speaker;
+  const text = fields.text == null ? "" : fields.text;
+  const itemIndent = insert.itemIndent ?? "  ";
+  const propertyIndent = insert.propertyIndent ?? `${itemIndent}  `;
+  return [
+    `${itemIndent}{`,
+    `${propertyIndent}speaker: ${encodeReplacement(speaker)},`,
+    `${propertyIndent}text: ${encodeReplacement(text)},`,
+    `${itemIndent}}`,
+  ].join("\n");
+}
+
+function formatInsertedString(insert, fields = {}) {
+  const text = fields.text == null ? "" : fields.text;
+  return `${insert.itemIndent ?? ""}${encodeReplacement(text)}`;
+}
+
 export async function applyScriptEdit(projectRoot, edit) {
   const entry = getEditableItem(projectRoot, edit.id);
   const config = loadScriptEditConfig(projectRoot);
@@ -78,6 +98,42 @@ export async function applyScriptEdit(projectRoot, edit) {
     id: entry.id,
     changedFile: sourceFile,
     backupFile,
+    reindexed: true,
+  };
+}
+
+export async function applyScriptInsert(projectRoot, edit) {
+  const entry = getEditableItem(projectRoot, edit.id);
+  const config = loadScriptEditConfig(projectRoot);
+  const sourceFile = normalizeProjectPath(projectRoot, entry.sourceFile);
+  assertScriptEditPathAllowed(config, sourceFile);
+  if (!["object-array-item", "string-array-item"].includes(entry.insert?.type)) {
+    throw new Error(`Editable item does not support insertion: ${entry.id}`);
+  }
+
+  const source = readUtf8Lf(projectRoot, sourceFile);
+  assertSourceIsFresh(source, entry);
+  const direction = edit.direction === "before" ? "before" : "after";
+  const position = entry.insert[direction];
+  if (!Number.isInteger(position) || position < 0 || position > source.length) {
+    throw new Error(`Invalid insert position for ${entry.id}`);
+  }
+
+  const insertedObject = entry.insert.type === "string-array-item"
+    ? formatInsertedString(entry.insert, edit.fields)
+    : formatInsertedObject(entry.insert, edit.fields);
+  const insertion = direction === "before"
+    ? `${insertedObject},\n`
+    : `,\n${insertedObject}`;
+  const backupFile = writeBackupRecord(projectRoot, entry, source, insertion);
+  writeUtf8Lf(projectRoot, sourceFile, `${source.slice(0, position)}${insertion}${source.slice(position)}`);
+  await writeScriptEditIndex(projectRoot);
+
+  return {
+    id: entry.id,
+    changedFile: sourceFile,
+    backupFile,
+    direction,
     reindexed: true,
   };
 }

@@ -338,6 +338,7 @@ Acceptance:
 - 수정 에디터 정적 파일은 브라우저가 이전 `styles.css`/`app.js`를 물고 있지 않도록 asset query와 `cache-control: no-store`를 사용한다.
 - 수정 에디터 스크롤 레일의 실제 클릭/드래그 동작은 `npm.cmd run script-edit:verify-ui`로 Electron Chromium 입력 검증을 돌린다.
 - 저장은 allowlist, source hash, source-span locator 검사를 통과해야 한다.
+- 대사/문단 항목 45개는 선택 항목 기준 `앞에 추가`/`뒤에 추가`로 새 대사턴 또는 문자열 줄을 삽입할 수 있다.
 - `.script-edit/index.json`과 backups는 생성물로 Git에 올리지 않는다.
 - Windows에서 편집 서버의 Verify 버튼이 `spawn EINVAL`로 실패하던 문제를 수정했다.
 - 검증 명령은 문자열 split + 직접 spawn 대신 shell 경유 실행으로 처리한다.
@@ -357,6 +358,7 @@ Acceptance:
 - 편집 인덱스는 `tutorial:prologue:text:*`, `tutorial:night-entry:*`를 만들지 않고 `rosenthal:prologue:*`, `rosenthal:night-opening:*`만 본문 수정 대상으로 만든다.
 - 각 편집 항목에는 `folderPath`를 넣고, 로컬 편집 UI 왼쪽 목록은 파일 폴더 아래 섹션 폴더로 다시 접는다.
 - 항목 선택, 저장, 재색인 뒤에는 왼쪽 목록 스크롤 위치를 유지한다.
+- 대사턴 삽입도 저장 뒤 재색인하고 왼쪽 목록 스크롤 위치를 유지한다.
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run verify`, `npm.cmd run build`, `npm.cmd run understand:graph`
 
 ## 임시 기록: Understand Anything 시각화 그래프 로컬 작업 푸시

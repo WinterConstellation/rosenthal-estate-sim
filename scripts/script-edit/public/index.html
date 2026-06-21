@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Script Edit Index</title>
-    <link rel="stylesheet" href="/styles.css?v=folder-scroll" />
+    <link rel="stylesheet" href="/styles.css?v=insert-turns" />
   </head>
   <body>
     <main id="script-edit-root" class="editor-shell">
@@ -40,12 +40,27 @@
           <button id="discard-button" type="button" disabled>Discard</button>
           <button id="save-button" type="button" disabled>Save</button>
         </div>
+        <section id="insert-pane" class="insert-pane" hidden>
+          <strong>대사 추가</strong>
+          <label id="insert-speaker-field">
+            Speaker
+            <input id="insert-speaker" type="text" />
+          </label>
+          <label>
+            Text
+            <textarea id="insert-text" spellcheck="false"></textarea>
+          </label>
+          <div class="insert-actions">
+            <button id="insert-before-button" type="button">앞에 추가</button>
+            <button id="insert-after-button" type="button">뒤에 추가</button>
+          </div>
+        </section>
       </section>
       <aside class="context-pane">
         <strong>Context</strong>
         <pre id="context-output"></pre>
       </aside>
     </main>
-    <script type="module" src="/app.js?v=folder-scroll"></script>
+    <script type="module" src="/app.js?v=insert-turns"></script>
   </body>
 </html>

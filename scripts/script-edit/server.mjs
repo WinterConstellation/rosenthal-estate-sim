@@ -5,7 +5,7 @@ import { extname, join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { loadScriptEditConfig } from "./pathPolicy.mjs";
-import { applyScriptEdit, getEditableItem, loadScriptEditIndex } from "./editorStore.mjs";
+import { applyScriptEdit, applyScriptInsert, getEditableItem, loadScriptEditIndex } from "./editorStore.mjs";
 import { writeScriptEditIndex } from "./indexGenerator.mjs";
 
 const DEFAULT_HOST = "127.0.0.1";
@@ -107,6 +107,11 @@ export function createScriptEditServer({
       if (req.method === "POST" && url.pathname === "/api/item") {
         const body = await readJsonBody(req);
         sendJson(res, 200, await applyScriptEdit(projectRoot, body));
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/api/insert") {
+        const body = await readJsonBody(req);
+        sendJson(res, 200, await applyScriptInsert(projectRoot, body));
         return;
       }
       if (req.method === "POST" && url.pathname === "/api/reindex") {

@@ -17,6 +17,12 @@ const valueEditor = document.querySelector("#value-editor");
 const contextOutput = document.querySelector("#context-output");
 const saveButton = document.querySelector("#save-button");
 const discardButton = document.querySelector("#discard-button");
+const insertPane = document.querySelector("#insert-pane");
+const insertSpeakerField = document.querySelector("#insert-speaker-field");
+const insertSpeaker = document.querySelector("#insert-speaker");
+const insertText = document.querySelector("#insert-text");
+const insertBeforeButton = document.querySelector("#insert-before-button");
+const insertAfterButton = document.querySelector("#insert-after-button");
 const reindexButton = document.querySelector("#reindex-button");
 const verifyButton = document.querySelector("#verify-button");
 const entryCount = document.querySelector("#entry-count");
@@ -36,6 +42,24 @@ async function api(path, options = {}) {
 
 function showContext(value) {
   contextOutput.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+}
+
+function setInsertControls(item) {
+  const canInsert = item.insert?.type === "object-array-item";
+  insertPane.hidden = !canInsert;
+  insertSpeaker.disabled = !canInsert;
+  insertText.disabled = !canInsert;
+  insertBeforeButton.disabled = !canInsert;
+  insertAfterButton.disabled = !canInsert;
+  const hasSpeaker = Boolean(item.insert?.fields?.some((field) => field.name === "speaker"));
+  insertSpeakerField.hidden = !hasSpeaker;
+  if (!canInsert) {
+    insertSpeaker.value = "";
+    insertText.value = "";
+    return;
+  }
+  insertSpeaker.value = hasSpeaker ? (item.insert.defaults?.speaker || "narration") : "";
+  insertText.value = "";
 }
 
 function formatEntryPreview(entry) {
@@ -181,6 +205,7 @@ function setSelected(item) {
   valueEditor.value = String(item.value ?? "");
   saveButton.disabled = false;
   discardButton.disabled = false;
+  setInsertControls(item);
   showContext(item);
   // Do not rebuild the 1000+ item list on selection; replacing nodes resets the user's scroll position.
   updateActiveEntry();
@@ -310,6 +335,49 @@ saveButton.addEventListener("click", async () => {
   } catch (error) {
     showContext(error.message);
   }
+});
+
+async function insertDialogueTurn(direction) {
+  if (!state.selected?.insert) return;
+  try {
+    const selectedId = state.selected.id;
+    const selectedSourceFile = state.selected.sourceFile;
+    const insertedText = insertText.value;
+    const scrollTop = entryList.scrollTop;
+    const result = await api("/api/insert", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: selectedId,
+        direction,
+        fields: {
+          speaker: insertSpeaker.value,
+          text: insertedText,
+        },
+      }),
+    });
+    await refreshIndex({ preserveScroll: true, scrollTop });
+    const inserted = state.entries.find((entry) => (
+      entry.sourceFile === selectedSourceFile
+      && entry.field === "text"
+      && entry.value === insertedText
+    ));
+    const nextSelectedId = inserted?.id ?? selectedId;
+    setSelected(await api(`/api/item?id=${encodeURIComponent(nextSelectedId)}`));
+    entryList.scrollTop = scrollTop;
+    queueEntryScrollbarUpdate();
+    showContext(result);
+  } catch (error) {
+    showContext(error.message);
+  }
+}
+
+insertBeforeButton.addEventListener("click", () => {
+  void insertDialogueTurn("before");
+});
+
+insertAfterButton.addEventListener("click", () => {
+  void insertDialogueTurn("after");
 });
 
 discardButton.addEventListener("click", () => {

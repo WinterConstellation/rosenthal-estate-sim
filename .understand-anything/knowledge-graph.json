@@ -16,8 +16,8 @@
       "Understand Anything"
     ],
     "description": "A local estate simulation with manifest-driven script packs and a graph-linked safe editing index.",
-    "analyzedAt": "2026-06-21T09:50:23.927Z",
-    "gitCommitHash": "9bd89c0606b12c8acb71d0015eb0a684a8f5fcb0"
+    "analyzedAt": "2026-06-21T10:02:18.613Z",
+    "gitCommitHash": "b68f018a2893fc3c8a52ce6273f07426e791cae6"
   },
   "nodes": [
     {
@@ -787,7 +787,7 @@
       "filePath": "scripts/script-edit/editorStore.mjs",
       "lineRange": [
         1,
-        84
+        140
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -804,7 +804,7 @@
       "filePath": "scripts/script-edit/indexGenerator.mjs",
       "lineRange": [
         1,
-        1273
+        1323
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -838,7 +838,7 @@
       "filePath": "scripts/script-edit/public/app.js",
       "lineRange": [
         1,
-        381
+        449
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -855,7 +855,7 @@
       "filePath": "scripts/script-edit/public/index.html",
       "lineRange": [
         1,
-        52
+        67
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -872,7 +872,7 @@
       "filePath": "scripts/script-edit/public/styles.css",
       "lineRange": [
         1,
-        363
+        407
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -889,7 +889,7 @@
       "filePath": "scripts/script-edit/server.mjs",
       "lineRange": [
         1,
-        200
+        205
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -991,7 +991,7 @@
       "filePath": "scripts/verify-script-edit.mjs",
       "lineRange": [
         1,
-        443
+        486
       ],
       "summary": "Project file included in the Understand Anything graph.",
       "tags": [
@@ -1075,7 +1075,7 @@
       "filePath": "docs/work_log.txt",
       "lineRange": [
         1,
-        373
+        379
       ],
       "summary": "Project documentation and handoff context.",
       "tags": [

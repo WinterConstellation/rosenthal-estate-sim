@@ -482,7 +482,7 @@ function folderPathFromLabel(label) {
   return parts.length > 1 ? parts.slice(0, -1) : [];
 }
 
-function makeEntry({ id, kind, label, sourceFile, source, start, end, value, valueType, field, verify }) {
+function makeEntry({ id, kind, label, sourceFile, source, start, end, value, valueType, field, verify, insert }) {
   return {
     id,
     kind,
@@ -496,10 +496,11 @@ function makeEntry({ id, kind, label, sourceFile, source, start, end, value, val
     valueType,
     value,
     verify,
+    ...(insert ? { insert } : {}),
   };
 }
 
-function pushLiteralEntry(entries, { id, kind, label, sourceFile, source, literal, field, valueType, verify }) {
+function pushLiteralEntry(entries, { id, kind, label, sourceFile, source, literal, field, valueType, verify, insert }) {
   entries.push(makeEntry({
     id,
     kind,
@@ -512,7 +513,48 @@ function pushLiteralEntry(entries, { id, kind, label, sourceFile, source, litera
     valueType: valueType ?? literal.valueType ?? getValueType(literal.value),
     field,
     verify,
+    insert,
   }));
+}
+
+function getLineStart(source, index) {
+  const previousNewline = source.lastIndexOf("\n", Math.max(0, index - 1));
+  return previousNewline < 0 ? 0 : previousNewline + 1;
+}
+
+function getLineIndent(source, index) {
+  const lineStart = getLineStart(source, index);
+  return /^\s*/.exec(source.slice(lineStart, index))?.[0] ?? "";
+}
+
+function makeObjectArrayInsert(source, objectRange, defaults = {}) {
+  const itemIndent = getLineIndent(source, objectRange.start);
+  return {
+    type: "object-array-item",
+    before: getLineStart(source, objectRange.start),
+    after: objectRange.end,
+    itemIndent,
+    propertyIndent: `${itemIndent}  `,
+    fields: [
+      { name: "speaker", type: "singleLineText" },
+      { name: "text", type: "multilineText" },
+    ],
+    defaults,
+  };
+}
+
+function makeStringArrayInsert(source, literal) {
+  const itemIndent = getLineIndent(source, literal.start);
+  return {
+    type: "string-array-item",
+    before: getLineStart(source, literal.start),
+    after: literal.end,
+    itemIndent,
+    fields: [
+      { name: "text", type: "multilineText" },
+    ],
+    defaults: {},
+  };
 }
 
 function findFirstObjectAfter(source, marker) {
@@ -605,6 +647,7 @@ function buildSpecialEventEntries(projectRoot, config) {
 
 function addStringArrayEntries(entries, { sourceFile, source, range, idPrefix, labelPrefix, kind = "dialogue", field = "text", verify }) {
   collectStringLiteralsInArray(source, range).forEach((literal, index) => {
+    const insert = kind === "dialogue" ? makeStringArrayInsert(source, literal) : null;
     pushLiteralEntry(entries, {
       id: `${idPrefix}:line-${index + 1}`,
       kind,
@@ -615,11 +658,12 @@ function addStringArrayEntries(entries, { sourceFile, source, range, idPrefix, l
       field,
       valueType: kind === "dialogue" ? "multilineText" : "singleLineText",
       verify,
+      insert,
     });
   });
 }
 
-function addObjectTextFields(entries, { sourceFile, source, objectRange, idPrefix, labelPrefix, fields, verify }) {
+function addObjectTextFields(entries, { sourceFile, source, objectRange, idPrefix, labelPrefix, fields, verify, insert }) {
   const properties = collectObjectLiteralProperties(source, objectRange);
   for (const field of fields) {
     const property = properties.find((candidate) => candidate.field === field && typeof candidate.value === "string");
@@ -634,6 +678,7 @@ function addObjectTextFields(entries, { sourceFile, source, objectRange, idPrefi
       field,
       valueType: fieldKind(field) === "dialogue" ? "multilineText" : "singleLineText",
       verify,
+      insert: field === "text" ? insert : null,
     });
   }
 }
@@ -668,6 +713,10 @@ function addObjectArrayEntries(entries, { sourceFile, source, exportName, idPref
   const range = findExportConstInitializer(source, exportName);
   collectTopLevelObjectRangesInArray(source, range).forEach((objectRange, index) => {
     const itemId = sanitizeIdPart(getFirstLiteralProperty(source, objectRange, "id")?.value, `${index + 1}`);
+    const speaker = getFirstLiteralProperty(source, objectRange, "speaker")?.value;
+    const insert = textFields.includes("text") && typeof speaker === "string"
+      ? makeObjectArrayInsert(source, objectRange, { speaker })
+      : null;
     const itemPrefix = `${idPrefix}:${itemId}`;
     const itemLabel = `${labelPrefix} / ${itemId}`;
     addObjectTextFields(entries, {
@@ -678,6 +727,7 @@ function addObjectArrayEntries(entries, { sourceFile, source, exportName, idPref
       labelPrefix: itemLabel,
       fields: textFields,
       verify,
+      insert,
     });
     if (includeNumbers) {
       addObjectNumericFields(entries, {
