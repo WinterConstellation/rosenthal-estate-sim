@@ -25,13 +25,20 @@ const ROSENTHAL_EDIT_SOURCE_FILES = [
   "src/data/rosenthal/finaleContent.js",
   "src/data/rosenthal/introContent.js",
 ];
+const TUTORIAL_EDIT_SOURCE_FILES = [
+  "src/data/tutorial/introContent.js",
+  "src/data/tutorial/dayActionContent.js",
+  "src/data/tutorial/nightChoiceContent.js",
+  "src/data/tutorial/endingContent.js",
+];
 
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/scriptPacks/*.js"), true);
-assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/tutorialContent.js"), true);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/rosenthal/*.js"), true);
+assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/tutorial/*.js"), true);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/systemContent.js"), true);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/rosenthalContent.js"), false);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/rosenthalScriptContent.js"), false);
+assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/tutorialContent.js"), false);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/rules/systemRules.js"), false);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/rules/tutorialRules.js"), false);
 assert.equal(normalizeProjectPath(repoRoot, "src/data/scriptManifest.js"), "src/data/scriptManifest.js");
@@ -43,7 +50,10 @@ assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/rosen
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/rosenthal/introContent.js"), true);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/rosenthalContent.js"), false);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/rosenthalScriptContent.js"), false);
-assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/tutorialContent.js"), true);
+for (const sourceFile of TUTORIAL_EDIT_SOURCE_FILES) {
+  assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, sourceFile), true);
+}
+assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/tutorialContent.js"), false);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/systemContent.js"), true);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/App.jsx"), false);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/engine/scriptLoader.js"), false);
@@ -115,9 +125,16 @@ assert.equal(index.entries.find((entry) => entry.id === "rosenthal:finale:stair-
 assert.equal(index.entries.some((entry) => entry.id.startsWith("rosenthal:") && entry.sourceFile === "src/data/rosenthalScriptContent.js"), false);
 const tutorialWeight = index.entries.find((entry) => entry.id === "tutorial:day-action:documents:weight");
 assert.equal(tutorialWeight.kind, "number");
-assert.equal(tutorialWeight.sourceFile, "src/data/tutorialContent.js");
+assert.equal(tutorialWeight.sourceFile, "src/data/tutorial/dayActionContent.js");
 assert.equal(tutorialWeight.valueType, "number");
 assert.equal(tutorialWeight.value, 8);
+assert.equal(index.entries.find((entry) => entry.id === "tutorial:day-opening:1:text").sourceFile, "src/data/tutorial/introContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "tutorial:day-interlude:1:paragraph:line-1").sourceFile, "src/data/tutorial/introContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "tutorial:night-choice:knight:result").sourceFile, "src/data/tutorial/nightChoiceContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "tutorial:ending:peacefulLord:title").sourceFile, "src/data/tutorial/endingContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "tutorial:worker-name-choice:remember-worker:title").sourceFile, "src/data/tutorial/endingContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "tutorial:forfeit:day").sourceFile, "src/data/tutorial/endingContent.js");
+assert.equal(index.entries.some((entry) => entry.id.startsWith("tutorial:") && entry.sourceFile === "src/data/tutorialContent.js"), false);
 const ruleThreshold = index.entries.find((entry) => entry.id === "rules:mark-branch-unlock:purification-hint:condition:stigma");
 assert.equal(ruleThreshold.sourceFile, "src/data/systemContent.js");
 assert.equal(ruleThreshold.valueType, "number");
@@ -146,6 +163,7 @@ const tempEditRoot = mkdtempSync(join(tmpdir(), "script-edit-save-"));
 try {
   mkdirSync(join(tempEditRoot, "src", "data", "scriptPacks"), { recursive: true });
   mkdirSync(join(tempEditRoot, "src", "data", "rosenthal"), { recursive: true });
+  mkdirSync(join(tempEditRoot, "src", "data", "tutorial"), { recursive: true });
   mkdirSync(join(tempEditRoot, "src", "data"), { recursive: true });
   mkdirSync(join(tempEditRoot, "src", "rules"), { recursive: true });
   mkdirSync(join(tempEditRoot, ".script-edit"), { recursive: true });
@@ -154,7 +172,9 @@ try {
   for (const sourceFile of ROSENTHAL_EDIT_SOURCE_FILES) {
     copyFileSync(join(repoRoot, ...sourceFile.split("/")), join(tempEditRoot, ...sourceFile.split("/")));
   }
-  copyFileSync(join(repoRoot, "src", "data", "tutorialContent.js"), join(tempEditRoot, "src", "data", "tutorialContent.js"));
+  for (const sourceFile of TUTORIAL_EDIT_SOURCE_FILES) {
+    copyFileSync(join(repoRoot, ...sourceFile.split("/")), join(tempEditRoot, ...sourceFile.split("/")));
+  }
   copyFileSync(join(repoRoot, "src", "data", "systemContent.js"), join(tempEditRoot, "src", "data", "systemContent.js"));
   writeFileSync(join(tempEditRoot, ".script-edit", "config.json"), JSON.stringify(DEFAULT_SCRIPT_EDIT_CONFIG, null, 2), "utf8");
   await writeScriptEditIndex(tempEditRoot);
@@ -192,6 +212,7 @@ const serverTestRoot = mkdtempSync(join(tmpdir(), "script-edit-server-"));
 try {
   mkdirSync(join(serverTestRoot, "src", "data", "scriptPacks"), { recursive: true });
   mkdirSync(join(serverTestRoot, "src", "data", "rosenthal"), { recursive: true });
+  mkdirSync(join(serverTestRoot, "src", "data", "tutorial"), { recursive: true });
   mkdirSync(join(serverTestRoot, "src", "data"), { recursive: true });
   mkdirSync(join(serverTestRoot, "src", "rules"), { recursive: true });
   mkdirSync(join(serverTestRoot, ".script-edit"), { recursive: true });
@@ -200,7 +221,9 @@ try {
   for (const sourceFile of ROSENTHAL_EDIT_SOURCE_FILES) {
     copyFileSync(join(repoRoot, ...sourceFile.split("/")), join(serverTestRoot, ...sourceFile.split("/")));
   }
-  copyFileSync(join(repoRoot, "src", "data", "tutorialContent.js"), join(serverTestRoot, "src", "data", "tutorialContent.js"));
+  for (const sourceFile of TUTORIAL_EDIT_SOURCE_FILES) {
+    copyFileSync(join(repoRoot, ...sourceFile.split("/")), join(serverTestRoot, ...sourceFile.split("/")));
+  }
   copyFileSync(join(repoRoot, "src", "data", "systemContent.js"), join(serverTestRoot, "src", "data", "systemContent.js"));
   writeFileSync(join(serverTestRoot, ".script-edit", "config.json"), JSON.stringify({
     ...DEFAULT_SCRIPT_EDIT_CONFIG,
@@ -250,6 +273,10 @@ const rosenthalExplorationContentSource = readFileSync(join(repoRoot, "src", "da
 const rosenthalFinaleContentSource = readFileSync(join(repoRoot, "src", "data", "rosenthal", "finaleContent.js"), "utf8");
 const rosenthalIntroContentSource = readFileSync(join(repoRoot, "src", "data", "rosenthal", "introContent.js"), "utf8");
 const tutorialContentSource = readFileSync(join(repoRoot, "src", "data", "tutorialContent.js"), "utf8");
+const tutorialIntroContentSource = readFileSync(join(repoRoot, "src", "data", "tutorial", "introContent.js"), "utf8");
+const tutorialDayActionContentSource = readFileSync(join(repoRoot, "src", "data", "tutorial", "dayActionContent.js"), "utf8");
+const tutorialNightChoiceContentSource = readFileSync(join(repoRoot, "src", "data", "tutorial", "nightChoiceContent.js"), "utf8");
+const tutorialEndingContentSource = readFileSync(join(repoRoot, "src", "data", "tutorial", "endingContent.js"), "utf8");
 const systemContentSource = readFileSync(join(repoRoot, "src", "data", "systemContent.js"), "utf8");
 const systemRulesSource = readFileSync(join(repoRoot, "src", "rules", "systemRules.js"), "utf8");
 assert.equal(existsSync(join(repoRoot, "src", "rules", "tutorialRules.js")), false);
@@ -266,10 +293,25 @@ assert.equal(rosenthalScriptContentSource.includes("export const DAY_ACTIONS"), 
 assert.equal(rosenthalScriptContentSource.includes("export const PROLOGUE"), false);
 assert.equal(rosenthalContentSource.includes("./rosenthalScriptContent.js"), true);
 assert.equal(rosenthalContentSource.includes("export const DAY_ACTIONS = ["), false);
-assert.equal(tutorialContentSource.includes("PROLOGUE as ROSENTHAL_PROLOGUE"), true);
-assert.equal(tutorialContentSource.includes("NIGHT_OPENING as ROSENTHAL_NIGHT_OPENING"), true);
-assert.equal(tutorialContentSource.includes("text: ROSENTHAL_PROLOGUE"), true);
-assert.equal(tutorialContentSource.includes("text: ROSENTHAL_NIGHT_OPENING[0]"), true);
+assert.equal(tutorialContentSource.includes("./tutorial/introContent.js"), true);
+assert.equal(tutorialContentSource.includes("./tutorial/dayActionContent.js"), true);
+assert.equal(tutorialContentSource.includes("./tutorial/nightChoiceContent.js"), true);
+assert.equal(tutorialContentSource.includes("./tutorial/endingContent.js"), true);
+assert.equal(tutorialContentSource.includes("export const DAY_ACTIONS"), false);
+assert.equal(tutorialContentSource.includes("export const NIGHT_CHOICES"), false);
+assert.equal(tutorialIntroContentSource.includes("PROLOGUE as ROSENTHAL_PROLOGUE"), true);
+assert.equal(tutorialIntroContentSource.includes("NIGHT_OPENING as ROSENTHAL_NIGHT_OPENING"), true);
+assert.equal(tutorialIntroContentSource.includes("text: ROSENTHAL_PROLOGUE"), true);
+assert.equal(tutorialIntroContentSource.includes("text: ROSENTHAL_NIGHT_OPENING[0]"), true);
+assert.equal(tutorialIntroContentSource.includes("export const PROLOGUE"), true);
+assert.equal(tutorialIntroContentSource.includes("export const DAY_OPENING_SCRIPT"), true);
+assert.equal(tutorialIntroContentSource.includes("export const DAY_INTERLUDES"), true);
+assert.equal(tutorialIntroContentSource.includes("export const NIGHT_ENTRY_SCRIPT"), true);
+assert.equal(tutorialDayActionContentSource.includes("export const DAY_ACTIONS"), true);
+assert.equal(tutorialNightChoiceContentSource.includes("export const NIGHT_CHOICES"), true);
+assert.equal(tutorialEndingContentSource.includes("export const ENDINGS"), true);
+assert.equal(tutorialEndingContentSource.includes("export const WORKER_NAME_CHOICES"), true);
+assert.equal(tutorialEndingContentSource.includes("export const FORFEIT_RESULTS"), true);
 assert.equal(systemContentSource.includes("export const RESOURCE_META"), true);
 assert.equal(systemContentSource.includes("export const AFFINITY_MARK_GROUPS"), true);
 assert.equal(systemContentSource.includes("export const HIDDEN_RUN_RULES"), true);

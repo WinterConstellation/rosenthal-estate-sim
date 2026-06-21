@@ -17,7 +17,10 @@ const ROSENTHAL_CHARACTER_CONTENT_FILE = "src/data/rosenthal/characterContent.js
 const ROSENTHAL_EXPLORATION_CONTENT_FILE = "src/data/rosenthal/explorationContent.js";
 const ROSENTHAL_FINALE_CONTENT_FILE = "src/data/rosenthal/finaleContent.js";
 const ROSENTHAL_INTRO_CONTENT_FILE = "src/data/rosenthal/introContent.js";
-const TUTORIAL_CONTENT_FILE = "src/data/tutorialContent.js";
+const TUTORIAL_INTRO_CONTENT_FILE = "src/data/tutorial/introContent.js";
+const TUTORIAL_DAY_ACTION_CONTENT_FILE = "src/data/tutorial/dayActionContent.js";
+const TUTORIAL_NIGHT_CHOICE_CONTENT_FILE = "src/data/tutorial/nightChoiceContent.js";
+const TUTORIAL_ENDING_CONTENT_FILE = "src/data/tutorial/endingContent.js";
 const SYSTEM_CONTENT_FILE = "src/data/systemContent.js";
 const SPECIAL_EVENT_PACK_ID = "special-event-groups";
 
@@ -873,8 +876,8 @@ function buildRosenthalContentEntries(projectRoot, config) {
 }
 
 function buildTutorialContentEntries(projectRoot, config) {
-  const sourceFile = normalizeProjectPath(projectRoot, TUTORIAL_CONTENT_FILE);
-  const source = readUtf8Lf(projectRoot, sourceFile);
+  let sourceFile = normalizeProjectPath(projectRoot, TUTORIAL_INTRO_CONTENT_FILE);
+  let source = readUtf8Lf(projectRoot, sourceFile);
   const entries = [];
 
   const prologueRange = findExportConstInitializer(source, "PROLOGUE");
@@ -938,6 +941,9 @@ function buildTutorialContentEntries(projectRoot, config) {
     }
   });
 
+  sourceFile = normalizeProjectPath(projectRoot, TUTORIAL_ENDING_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
+
   const endingsRange = findExportConstInitializer(source, "ENDINGS");
   for (const ending of collectTopLevelObjectValues(source, endingsRange)) {
     const prefix = `tutorial:ending:${sanitizeIdPart(ending.key, "ending")}`;
@@ -968,6 +974,10 @@ function buildTutorialContentEntries(projectRoot, config) {
     property.field === "weight"
     || ["affinities", "traits", "stats", "resources", "estate", "requires"].includes(property.path[0])
   );
+
+  sourceFile = normalizeProjectPath(projectRoot, TUTORIAL_DAY_ACTION_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
+
   addObjectArrayEntries(entries, {
     sourceFile,
     source,
@@ -978,6 +988,10 @@ function buildTutorialContentEntries(projectRoot, config) {
     includeNumbers: includeTutorialNumber,
     verify: config.verify,
   });
+
+  sourceFile = normalizeProjectPath(projectRoot, TUTORIAL_NIGHT_CHOICE_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
+
   addObjectArrayEntries(entries, {
     sourceFile,
     source,
@@ -988,6 +1002,10 @@ function buildTutorialContentEntries(projectRoot, config) {
     includeNumbers: includeTutorialNumber,
     verify: config.verify,
   });
+
+  sourceFile = normalizeProjectPath(projectRoot, TUTORIAL_ENDING_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
+
   addObjectArrayEntries(entries, {
     sourceFile,
     source,

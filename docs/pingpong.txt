@@ -325,11 +325,11 @@ Acceptance:
 
 - Understand Anything은 코드베이스 시각화 전용으로 유지한다.
 - `.script-edit/config.json`은 편집 허용/잠금 경로를 정의한다.
-- `scripts/script-edit/indexGenerator.mjs`가 `scriptManifest.js`, `specialEventGroups.js`, `rosenthal/*.js`, `tutorialContent.js`, `systemContent.js` 기준 편집 인덱스를 생성한다.
+- `scripts/script-edit/indexGenerator.mjs`가 `scriptManifest.js`, `specialEventGroups.js`, `rosenthal/*.js`, `tutorial/*.js`, `systemContent.js` 기준 편집 인덱스를 생성한다.
 - `scripts/script-edit/server.mjs`는 `127.0.0.1` token URL로 편집 UI와 API를 제공한다.
 - 실행 명령은 `npm.cmd run script-edit:index`, `npm.cmd run script-edit`이다.
 - 현재 인덱스는 특수 사건 본문, manifest 필드, 로젠탈 본문/선택지, 튜토리얼 대사/결과/가중치/효과 수치, 표식/패시브/숨은 규칙 텍스트와 일부 조건 수치를 대상으로 한다.
-- 현재 생성 인덱스는 1022개 항목이며 `.understand-anything/knowledge-graph.json`은 1076 nodes / 1088 edges로 재생성했다.
+- 현재 생성 인덱스는 1022개 항목이며 `.understand-anything/knowledge-graph.json`은 1080 nodes / 1089 edges로 재생성했다.
 - 수정 에디터 목록은 실제 `value` 미리보기를 보여주고 검색 대상에도 포함한다.
 - 수정 에디터 왼쪽 목록은 파일/종류 필터와 패널 내부 스크롤을 사용한다.
 - 수정 에디터 왼쪽 목록은 source file 기준 접이식 폴더로 묶고, 항목 선택 시 목록 전체를 다시 렌더링하지 않아 스크롤 튐을 막는다.
@@ -342,13 +342,14 @@ Acceptance:
 - Windows에서 편집 서버의 Verify 버튼이 `spawn EINVAL`로 실패하던 문제를 수정했다.
 - 검증 명령은 문자열 split + 직접 spawn 대신 shell 경유 실행으로 처리한다.
 - `scripts/verify-script-edit.mjs`는 `/api/verify` 경로를 실제 호출해 회귀를 잡는다.
-- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run build`, `npm.cmd run understand:graph`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`
 
 ## 임시 기록: 스크립트 편집 인덱스 소유권/폴더 구조 정리
 
 - Rosenthal 수정 원본은 `src/data/rosenthal/dayContent.js`, `characterContent.js`, `explorationContent.js`, `finaleContent.js`, `introContent.js`로 나눈다.
 - 프롤로그와 밤 진입 본문 수정 원본은 `src/data/rosenthal/introContent.js` 하나로 둔다.
-- `src/data/tutorialContent.js`는 프롤로그 tag/title, 화자 매핑, 화면용 튜토리얼 데이터, 구형 진행용 낮/밤 선택지 데이터를 가진다.
+- `src/data/tutorial/*.js`는 프롤로그 tag/title, 화자 매핑, 화면용 튜토리얼 데이터, 구형 진행용 낮/밤 선택지 데이터의 수정 원본을 나눠 가진다.
+- `src/data/tutorialContent.js`는 기존 런타임 import를 유지하는 aggregate wrapper로만 남긴다.
 - `src/rules/tutorialRules.js`는 제거했고, `App.jsx`와 `legacyProgressionEngine.js`는 `src/data/tutorialContent.js`를 직접 import한다.
 - `src/data/systemContent.js`는 규칙/표식/패시브/숨은 규칙의 수정 가능한 텍스트와 수치 원본을 가진다.
 - `src/rules/systemRules.js`는 `systemContent.js` 데이터를 re-export하고, `MARKS` 생성과 표식 조회/조건 판정 함수만 가진다.
