@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Script Edit Index</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=scroll-rail" />
   </head>
   <body>
     <main id="script-edit-root" class="editor-shell">
@@ -19,7 +19,12 @@
           <select id="kind-filter" aria-label="Filter by kind"></select>
           <select id="file-filter" aria-label="Filter by file"></select>
         </div>
-        <div id="entry-list" class="entry-list"></div>
+        <div class="entry-list-shell">
+          <div id="entry-list" class="entry-list"></div>
+          <div id="entry-scrollbar" class="entry-scrollbar" aria-hidden="true">
+            <div id="entry-scrollbar-thumb" class="entry-scrollbar-thumb"></div>
+          </div>
+        </div>
       </aside>
       <section class="edit-pane">
         <header class="edit-head">
@@ -41,6 +46,6 @@
         <pre id="context-output"></pre>
       </aside>
     </main>
-    <script type="module" src="/app.js"></script>
+    <script type="module" src="/app.js?v=scroll-rail"></script>
   </body>
 </html>

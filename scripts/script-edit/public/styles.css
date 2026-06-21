@@ -121,6 +121,14 @@ button:disabled {
   border-radius: 6px;
 }
 
+.entry-list-shell {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16px;
+  gap: 8px;
+}
+
 .entry-list {
   flex: 1;
   min-height: 0;
@@ -133,7 +141,41 @@ button:disabled {
   display: grid;
   align-content: start;
   gap: 8px;
-  padding-right: 2px;
+  padding-right: 0;
+}
+
+.entry-scrollbar {
+  --entry-scroll-thumb-height: 36px;
+  --entry-scroll-thumb-top: 0px;
+  align-self: stretch;
+  min-height: 0;
+  position: relative;
+  border: 1px solid #485662;
+  border-radius: 999px;
+  background: #0b0f13;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.entry-scrollbar-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  height: var(--entry-scroll-thumb-height);
+  border-radius: 999px;
+  background: #c6b16a;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+  transform: translateY(var(--entry-scroll-thumb-top));
+}
+
+.entry-scrollbar.is-disabled .entry-scrollbar-thumb {
+  opacity: 0.45;
+}
+
+.entry-scrollbar.is-dragging .entry-scrollbar-thumb {
+  background: #dfc873;
 }
 
 .entry-list::-webkit-scrollbar {
@@ -299,7 +341,11 @@ button:disabled {
     border-bottom: 1px solid #2c3238;
   }
 
-  .entry-list {
+  .entry-list-shell {
     max-height: 46vh;
+  }
+
+  .entry-list {
+    max-height: none;
   }
 }

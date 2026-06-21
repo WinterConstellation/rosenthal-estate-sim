@@ -316,3 +316,9 @@
 - 구조: `.entry-list`를 `overflow-y: scroll`로 고정하고 stable scrollbar gutter와 명시적 WebKit 스크롤바 스타일을 추가했다.
 - 수정 파일: `.understand-anything/*`, `scripts/script-edit/public/styles.css`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run build`, Edge headless screenshot
+
+2026-06-21 16:52 KST
+- 작업: OS/브라우저 설정에 따라 왼쪽 목록 네이티브 스크롤바가 계속 숨을 수 있는 문제를 다시 수정했다.
+- 구조: 목록 옆에 항상 보이는 `entry-scrollbar` 레일과 드래그 가능한 thumb를 추가하고, 정적 파일 캐시 때문에 이전 CSS/JS가 보이는 문제를 막기 위해 asset query와 `cache-control: no-store`를 추가했다.
+- 수정 파일: `scripts/script-edit/server.mjs`, `scripts/script-edit/public/index.html`, `scripts/script-edit/public/styles.css`, `scripts/script-edit/public/app.js`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run build`

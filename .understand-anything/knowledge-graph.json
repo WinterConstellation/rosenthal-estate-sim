@@ -16,8 +16,8 @@
       "Understand Anything"
     ],
     "description": "A local estate simulation with manifest-driven script packs and a graph-linked safe editing index.",
-    "analyzedAt": "2026-06-21T07:45:31.954Z",
-    "gitCommitHash": "15aec7141aba49073ca4ff8bb3222c7247f362f6"
+    "analyzedAt": "2026-06-21T07:54:54.592Z",
+    "gitCommitHash": "47bfe95ed10629a063fb1a6a5273618a91f6fe17"
   },
   "nodes": [
     {
@@ -548,7 +548,7 @@
       "filePath": "scripts/script-edit/public/app.js",
       "lineRange": [
         1,
-        248
+        323
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -565,7 +565,7 @@
       "filePath": "scripts/script-edit/public/index.html",
       "lineRange": [
         1,
-        47
+        52
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -582,7 +582,7 @@
       "filePath": "scripts/script-edit/public/styles.css",
       "lineRange": [
         1,
-        306
+        352
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -599,7 +599,7 @@
       "filePath": "scripts/script-edit/server.mjs",
       "lineRange": [
         1,
-        199
+        200
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -684,7 +684,7 @@
       "filePath": "scripts/verify-script-edit.mjs",
       "lineRange": [
         1,
-        225
+        239
       ],
       "summary": "Project file included in the Understand Anything graph.",
       "tags": [
@@ -718,7 +718,7 @@
       "filePath": "docs/pingpong.txt",
       "lineRange": [
         1,
-        371
+        372
       ],
       "summary": "Project documentation and handoff context.",
       "tags": [
@@ -768,7 +768,7 @@
       "filePath": "docs/work_log.txt",
       "lineRange": [
         1,
-        319
+        325
       ],
       "summary": "Project documentation and handoff context.",
       "tags": [

@@ -143,6 +143,7 @@ export function createScriptEditServer({
     }
     res.statusCode = 200;
     res.setHeader("content-type", contentTypeFor(filePath));
+    res.setHeader("cache-control", "no-store");
     createReadStream(filePath).pipe(res);
   }
 

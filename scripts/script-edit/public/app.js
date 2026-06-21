@@ -7,6 +7,8 @@ const state = {
 };
 
 const entryList = document.querySelector("#entry-list");
+const entryScrollbar = document.querySelector("#entry-scrollbar");
+const entryScrollbarThumb = document.querySelector("#entry-scrollbar-thumb");
 const searchInput = document.querySelector("#search-input");
 const selectedKind = document.querySelector("#selected-kind");
 const selectedLabel = document.querySelector("#selected-label");
@@ -20,6 +22,8 @@ const verifyButton = document.querySelector("#verify-button");
 const entryCount = document.querySelector("#entry-count");
 const kindFilter = document.querySelector("#kind-filter");
 const fileFilter = document.querySelector("#file-filter");
+const MIN_SCROLL_THUMB_HEIGHT = 34;
+let entryScrollDrag = null;
 
 async function api(path, options = {}) {
   const url = new URL(path, window.location.origin);
@@ -85,6 +89,43 @@ function updateActiveEntry() {
   selectedButton.classList.add("is-active");
   const folder = selectedButton.closest(".entry-folder");
   if (folder instanceof HTMLDetailsElement) folder.open = true;
+}
+
+function getEntryScrollbarMetrics() {
+  const trackPadding = 2;
+  const scrollHeight = entryList.scrollHeight;
+  const clientHeight = entryList.clientHeight;
+  const trackHeight = Math.max(0, entryScrollbar.clientHeight - trackPadding * 2);
+  const maxScroll = Math.max(0, scrollHeight - clientHeight);
+  const proportionalThumb = scrollHeight > 0 ? Math.round((clientHeight / scrollHeight) * trackHeight) : trackHeight;
+  const thumbHeight = maxScroll > 0 ? Math.max(MIN_SCROLL_THUMB_HEIGHT, proportionalThumb) : trackHeight;
+  const maxThumbTop = Math.max(0, trackHeight - thumbHeight);
+  return { trackPadding, maxScroll, thumbHeight, maxThumbTop };
+}
+
+// Native scrollbars can disappear under OS overlay settings, so this rail stays visible beside the list.
+function updateEntryScrollbar() {
+  const metrics = getEntryScrollbarMetrics();
+  const canScroll = metrics.maxScroll > 1;
+  const thumbTop = canScroll && metrics.maxThumbTop > 0
+    ? Math.round((entryList.scrollTop / metrics.maxScroll) * metrics.maxThumbTop)
+    : 0;
+  entryScrollbar.classList.toggle("is-disabled", !canScroll);
+  entryScrollbar.style.setProperty("--entry-scroll-thumb-height", `${Math.max(0, metrics.thumbHeight)}px`);
+  entryScrollbar.style.setProperty("--entry-scroll-thumb-top", `${thumbTop}px`);
+}
+
+function queueEntryScrollbarUpdate() {
+  window.requestAnimationFrame(updateEntryScrollbar);
+}
+
+function setEntryScrollFromRailPointer(clientY, thumbOffset) {
+  const metrics = getEntryScrollbarMetrics();
+  if (metrics.maxScroll <= 0 || metrics.maxThumbTop <= 0) return;
+  const railRect = entryScrollbar.getBoundingClientRect();
+  const rawThumbTop = clientY - railRect.top - metrics.trackPadding - thumbOffset;
+  const thumbTop = Math.max(0, Math.min(metrics.maxThumbTop, rawThumbTop));
+  entryList.scrollTop = (thumbTop / metrics.maxThumbTop) * metrics.maxScroll;
 }
 
 function setSelected(item) {
@@ -158,6 +199,7 @@ function createFolder({ sourceFile, entries }) {
       state.closedFolders.add(sourceFile);
       state.openFolders.delete(sourceFile);
     }
+    queueEntryScrollbarUpdate();
   });
 
   const summary = document.createElement("summary");
@@ -185,6 +227,7 @@ function renderEntries({ preserveScroll = true } = {}) {
   entryList.replaceChildren(...groupEntriesByFile(entries).map(createFolder));
   entryList.scrollTop = scrollTop;
   updateActiveEntry();
+  queueEntryScrollbarUpdate();
 }
 
 async function loadIndex() {
@@ -235,6 +278,38 @@ verifyButton.addEventListener("click", async () => {
     showContext(error.message);
   }
 });
+
+entryList.addEventListener("scroll", updateEntryScrollbar);
+entryScrollbar.addEventListener("pointerdown", (event) => {
+  const metrics = getEntryScrollbarMetrics();
+  if (metrics.maxScroll <= 0) return;
+  const thumbRect = entryScrollbarThumb.getBoundingClientRect();
+  const clickedThumb = event.target === entryScrollbarThumb;
+  entryScrollDrag = {
+    pointerId: event.pointerId,
+    thumbOffset: clickedThumb ? event.clientY - thumbRect.top : metrics.thumbHeight / 2,
+  };
+  entryScrollbar.setPointerCapture(event.pointerId);
+  entryScrollbar.classList.add("is-dragging");
+  setEntryScrollFromRailPointer(event.clientY, entryScrollDrag.thumbOffset);
+});
+entryScrollbar.addEventListener("pointermove", (event) => {
+  if (!entryScrollDrag || entryScrollDrag.pointerId !== event.pointerId) return;
+  setEntryScrollFromRailPointer(event.clientY, entryScrollDrag.thumbOffset);
+});
+entryScrollbar.addEventListener("pointerup", (event) => {
+  if (!entryScrollDrag || entryScrollDrag.pointerId !== event.pointerId) return;
+  entryScrollDrag = null;
+  entryScrollbar.classList.remove("is-dragging");
+});
+entryScrollbar.addEventListener("pointercancel", () => {
+  entryScrollDrag = null;
+  entryScrollbar.classList.remove("is-dragging");
+});
+window.addEventListener("resize", queueEntryScrollbarUpdate);
+if ("ResizeObserver" in window) {
+  new ResizeObserver(queueEntryScrollbarUpdate).observe(entryList);
+}
 
 searchInput.addEventListener("input", () => renderEntries({ preserveScroll: false }));
 kindFilter.addEventListener("change", () => renderEntries({ preserveScroll: false }));
