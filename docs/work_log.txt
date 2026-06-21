@@ -400,3 +400,9 @@
 - 구조: 그래프의 `scriptEdit` 메타에 `editorUrl`을 추가하고, 스크립트 편집 UI가 `?id=` 파라미터를 읽어 해당 항목을 자동 선택하게 했다. 편집 서버 기본 토큰은 그래프 기본 토큰인 `understand-edit`로 맞췄다.
 - 수정 파일: `.understand-anything/*`, `scripts/understand-anything/generate-knowledge-graph.mjs`, `scripts/script-edit/server.mjs`, `scripts/script-edit/public/app.js`, `scripts/verify-script-edit.mjs`, `scripts/verify-script-edit-ui.cjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`
+
+2026-06-22 00:00 KST
+- 작업: 튜토리얼 밤 진입 대사턴의 speaker 매핑을 로컬 스크립트 편집 인덱스에 노출했다.
+- 구조: `NIGHT_ENTRY_SCRIPT`의 본문은 Rosenthal 원문 참조로 유지해 중복 편집을 막고, 튜토리얼 파일이 소유한 `tutorial:night-entry:*:speaker` 3개만 편집 항목으로 추가했다.
+- 수정 파일: `.understand-anything/*`, `scripts/script-edit/indexGenerator.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`

@@ -992,9 +992,9 @@ function buildTutorialContentEntries(projectRoot, config) {
     verify: config.verify,
   });
 
-  // PROLOGUE.text and NIGHT_ENTRY_SCRIPT are runtime wrappers around
-  // rosenthal/introContent.js text. Emit editable text entries from that file
-  // only so one script line never appears as two separate edit targets.
+  // PROLOGUE.text and NIGHT_ENTRY_SCRIPT text are runtime wrappers around
+  // rosenthal/introContent.js text. Keep body text single-owned there, while
+  // exposing tutorial-owned speaker mapping literals from this file.
 
   addObjectArrayEntries(entries, {
     sourceFile,
@@ -1003,6 +1003,15 @@ function buildTutorialContentEntries(projectRoot, config) {
     idPrefix: "tutorial:day-opening",
     labelPrefix: "Tutorial Day Opening",
     textFields: ["speaker", "text"],
+    verify: config.verify,
+  });
+  addObjectArrayEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "NIGHT_ENTRY_SCRIPT",
+    idPrefix: "tutorial:night-entry",
+    labelPrefix: "Tutorial Night Entry",
+    textFields: ["speaker"],
     verify: config.verify,
   });
   addStringArrayEntries(entries, {

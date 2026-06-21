@@ -16,8 +16,8 @@
       "Understand Anything"
     ],
     "description": "A local estate simulation with manifest-driven script packs and a graph-linked safe editing index.",
-    "analyzedAt": "2026-06-21T12:53:20.965Z",
-    "gitCommitHash": "ef884d3cbe772d141f90b3a9226e6d89586a0f28"
+    "analyzedAt": "2026-06-21T15:01:23.672Z",
+    "gitCommitHash": "40decb75f9a36f59d2fde25c343140ad3aefbe29"
   },
   "nodes": [
     {
@@ -804,7 +804,7 @@
       "filePath": "scripts/script-edit/indexGenerator.mjs",
       "lineRange": [
         1,
-        1369
+        1378
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -991,7 +991,7 @@
       "filePath": "scripts/verify-script-edit.mjs",
       "lineRange": [
         1,
-        558
+        567
       ],
       "summary": "Project file included in the Understand Anything graph.",
       "tags": [
@@ -1025,7 +1025,7 @@
       "filePath": "docs/pingpong.txt",
       "lineRange": [
         1,
-        396
+        397
       ],
       "summary": "Project documentation and handoff context.",
       "tags": [
@@ -1075,7 +1075,7 @@
       "filePath": "docs/work_log.txt",
       "lineRange": [
         1,
-        403
+        409
       ],
       "summary": "Project documentation and handoff context.",
       "tags": [
@@ -12898,6 +12898,99 @@
         "apiBase": "http://127.0.0.1:3799",
         "token": "understand-edit",
         "editorUrl": "http://127.0.0.1:3799/?token=understand-edit&id=tutorial%3Aday-opening%3A2%3Atext"
+      }
+    },
+    {
+      "id": "concept:script-edit:tutorial:night-entry:1:speaker",
+      "type": "concept",
+      "name": "Tutorial Night Entry / 1 / speaker",
+      "filePath": "src/data/tutorial/introContent.js",
+      "lineRange": [
+        83,
+        83
+      ],
+      "summary": "Editable speaker item from src/data/tutorial/introContent.js. This node is linked to the local script edit API and writes back to the original source span. Field type: singleLineText.",
+      "tags": [
+        "editable",
+        "speaker",
+        "speaker",
+        "script-edit-index"
+      ],
+      "complexity": "simple",
+      "languageNotes": "그래프에서 이 노드를 선택하면 수정용 인덱스 ID로 원본 파일의 정확한 위치를 편집할 수 있습니다.",
+      "scriptEdit": {
+        "id": "tutorial:night-entry:1:speaker",
+        "kind": "speaker",
+        "field": "speaker",
+        "folderPath": [
+          "Tutorial Night Entry",
+          "1"
+        ],
+        "apiBase": "http://127.0.0.1:3799",
+        "token": "understand-edit",
+        "editorUrl": "http://127.0.0.1:3799/?token=understand-edit&id=tutorial%3Anight-entry%3A1%3Aspeaker"
+      }
+    },
+    {
+      "id": "concept:script-edit:tutorial:night-entry:2:speaker",
+      "type": "concept",
+      "name": "Tutorial Night Entry / 2 / speaker",
+      "filePath": "src/data/tutorial/introContent.js",
+      "lineRange": [
+        84,
+        84
+      ],
+      "summary": "Editable speaker item from src/data/tutorial/introContent.js. This node is linked to the local script edit API and writes back to the original source span. Field type: singleLineText.",
+      "tags": [
+        "editable",
+        "speaker",
+        "speaker",
+        "script-edit-index"
+      ],
+      "complexity": "simple",
+      "languageNotes": "그래프에서 이 노드를 선택하면 수정용 인덱스 ID로 원본 파일의 정확한 위치를 편집할 수 있습니다.",
+      "scriptEdit": {
+        "id": "tutorial:night-entry:2:speaker",
+        "kind": "speaker",
+        "field": "speaker",
+        "folderPath": [
+          "Tutorial Night Entry",
+          "2"
+        ],
+        "apiBase": "http://127.0.0.1:3799",
+        "token": "understand-edit",
+        "editorUrl": "http://127.0.0.1:3799/?token=understand-edit&id=tutorial%3Anight-entry%3A2%3Aspeaker"
+      }
+    },
+    {
+      "id": "concept:script-edit:tutorial:night-entry:3:speaker",
+      "type": "concept",
+      "name": "Tutorial Night Entry / 3 / speaker",
+      "filePath": "src/data/tutorial/introContent.js",
+      "lineRange": [
+        85,
+        85
+      ],
+      "summary": "Editable speaker item from src/data/tutorial/introContent.js. This node is linked to the local script edit API and writes back to the original source span. Field type: singleLineText.",
+      "tags": [
+        "editable",
+        "speaker",
+        "speaker",
+        "script-edit-index"
+      ],
+      "complexity": "simple",
+      "languageNotes": "그래프에서 이 노드를 선택하면 수정용 인덱스 ID로 원본 파일의 정확한 위치를 편집할 수 있습니다.",
+      "scriptEdit": {
+        "id": "tutorial:night-entry:3:speaker",
+        "kind": "speaker",
+        "field": "speaker",
+        "folderPath": [
+          "Tutorial Night Entry",
+          "3"
+        ],
+        "apiBase": "http://127.0.0.1:3799",
+        "token": "understand-edit",
+        "editorUrl": "http://127.0.0.1:3799/?token=understand-edit&id=tutorial%3Anight-entry%3A3%3Aspeaker"
       }
     },
     {
@@ -36795,6 +36888,30 @@
     },
     {
       "source": "file:src/data/tutorial/introContent.js",
+      "target": "concept:script-edit:tutorial:night-entry:1:speaker",
+      "type": "contains",
+      "direction": "forward",
+      "description": "src/data/tutorial/introContent.js contains editable item tutorial:night-entry:1:speaker",
+      "weight": 1
+    },
+    {
+      "source": "file:src/data/tutorial/introContent.js",
+      "target": "concept:script-edit:tutorial:night-entry:2:speaker",
+      "type": "contains",
+      "direction": "forward",
+      "description": "src/data/tutorial/introContent.js contains editable item tutorial:night-entry:2:speaker",
+      "weight": 1
+    },
+    {
+      "source": "file:src/data/tutorial/introContent.js",
+      "target": "concept:script-edit:tutorial:night-entry:3:speaker",
+      "type": "contains",
+      "direction": "forward",
+      "description": "src/data/tutorial/introContent.js contains editable item tutorial:night-entry:3:speaker",
+      "weight": 1
+    },
+    {
+      "source": "file:src/data/tutorial/introContent.js",
       "target": "concept:script-edit:tutorial:day-period:line-1",
       "type": "contains",
       "direction": "forward",
@@ -42431,6 +42548,9 @@
         "concept:script-edit:tutorial:day-opening:1:text",
         "concept:script-edit:tutorial:day-opening:2:speaker",
         "concept:script-edit:tutorial:day-opening:2:text",
+        "concept:script-edit:tutorial:night-entry:1:speaker",
+        "concept:script-edit:tutorial:night-entry:2:speaker",
+        "concept:script-edit:tutorial:night-entry:3:speaker",
         "concept:script-edit:tutorial:day-period:line-1",
         "concept:script-edit:tutorial:day-period:line-2",
         "concept:script-edit:tutorial:day-period:line-3",

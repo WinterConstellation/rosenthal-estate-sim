@@ -329,7 +329,7 @@ Acceptance:
 - `scripts/script-edit/server.mjs`는 `127.0.0.1` token URL로 편집 UI와 API를 제공한다.
 - 실행 명령은 `npm.cmd run script-edit:index`, `npm.cmd run script-edit`이다.
 - 현재 인덱스는 특수 사건 본문, manifest 필드, 로젠탈 본문/선택지, 튜토리얼 대사/결과/가중치/효과 수치, 표식/패시브/숨은 규칙 텍스트와 일부 조건 수치를 대상으로 한다.
-- 현재 생성 인덱스는 1024개 항목이며 `.understand-anything/knowledge-graph.json`은 1088 nodes / 1092 edges로 재생성했다.
+- 현재 생성 인덱스는 1027개 항목이며 `.understand-anything/knowledge-graph.json`은 1091 nodes / 1095 edges로 재생성했다.
 - 수정 에디터 목록은 실제 `value` 미리보기를 보여주고 검색 대상에도 포함한다.
 - 수정 에디터 왼쪽 목록은 파일/종류 필터와 패널 내부 스크롤을 사용한다.
 - 수정 에디터 왼쪽 목록은 source file 기준 접이식 폴더로 묶고, 항목 선택 시 목록 전체를 다시 렌더링하지 않아 스크롤 튐을 막는다.
@@ -340,6 +340,7 @@ Acceptance:
 - 저장은 allowlist, source hash, source-span locator 검사를 통과해야 한다.
 - 대사/문단 항목 45개는 선택 항목 기준 `앞에 추가`/`뒤에 추가`로 새 대사턴 또는 문자열 줄을 삽입할 수 있다.
 - 튜토리얼 낮 진입 대사턴은 `text`뿐 아니라 `speaker`도 별도 편집 항목으로 노출한다.
+- 튜토리얼 밤 진입 대사턴은 Rosenthal 본문 참조를 중복 편집 대상으로 만들지 않고, 튜토리얼 파일이 소유한 `speaker` 매핑 3개만 별도 편집 항목으로 노출한다.
 - 편집 인덱스는 대사턴/문단 줄에 `item` 범위와 이전/다음 항목 범위를 붙여 선택 항목 단위 삭제와 위/아래 이동을 지원한다.
 - `/api/delete`와 `/api/move`는 저장과 같은 allowlist, source hash, backup, 재색인 경로를 사용한다.
 - 로컬 편집 UI에는 `항목 정리` 영역이 있으며, 가능한 항목에서 `위로`, `아래로`, `삭제`를 실행할 수 있다.
