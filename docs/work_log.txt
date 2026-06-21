@@ -322,3 +322,9 @@
 - 구조: 목록 옆에 항상 보이는 `entry-scrollbar` 레일과 드래그 가능한 thumb를 추가하고, 정적 파일 캐시 때문에 이전 CSS/JS가 보이는 문제를 막기 위해 asset query와 `cache-control: no-store`를 추가했다.
 - 수정 파일: `scripts/script-edit/server.mjs`, `scripts/script-edit/public/index.html`, `scripts/script-edit/public/styles.css`, `scripts/script-edit/public/app.js`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-21 17:01 KST
+- 작업: 수정 에디터 왼쪽의 새 스크롤 레일이 실제 목록을 움직이지 않던 문제를 수정했다.
+- 구조: `.entry-list`의 CSS grid가 열린 폴더 높이를 부모 높이에 맞춰 눌러 `scrollHeight`를 없애던 원인이어서, 목록을 세로 flex로 바꾸고 `.entry-folder`를 `flex-shrink: 0`으로 고정했다. 실제 레일 클릭/드래그 검증용 Electron 스크립트도 추가했다.
+- 수정 파일: `package.json`, `scripts/verify-script-edit-ui.cjs`, `scripts/script-edit/public/styles.css`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run verify`, `npm.cmd run build`

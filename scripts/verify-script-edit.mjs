@@ -196,6 +196,8 @@ assert.equal(graphJson.layers.some((layer) => layer.id === "layer:editable-index
 const editorHtml = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "index.html"), "utf8");
 const editorJs = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "app.js"), "utf8");
 const editorCss = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "styles.css"), "utf8");
+const editorUiVerify = readFileSync(join(repoRoot, "scripts", "verify-script-edit-ui.cjs"), "utf8");
+assert.equal(packageJson.scripts["script-edit:verify-ui"], "electron scripts/verify-script-edit-ui.cjs");
 assert.equal(editorHtml.includes("script-edit-root"), true);
 assert.equal(editorHtml.includes("/styles.css?v=scroll-rail"), true);
 assert.equal(editorHtml.includes("/app.js?v=scroll-rail"), true);
@@ -227,12 +229,19 @@ assert.equal(editorCss.includes(".entry-list-shell"), true);
 assert.equal(editorCss.includes(".entry-scrollbar"), true);
 assert.equal(editorCss.includes(".entry-scrollbar-thumb"), true);
 assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?flex:\s*1;[\s\S]*?min-height:\s*0;/);
+assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?display:\s*flex;/);
+assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?flex-direction:\s*column;/);
 assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?overflow-y:\s*scroll;/);
 assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?scrollbar-gutter:\s*stable;/);
 assert.equal(editorCss.includes(".entry-list::-webkit-scrollbar"), true);
 assert.equal(editorCss.includes("Keep the left pane scrollbar visible"), true);
+assert.match(editorCss, /\.entry-folder\s*\{[\s\S]*?flex-shrink:\s*0;/);
+assert.equal(editorCss.includes("Do not use CSS grid for the folder list"), true);
 assert.equal(editorCss.includes(".entry-value"), true);
 assert.equal(editorCss.includes(".entry-folder"), true);
 assert.equal(editorCss.includes(".folder-summary"), true);
+assert.equal(editorUiVerify.includes("sendInputEvent"), true);
+assert.equal(editorUiVerify.includes("Rail click did not move entry list scrollTop"), true);
+assert.equal(editorUiVerify.includes("Rail drag did not move entry list scrollTop farther"), true);
 
 console.log("Script edit verification passed.");

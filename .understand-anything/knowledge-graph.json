@@ -16,8 +16,8 @@
       "Understand Anything"
     ],
     "description": "A local estate simulation with manifest-driven script packs and a graph-linked safe editing index.",
-    "analyzedAt": "2026-06-21T07:54:54.592Z",
-    "gitCommitHash": "47bfe95ed10629a063fb1a6a5273618a91f6fe17"
+    "analyzedAt": "2026-06-21T08:04:55.700Z",
+    "gitCommitHash": "31cd85ca1eb07558990ef894de590b12381187fc"
   },
   "nodes": [
     {
@@ -43,7 +43,7 @@
       "filePath": "package.json",
       "lineRange": [
         1,
-        49
+        50
       ],
       "summary": "Project file included in the Understand Anything graph.",
       "tags": [
@@ -582,7 +582,7 @@
       "filePath": "scripts/script-edit/public/styles.css",
       "lineRange": [
         1,
-        352
+        354
       ],
       "summary": "Local editing support for mapping graph-visible script items back to exact source spans.",
       "tags": [
@@ -678,13 +678,30 @@
       "languageNotes": "Manifest/index + loader + body-data split is the key structure for safe script editing."
     },
     {
+      "id": "file:scripts/verify-script-edit-ui.cjs",
+      "type": "file",
+      "name": "verify-script-edit-ui.cjs",
+      "filePath": "scripts/verify-script-edit-ui.cjs",
+      "lineRange": [
+        1,
+        124
+      ],
+      "summary": "Project file included in the Understand Anything graph.",
+      "tags": [
+        "text",
+        "tooling"
+      ],
+      "complexity": "simple",
+      "languageNotes": "Manifest/index + loader + body-data split is the key structure for safe script editing."
+    },
+    {
       "id": "file:scripts/verify-script-edit.mjs",
       "type": "file",
       "name": "verify-script-edit.mjs",
       "filePath": "scripts/verify-script-edit.mjs",
       "lineRange": [
         1,
-        239
+        248
       ],
       "summary": "Project file included in the Understand Anything graph.",
       "tags": [
@@ -718,7 +735,7 @@
       "filePath": "docs/pingpong.txt",
       "lineRange": [
         1,
-        372
+        374
       ],
       "summary": "Project documentation and handoff context.",
       "tags": [
@@ -768,7 +785,7 @@
       "filePath": "docs/work_log.txt",
       "lineRange": [
         1,
-        325
+        331
       ],
       "summary": "Project documentation and handoff context.",
       "tags": [
@@ -36705,6 +36722,7 @@
         "file:scripts/script-edit/sourceText.mjs",
         "file:scripts/understand-anything/generate-knowledge-graph.mjs",
         "file:scripts/verify-game.mjs",
+        "file:scripts/verify-script-edit-ui.cjs",
         "file:scripts/verify-script-edit.mjs"
       ]
     },

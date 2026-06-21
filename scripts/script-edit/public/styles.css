@@ -138,8 +138,9 @@ button:disabled {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: #7f8d93 #10151b;
-  display: grid;
-  align-content: start;
+  /* Do not use CSS grid for the folder list; compressed grid tracks clip open folders and erase scrollHeight. */
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   padding-right: 0;
 }
@@ -193,6 +194,7 @@ button:disabled {
 }
 
 .entry-folder {
+  flex-shrink: 0;
   min-width: 0;
   border: 1px solid #2c3741;
   border-radius: 7px;

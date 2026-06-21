@@ -14,6 +14,7 @@
     "preview": "vite preview",
     "verify": "node scripts/verify-game.mjs",
     "script-edit:index": "node scripts/script-edit/indexGenerator.mjs --write",
+    "script-edit:verify-ui": "electron scripts/verify-script-edit-ui.cjs",
     "script-edit": "node scripts/script-edit/server.mjs",
     "understand:graph": "npm run script-edit:index && node scripts/understand-anything/generate-knowledge-graph.mjs",
     "app": "npm run build && electron .",

@@ -1,0 +1,123 @@
+const { app, BrowserWindow } = require("electron");
+const { join } = require("node:path");
+const { pathToFileURL } = require("node:url");
+
+const projectRoot = process.cwd();
+const token = "script-edit-ui-test";
+
+function moduleUrl(relativePath) {
+  return pathToFileURL(join(projectRoot, relativePath)).href;
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForScrollableList(win) {
+  await win.webContents.executeJavaScript(`
+    new Promise((resolve, reject) => {
+      const startedAt = Date.now();
+      const tick = () => {
+        const list = document.querySelector("#entry-list");
+        const rail = document.querySelector("#entry-scrollbar");
+        const buttons = document.querySelectorAll(".entry-button").length;
+        if (list && rail && buttons > 0 && list.scrollHeight > list.clientHeight) {
+          resolve(true);
+          return;
+        }
+        if (Date.now() - startedAt > 5000) {
+          reject(new Error("Timed out waiting for a scrollable script edit list"));
+          return;
+        }
+        setTimeout(tick, 50);
+      };
+      tick();
+    })
+  `);
+}
+
+async function readScrollState(win) {
+  return win.webContents.executeJavaScript(`
+    (() => {
+      const list = document.querySelector("#entry-list");
+      const rail = document.querySelector("#entry-scrollbar");
+      const thumb = document.querySelector("#entry-scrollbar-thumb");
+      const railRect = rail.getBoundingClientRect();
+      const thumbRect = thumb.getBoundingClientRect();
+      return {
+        scrollTop: list.scrollTop,
+        maxScroll: list.scrollHeight - list.clientHeight,
+        listClientHeight: list.clientHeight,
+        listScrollHeight: list.scrollHeight,
+        rail: { x: railRect.x, y: railRect.y, width: railRect.width, height: railRect.height },
+        thumb: { x: thumbRect.x, y: thumbRect.y, width: thumbRect.width, height: thumbRect.height },
+      };
+    })()
+  `);
+}
+
+async function main() {
+  const [{ writeScriptEditIndex }, { createScriptEditServer }] = await Promise.all([
+    import(moduleUrl("scripts/script-edit/indexGenerator.mjs")),
+    import(moduleUrl("scripts/script-edit/server.mjs")),
+  ]);
+  await writeScriptEditIndex(projectRoot);
+  const server = createScriptEditServer({ projectRoot, token, port: 0 });
+  let win;
+  try {
+    const address = await server.start();
+    await app.whenReady();
+    win = new BrowserWindow({
+      width: 1280,
+      height: 800,
+      show: false,
+      webPreferences: { contextIsolation: true },
+    });
+    await win.loadURL(`http://${address.host}:${address.port}/?token=${token}&v=ui-scroll-verify`);
+    await waitForScrollableList(win);
+    await win.webContents.executeJavaScript(`document.querySelector("#entry-list").scrollTop = 0`);
+    await wait(100);
+
+    const before = await readScrollState(win);
+    const clickX = Math.round(before.rail.x + before.rail.width / 2);
+    const clickY = Math.round(before.rail.y + before.rail.height * 0.75);
+    win.webContents.sendInputEvent({ type: "mouseMove", x: clickX, y: clickY });
+    win.webContents.sendInputEvent({ type: "mouseDown", x: clickX, y: clickY, button: "left", clickCount: 1 });
+    win.webContents.sendInputEvent({ type: "mouseUp", x: clickX, y: clickY, button: "left", clickCount: 1 });
+    await wait(150);
+
+    const afterClick = await readScrollState(win);
+    const dragX = Math.round(afterClick.thumb.x + afterClick.thumb.width / 2);
+    const dragStartY = Math.round(afterClick.thumb.y + afterClick.thumb.height / 2);
+    const dragEndY = Math.round(before.rail.y + before.rail.height * 0.9);
+    win.webContents.sendInputEvent({ type: "mouseMove", x: dragX, y: dragStartY });
+    win.webContents.sendInputEvent({ type: "mouseDown", x: dragX, y: dragStartY, button: "left", clickCount: 1 });
+    win.webContents.sendInputEvent({ type: "mouseMove", x: dragX, y: dragEndY });
+    win.webContents.sendInputEvent({ type: "mouseUp", x: dragX, y: dragEndY, button: "left", clickCount: 1 });
+    await wait(150);
+
+    const afterDrag = await readScrollState(win);
+    if (!(afterClick.scrollTop > before.scrollTop)) {
+      throw new Error("Rail click did not move entry list scrollTop");
+    }
+    if (!(afterDrag.scrollTop > afterClick.scrollTop)) {
+      throw new Error("Rail drag did not move entry list scrollTop farther");
+    }
+    console.log(JSON.stringify({
+      before: before.scrollTop,
+      afterClick: afterClick.scrollTop,
+      afterDrag: afterDrag.scrollTop,
+      maxScroll: before.maxScroll,
+    }, null, 2));
+    console.log("Script edit UI verification passed.");
+  } finally {
+    if (win) win.destroy();
+    await server.close();
+    app.quit();
+  }
+}
+
+main().catch((error) => {
+  console.error(error);
+  app.exit(1);
+});
