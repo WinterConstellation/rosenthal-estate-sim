@@ -3,7 +3,7 @@ import {
   PROLOGUE as ROSENTHAL_PROLOGUE,
 } from "./rosenthalContent.js";
 
-// 프롤로그와 밤 진입 본문은 rosenthalContent.js만 수정 원본으로 둔다.
+// 프롤로그와 밤 진입 본문은 rosenthalScriptContent.js만 수정 원본으로 둔다.
 // 이 파일은 화면용 메타데이터와 화자 매핑만 가진다.
 export const PROLOGUE = {
   tag: "프롤로그",

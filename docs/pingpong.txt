@@ -325,7 +325,7 @@ Acceptance:
 
 - Understand Anything은 코드베이스 시각화 전용으로 유지한다.
 - `.script-edit/config.json`은 편집 허용/잠금 경로를 정의한다.
-- `scripts/script-edit/indexGenerator.mjs`가 `scriptManifest.js`, `specialEventGroups.js`, `rosenthalContent.js`, `tutorialContent.js`, `systemContent.js` 기준 편집 인덱스를 생성한다.
+- `scripts/script-edit/indexGenerator.mjs`가 `scriptManifest.js`, `specialEventGroups.js`, `rosenthalScriptContent.js`, `tutorialContent.js`, `systemContent.js` 기준 편집 인덱스를 생성한다.
 - `scripts/script-edit/server.mjs`는 `127.0.0.1` token URL로 편집 UI와 API를 제공한다.
 - 실행 명령은 `npm.cmd run script-edit:index`, `npm.cmd run script-edit`이다.
 - 현재 인덱스는 특수 사건 본문, manifest 필드, 로젠탈 본문/선택지, 튜토리얼 대사/결과/가중치/효과 수치, 표식/패시브/숨은 규칙 텍스트와 일부 조건 수치를 대상으로 한다.
@@ -346,7 +346,7 @@ Acceptance:
 
 ## 임시 기록: 스크립트 편집 인덱스 소유권/폴더 구조 정리
 
-- 프롤로그와 밤 진입 본문 수정 원본은 `src/data/rosenthalContent.js` 하나로 둔다.
+- 프롤로그와 밤 진입 본문 수정 원본은 `src/data/rosenthalScriptContent.js` 하나로 둔다.
 - `src/data/tutorialContent.js`는 프롤로그 tag/title, 화자 매핑, 화면용 튜토리얼 데이터, 구형 진행용 낮/밤 선택지 데이터를 가진다.
 - `src/rules/tutorialRules.js`는 제거했고, `App.jsx`와 `legacyProgressionEngine.js`는 `src/data/tutorialContent.js`를 직접 import한다.
 - `src/data/systemContent.js`는 규칙/표식/패시브/숨은 규칙의 수정 가능한 텍스트와 수치 원본을 가진다.

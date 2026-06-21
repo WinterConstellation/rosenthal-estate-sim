@@ -352,3 +352,9 @@
 - 구조: `systemRules.js`는 `systemContent.js`를 re-export하면서 `MARKS` 생성, 표식 조회, 조건 판정 함수만 맡고, 편집 인덱스 allowlist와 생성기는 `src/data/systemContent.js`만 수정 대상으로 삼는다.
 - 수정 파일: `.script-edit/config.json`, `.understand-anything/*`, `src/data/systemContent.js`, `src/rules/systemRules.js`, `scripts/script-edit/indexGenerator.mjs`, `scripts/script-edit/pathPolicy.mjs`, `scripts/verify-game.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`
+
+2026-06-21 18:13 KST
+- 작업: Rosenthal 대형 스크립트 원본을 실행 wrapper와 편집 가능한 데이터 파일로 분리했다.
+- 구조: `src/data/rosenthalScriptContent.js`가 낮 행동, NPC, 탐사, finale, 프롤로그/밤 진입 본문 수정 원본을 갖고, `src/data/rosenthalContent.js`는 기존 import 호환을 위한 re-export wrapper로 남긴다. 수정 인덱스 allowlist와 생성기는 `rosenthalScriptContent.js`만 저장 대상으로 삼는다.
+- 수정 파일: `.script-edit/config.json`, `.understand-anything/*`, `src/data/rosenthalContent.js`, `src/data/rosenthalScriptContent.js`, `src/data/tutorialContent.js`, `src/rules/README.md`, `scripts/script-edit/indexGenerator.mjs`, `scripts/script-edit/pathPolicy.mjs`, `scripts/verify-game.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`

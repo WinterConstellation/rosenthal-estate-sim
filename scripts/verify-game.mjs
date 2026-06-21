@@ -118,6 +118,7 @@ const systemRulesSource = readFileSync(new URL("../src/rules/systemRules.js", im
 const systemContentSource = readFileSync(new URL("../src/data/systemContent.js", import.meta.url), "utf8");
 const stylesSource = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
 const rosenthalContentSource = readFileSync(new URL("../src/data/rosenthalContent.js", import.meta.url), "utf8");
+const rosenthalScriptContentSource = readFileSync(new URL("../src/data/rosenthalScriptContent.js", import.meta.url), "utf8");
 const scriptManifestSource = readFileSync(new URL("../src/data/scriptManifest.js", import.meta.url), "utf8");
 const scriptLoaderSource = readFileSync(new URL("../src/engine/scriptLoader.js", import.meta.url), "utf8");
 const specialEventGroupsSource = readFileSync(new URL("../src/data/scriptPacks/specialEventGroups.js", import.meta.url), "utf8");
@@ -132,6 +133,9 @@ assert.equal(specialEventPackManifest.exportName, "SPECIAL_EVENT_GROUPS");
 assert.equal(specialEventPackManifest.itemCount, SPECIAL_EVENT_GROUPS.length);
 assert.equal(specialEventPackManifest.stageCount, 3);
 assert.equal(specialEventPackModule.SPECIAL_EVENT_GROUPS, SPECIAL_EVENT_GROUPS);
+assert.equal(rosenthalScriptContentSource.includes("export const DAY_ACTIONS"), true, "Rosenthal edit source must keep DAY_ACTIONS in rosenthalScriptContent.js");
+assert.equal(rosenthalContentSource.includes("./rosenthalScriptContent.js"), true, "rosenthalContent.js must wrap Rosenthal edit source data");
+assert.equal(rosenthalContentSource.includes("export const DAY_ACTIONS = ["), false, "rosenthalContent.js must not own editable day action content");
 assert.equal(rosenthalContentSource.includes("export const SPECIAL_EVENT_GROUPS"), false, "특수 사건 장문 본문은 rosenthalContent.js에 직접 두지 않는다");
 assert.equal(specialEventGroupsSource.includes("export const SPECIAL_EVENT_GROUPS"), true, "특수 사건 본문 pack은 SPECIAL_EVENT_GROUPS를 export해야 함");
 assert.equal(scriptManifestSource.includes("SPECIAL_EVENT_GROUPS_PACK_ID"), true, "script manifest는 특수 사건 pack id를 제공해야 함");

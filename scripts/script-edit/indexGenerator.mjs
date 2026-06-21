@@ -12,7 +12,7 @@ import { findPropertyLiteralSpan, parseStageCalls, readStringLiteral } from "./s
 const INDEX_VERSION = "1.0.0";
 const MANIFEST_FILE = "src/data/scriptManifest.js";
 const SPECIAL_EVENT_GROUPS_FILE = "src/data/scriptPacks/specialEventGroups.js";
-const ROSENTHAL_CONTENT_FILE = "src/data/rosenthalContent.js";
+const ROSENTHAL_SCRIPT_CONTENT_FILE = "src/data/rosenthalScriptContent.js";
 const TUTORIAL_CONTENT_FILE = "src/data/tutorialContent.js";
 const SYSTEM_CONTENT_FILE = "src/data/systemContent.js";
 const SPECIAL_EVENT_PACK_ID = "special-event-groups";
@@ -682,7 +682,7 @@ function addObjectArrayEntries(entries, { sourceFile, source, exportName, idPref
 }
 
 function buildRosenthalContentEntries(projectRoot, config) {
-  const sourceFile = normalizeProjectPath(projectRoot, ROSENTHAL_CONTENT_FILE);
+  const sourceFile = normalizeProjectPath(projectRoot, ROSENTHAL_SCRIPT_CONTENT_FILE);
   const source = readUtf8Lf(projectRoot, sourceFile);
   const entries = [];
 
@@ -872,8 +872,8 @@ function buildTutorialContentEntries(projectRoot, config) {
   });
 
   // PROLOGUE.text and NIGHT_ENTRY_SCRIPT are runtime wrappers around
-  // rosenthalContent.js text. Emit editable text entries from that file only
-  // so one script line never appears as two separate edit targets.
+  // rosenthalScriptContent.js text. Emit editable text entries from that file
+  // only so one script line never appears as two separate edit targets.
 
   addObjectArrayEntries(entries, {
     sourceFile,

@@ -21,7 +21,9 @@ const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/scriptPacks/*.js"), true);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/tutorialContent.js"), true);
+assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/rosenthalScriptContent.js"), true);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/systemContent.js"), true);
+assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/rosenthalContent.js"), false);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/rules/systemRules.js"), false);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/rules/tutorialRules.js"), false);
 assert.equal(normalizeProjectPath(repoRoot, "src/data/scriptManifest.js"), "src/data/scriptManifest.js");
@@ -29,6 +31,8 @@ assert.throws(() => normalizeProjectPath(repoRoot, "../package.json"), /inside t
 assert.throws(() => normalizeProjectPath(repoRoot, "C:/outside/file.js"), /Absolute paths/);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/scriptPacks/specialEventGroups.js"), true);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/scriptManifest.js"), true);
+assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/rosenthalScriptContent.js"), true);
+assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/rosenthalContent.js"), false);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/tutorialContent.js"), true);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/systemContent.js"), true);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/App.jsx"), false);
@@ -91,6 +95,9 @@ assert.equal(Number.isInteger(blankText.locator.end), true);
 assert.equal(blankText.value, "새 장부 앞 일곱 장은 날짜만 남아 있다.");
 const rosenthalPrologueLine = index.entries.find((entry) => entry.id === "rosenthal:prologue:line-1");
 assert.deepEqual(rosenthalPrologueLine.folderPath, ["Rosenthal Prologue"]);
+assert.equal(rosenthalPrologueLine.sourceFile, "src/data/rosenthalScriptContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "rosenthal:night-opening:line-1").sourceFile, "src/data/rosenthalScriptContent.js");
+assert.equal(index.entries.find((entry) => entry.id === "rosenthal:day-action:fields:title").sourceFile, "src/data/rosenthalScriptContent.js");
 const tutorialWeight = index.entries.find((entry) => entry.id === "tutorial:day-action:documents:weight");
 assert.equal(tutorialWeight.kind, "number");
 assert.equal(tutorialWeight.sourceFile, "src/data/tutorialContent.js");
@@ -128,7 +135,7 @@ try {
   mkdirSync(join(tempEditRoot, ".script-edit"), { recursive: true });
   copyFileSync(join(repoRoot, "src", "data", "scriptManifest.js"), join(tempEditRoot, "src", "data", "scriptManifest.js"));
   copyFileSync(join(repoRoot, "src", "data", "scriptPacks", "specialEventGroups.js"), join(tempEditRoot, "src", "data", "scriptPacks", "specialEventGroups.js"));
-  copyFileSync(join(repoRoot, "src", "data", "rosenthalContent.js"), join(tempEditRoot, "src", "data", "rosenthalContent.js"));
+  copyFileSync(join(repoRoot, "src", "data", "rosenthalScriptContent.js"), join(tempEditRoot, "src", "data", "rosenthalScriptContent.js"));
   copyFileSync(join(repoRoot, "src", "data", "tutorialContent.js"), join(tempEditRoot, "src", "data", "tutorialContent.js"));
   copyFileSync(join(repoRoot, "src", "data", "systemContent.js"), join(tempEditRoot, "src", "data", "systemContent.js"));
   writeFileSync(join(tempEditRoot, ".script-edit", "config.json"), JSON.stringify(DEFAULT_SCRIPT_EDIT_CONFIG, null, 2), "utf8");
@@ -171,7 +178,7 @@ try {
   mkdirSync(join(serverTestRoot, ".script-edit"), { recursive: true });
   copyFileSync(join(repoRoot, "src", "data", "scriptManifest.js"), join(serverTestRoot, "src", "data", "scriptManifest.js"));
   copyFileSync(join(repoRoot, "src", "data", "scriptPacks", "specialEventGroups.js"), join(serverTestRoot, "src", "data", "scriptPacks", "specialEventGroups.js"));
-  copyFileSync(join(repoRoot, "src", "data", "rosenthalContent.js"), join(serverTestRoot, "src", "data", "rosenthalContent.js"));
+  copyFileSync(join(repoRoot, "src", "data", "rosenthalScriptContent.js"), join(serverTestRoot, "src", "data", "rosenthalScriptContent.js"));
   copyFileSync(join(repoRoot, "src", "data", "tutorialContent.js"), join(serverTestRoot, "src", "data", "tutorialContent.js"));
   copyFileSync(join(repoRoot, "src", "data", "systemContent.js"), join(serverTestRoot, "src", "data", "systemContent.js"));
   writeFileSync(join(serverTestRoot, ".script-edit", "config.json"), JSON.stringify({
@@ -214,10 +221,16 @@ try {
 }
 
 const packageJson = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+const rosenthalContentSource = readFileSync(join(repoRoot, "src", "data", "rosenthalContent.js"), "utf8");
+const rosenthalScriptContentSource = readFileSync(join(repoRoot, "src", "data", "rosenthalScriptContent.js"), "utf8");
 const tutorialContentSource = readFileSync(join(repoRoot, "src", "data", "tutorialContent.js"), "utf8");
 const systemContentSource = readFileSync(join(repoRoot, "src", "data", "systemContent.js"), "utf8");
 const systemRulesSource = readFileSync(join(repoRoot, "src", "rules", "systemRules.js"), "utf8");
 assert.equal(existsSync(join(repoRoot, "src", "rules", "tutorialRules.js")), false);
+assert.equal(rosenthalScriptContentSource.includes("export const DAY_ACTIONS"), true);
+assert.equal(rosenthalScriptContentSource.includes("export const PROLOGUE"), true);
+assert.equal(rosenthalContentSource.includes("./rosenthalScriptContent.js"), true);
+assert.equal(rosenthalContentSource.includes("export const DAY_ACTIONS = ["), false);
 assert.equal(tutorialContentSource.includes("PROLOGUE as ROSENTHAL_PROLOGUE"), true);
 assert.equal(tutorialContentSource.includes("NIGHT_OPENING as ROSENTHAL_NIGHT_OPENING"), true);
 assert.equal(tutorialContentSource.includes("text: ROSENTHAL_PROLOGUE"), true);

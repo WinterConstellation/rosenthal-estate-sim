@@ -2,7 +2,7 @@
   "allow": [
     "src/data/scriptPacks/*.js",
     "src/data/scriptManifest.js",
-    "src/data/rosenthalContent.js",
+    "src/data/rosenthalScriptContent.js",
     "src/data/tutorialContent.js",
     "src/data/systemContent.js"
   ],
