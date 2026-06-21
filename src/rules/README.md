@@ -62,7 +62,8 @@
 ## 데이터와 엔진
 
 - `src/data/saintSeeds.js`: 60개 시드 이름, 상징, 혼합 규칙, 사건군 배정
-- `src/data/rosenthalScriptContent.js`: 낮 행동, NPC, 탐사 사건, 최종 사건, 스크립트 수정 원본
+- `src/data/rosenthal/*.js`: 낮 행동, NPC/동행자, 탐사 사건, 최종 사건, 프롤로그/밤 진입 스크립트 수정 원본
+- `src/data/rosenthalScriptContent.js`: Rosenthal 스크립트 데이터 aggregate wrapper
 - `src/data/rosenthalContent.js`: Rosenthal 런타임 import 호환용 wrapper
 - `src/engine/rosenthalEngine.js`: 상태 전이, 판정, 제물, 분기, 포기, 유품 처리
 - `src/engine/saveManager.js`: 자동 저장과 수동 저장 슬롯

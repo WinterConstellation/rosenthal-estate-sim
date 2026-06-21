@@ -1,3 +1,3 @@
-// Keep the public Rosenthal runtime import path stable while editable script
-// text lives in rosenthalScriptContent.js as the single write target.
+// Keep the public Rosenthal runtime import path stable while editable
+// Rosenthal script data is split under src/data/rosenthal/.
 export * from "./rosenthalScriptContent.js";

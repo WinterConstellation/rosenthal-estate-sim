@@ -345,7 +345,7 @@
 - 작업: 구형/튜토리얼 스크립트 데이터가 `src/rules/tutorialRules.js`에 남아 있던 구조를 `src/data/tutorialContent.js`로 옮겼다.
 - 구조: `App.jsx`와 `legacyProgressionEngine.js`는 튜토리얼 표시/구형 진행 데이터를 `src/data/tutorialContent.js`에서 직접 읽고, 편집 인덱스 allowlist와 생성기도 새 데이터 파일만 대상으로 삼는다.
 - 수정 파일: `.understand-anything/*`, `src/data/tutorialContent.js`, `src/rules/tutorialRules.js`, `src/App.jsx`, `src/engine/legacyProgressionEngine.js`, `scripts/script-edit/*`, `scripts/verify-game.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
-- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`
 
 2026-06-21 17:59 KST
 - 작업: 수정 가능한 시스템 규칙/표식/패시브/숨은 규칙 데이터를 `src/rules/systemRules.js`에서 `src/data/systemContent.js`로 분리했다.
@@ -358,3 +358,9 @@
 - 구조: `src/data/rosenthalScriptContent.js`가 낮 행동, NPC, 탐사, finale, 프롤로그/밤 진입 본문 수정 원본을 갖고, `src/data/rosenthalContent.js`는 기존 import 호환을 위한 re-export wrapper로 남긴다. 수정 인덱스 allowlist와 생성기는 `rosenthalScriptContent.js`만 저장 대상으로 삼는다.
 - 수정 파일: `.script-edit/config.json`, `.understand-anything/*`, `src/data/rosenthalContent.js`, `src/data/rosenthalScriptContent.js`, `src/data/tutorialContent.js`, `src/rules/README.md`, `scripts/script-edit/indexGenerator.mjs`, `scripts/script-edit/pathPolicy.mjs`, `scripts/verify-game.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`
+
+2026-06-21 18:24 KST
+- 작업: Rosenthal 수정 원본을 단일 파일에서 낮 행동, 캐릭터, 탐사, finale, intro 세부 파일로 다시 분리했다.
+- 구조: `src/data/rosenthalScriptContent.js`는 aggregate wrapper로 남기고, 실제 저장 대상은 `src/data/rosenthal/dayContent.js`, `characterContent.js`, `explorationContent.js`, `finaleContent.js`, `introContent.js`가 된다. 수정 인덱스 allowlist는 `src/data/rosenthal/*.js`를 허용한다.
+- 수정 파일: `.script-edit/config.json`, `.understand-anything/*`, `src/data/rosenthal/*`, `src/data/rosenthalScriptContent.js`, `src/data/rosenthalContent.js`, `src/data/tutorialContent.js`, `src/rules/README.md`, `scripts/script-edit/indexGenerator.mjs`, `scripts/script-edit/pathPolicy.mjs`, `scripts/verify-game.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`

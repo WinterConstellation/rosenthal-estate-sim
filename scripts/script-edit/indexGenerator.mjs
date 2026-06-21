@@ -12,7 +12,11 @@ import { findPropertyLiteralSpan, parseStageCalls, readStringLiteral } from "./s
 const INDEX_VERSION = "1.0.0";
 const MANIFEST_FILE = "src/data/scriptManifest.js";
 const SPECIAL_EVENT_GROUPS_FILE = "src/data/scriptPacks/specialEventGroups.js";
-const ROSENTHAL_SCRIPT_CONTENT_FILE = "src/data/rosenthalScriptContent.js";
+const ROSENTHAL_DAY_CONTENT_FILE = "src/data/rosenthal/dayContent.js";
+const ROSENTHAL_CHARACTER_CONTENT_FILE = "src/data/rosenthal/characterContent.js";
+const ROSENTHAL_EXPLORATION_CONTENT_FILE = "src/data/rosenthal/explorationContent.js";
+const ROSENTHAL_FINALE_CONTENT_FILE = "src/data/rosenthal/finaleContent.js";
+const ROSENTHAL_INTRO_CONTENT_FILE = "src/data/rosenthal/introContent.js";
 const TUTORIAL_CONTENT_FILE = "src/data/tutorialContent.js";
 const SYSTEM_CONTENT_FILE = "src/data/systemContent.js";
 const SPECIAL_EVENT_PACK_ID = "special-event-groups";
@@ -682,8 +686,8 @@ function addObjectArrayEntries(entries, { sourceFile, source, exportName, idPref
 }
 
 function buildRosenthalContentEntries(projectRoot, config) {
-  const sourceFile = normalizeProjectPath(projectRoot, ROSENTHAL_SCRIPT_CONTENT_FILE);
-  const source = readUtf8Lf(projectRoot, sourceFile);
+  let sourceFile = normalizeProjectPath(projectRoot, ROSENTHAL_DAY_CONTENT_FILE);
+  let source = readUtf8Lf(projectRoot, sourceFile);
   const entries = [];
 
   addObjectArrayEntries(entries, {
@@ -742,6 +746,9 @@ function buildRosenthalContentEntries(projectRoot, config) {
     }
   });
 
+  sourceFile = normalizeProjectPath(projectRoot, ROSENTHAL_CHARACTER_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
+
   addObjectArrayEntries(entries, {
     sourceFile,
     source,
@@ -760,6 +767,10 @@ function buildRosenthalContentEntries(projectRoot, config) {
     textFields: ["label", "name", "reveal", "keepsake"],
     verify: config.verify,
   });
+
+  sourceFile = normalizeProjectPath(projectRoot, ROSENTHAL_EXPLORATION_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
+
   addObjectArrayEntries(entries, {
     sourceFile,
     source,
@@ -787,6 +798,9 @@ function buildRosenthalContentEntries(projectRoot, config) {
       });
     });
   }
+
+  sourceFile = normalizeProjectPath(projectRoot, ROSENTHAL_FINALE_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
 
   const finalesRange = findExportConstInitializer(source, "FINALES");
   collectFunctionCallRanges(source, finalesRange, "finale").forEach((call) => {
@@ -820,6 +834,9 @@ function buildRosenthalContentEntries(projectRoot, config) {
       });
     }
   });
+
+  sourceFile = normalizeProjectPath(projectRoot, ROSENTHAL_INTRO_CONTENT_FILE);
+  source = readUtf8Lf(projectRoot, sourceFile);
 
   addStringArrayEntries(entries, {
     sourceFile,
@@ -872,7 +889,7 @@ function buildTutorialContentEntries(projectRoot, config) {
   });
 
   // PROLOGUE.text and NIGHT_ENTRY_SCRIPT are runtime wrappers around
-  // rosenthalScriptContent.js text. Emit editable text entries from that file
+  // rosenthal/introContent.js text. Emit editable text entries from that file
   // only so one script line never appears as two separate edit targets.
 
   addObjectArrayEntries(entries, {
