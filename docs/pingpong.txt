@@ -331,6 +331,9 @@ Acceptance:
 - 첫 버전은 특수 사건 본문과 manifest 필드 편집을 대상으로 한다.
 - 저장은 allowlist, source hash, source-span locator 검사를 통과해야 한다.
 - `.script-edit/index.json`과 backups는 생성물로 Git에 올리지 않는다.
+- Windows에서 편집 서버의 Verify 버튼이 `spawn EINVAL`로 실패하던 문제를 수정했다.
+- 검증 명령은 문자열 split + 직접 spawn 대신 shell 경유 실행으로 처리한다.
+- `scripts/verify-script-edit.mjs`는 `/api/verify` 경로를 실제 호출해 회귀를 잡는다.
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
 
 ## 임시 기록: Understand Anything 시각화 그래프 로컬 작업 푸시

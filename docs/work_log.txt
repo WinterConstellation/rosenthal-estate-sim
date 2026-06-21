@@ -286,3 +286,9 @@
 - 구조: `scripts/understand-anything/generate-knowledge-graph.mjs`가 편집 인덱스 기반 그래프와 `.understand-anything` 산출물을 만들고, `understand:graph` 실행 명령과 스크립트 편집 서버 CORS/token 연동을 추가했다.
 - 수정 파일: `.gitignore`, `.understand-anything/*`, `package.json`, `scripts/understand-anything/generate-knowledge-graph.mjs`, `scripts/script-edit/server.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `npm.cmd run verify`, `npm.cmd run build`
+
+2026-06-21 15:52 KST
+- 작업: 로컬 스크립트 편집 서버의 Verify 버튼이 Windows에서 실패하던 문제를 수정했다.
+- 구조: 검증 명령 실행은 shell 경유로 바꾸고, `scripts/verify-script-edit.mjs`가 `/api/verify` API를 실제 호출해 회귀를 잡는다.
+- 수정 파일: `scripts/script-edit/server.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `npm.cmd run verify`, `npm.cmd run build`

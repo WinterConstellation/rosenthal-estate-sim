@@ -56,9 +56,8 @@ function contentTypeFor(filePath) {
 }
 
 function runVerify(projectRoot, command) {
-  const [cmd, ...args] = command.split(/\s+/).filter(Boolean);
   return new Promise((resolveRun) => {
-    const child = spawn(cmd, args, { cwd: projectRoot, shell: false });
+    const child = spawn(command, { cwd: projectRoot, shell: true });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => { stdout += chunk; });

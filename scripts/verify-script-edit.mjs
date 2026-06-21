@@ -118,7 +118,10 @@ try {
   mkdirSync(join(serverTestRoot, ".script-edit"), { recursive: true });
   copyFileSync(join(repoRoot, "src", "data", "scriptManifest.js"), join(serverTestRoot, "src", "data", "scriptManifest.js"));
   copyFileSync(join(repoRoot, "src", "data", "scriptPacks", "specialEventGroups.js"), join(serverTestRoot, "src", "data", "scriptPacks", "specialEventGroups.js"));
-  writeFileSync(join(serverTestRoot, ".script-edit", "config.json"), JSON.stringify(DEFAULT_SCRIPT_EDIT_CONFIG, null, 2), "utf8");
+  writeFileSync(join(serverTestRoot, ".script-edit", "config.json"), JSON.stringify({
+    ...DEFAULT_SCRIPT_EDIT_CONFIG,
+    verify: ["node -e \"process.exit(0)\""],
+  }, null, 2), "utf8");
   await writeScriptEditIndex(serverTestRoot);
   const server = createScriptEditServer({ projectRoot: serverTestRoot, token: "test-token", port: 0, openBrowser: false });
   const address = await server.start();
@@ -141,6 +144,11 @@ try {
   assert.equal((await saveResponse.json()).changedFile, "src/data/scriptPacks/specialEventGroups.js");
   const missing = await fetch(`${base}/api/item?token=test-token&id=missing`);
   assert.equal(missing.status, 404);
+  const verifyResponse = await fetch(`${base}/api/verify?token=test-token`, { method: "POST" });
+  assert.equal(verifyResponse.status, 200);
+  const verifyBody = await verifyResponse.json();
+  assert.equal(verifyBody.results.length, 1);
+  assert.equal(verifyBody.results[0].ok, true);
   await server.close();
 } finally {
   rmSync(serverTestRoot, { recursive: true, force: true });
