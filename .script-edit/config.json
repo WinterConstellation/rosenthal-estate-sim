@@ -3,8 +3,8 @@
     "src/data/scriptPacks/*.js",
     "src/data/scriptManifest.js",
     "src/data/rosenthalContent.js",
-    "src/rules/tutorialRules.js",
-    "src/rules/systemRules.js"
+    "src/data/tutorialContent.js",
+    "src/data/systemContent.js"
   ],
   "deny": [
     "src/App.jsx",

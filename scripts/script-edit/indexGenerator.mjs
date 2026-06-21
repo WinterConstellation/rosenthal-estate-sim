@@ -14,7 +14,7 @@ const MANIFEST_FILE = "src/data/scriptManifest.js";
 const SPECIAL_EVENT_GROUPS_FILE = "src/data/scriptPacks/specialEventGroups.js";
 const ROSENTHAL_CONTENT_FILE = "src/data/rosenthalContent.js";
 const TUTORIAL_CONTENT_FILE = "src/data/tutorialContent.js";
-const SYSTEM_RULES_FILE = "src/rules/systemRules.js";
+const SYSTEM_CONTENT_FILE = "src/data/systemContent.js";
 const SPECIAL_EVENT_PACK_ID = "special-event-groups";
 
 const TEXT_FIELD_KIND = {
@@ -1016,8 +1016,8 @@ function addMetaObjectEntries(entries, { sourceFile, source, exportName, idPrefi
   }
 }
 
-function buildSystemRulesEntries(projectRoot, config) {
-  const sourceFile = normalizeProjectPath(projectRoot, SYSTEM_RULES_FILE);
+function buildSystemContentEntries(projectRoot, config) {
+  const sourceFile = normalizeProjectPath(projectRoot, SYSTEM_CONTENT_FILE);
   const source = readUtf8Lf(projectRoot, sourceFile);
   const entries = [];
 
@@ -1188,7 +1188,7 @@ export async function buildScriptEditIndex(projectRoot) {
     ...buildSpecialEventEntries(projectRoot, config),
     ...buildRosenthalContentEntries(projectRoot, config),
     ...buildTutorialContentEntries(projectRoot, config),
-    ...buildSystemRulesEntries(projectRoot, config),
+    ...buildSystemContentEntries(projectRoot, config),
   ];
   assertUniqueEntryIds(entries);
   return {

@@ -346,3 +346,9 @@
 - 구조: `App.jsx`와 `legacyProgressionEngine.js`는 튜토리얼 표시/구형 진행 데이터를 `src/data/tutorialContent.js`에서 직접 읽고, 편집 인덱스 allowlist와 생성기도 새 데이터 파일만 대상으로 삼는다.
 - 수정 파일: `.understand-anything/*`, `src/data/tutorialContent.js`, `src/rules/tutorialRules.js`, `src/App.jsx`, `src/engine/legacyProgressionEngine.js`, `scripts/script-edit/*`, `scripts/verify-game.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`
+
+2026-06-21 17:59 KST
+- 작업: 수정 가능한 시스템 규칙/표식/패시브/숨은 규칙 데이터를 `src/rules/systemRules.js`에서 `src/data/systemContent.js`로 분리했다.
+- 구조: `systemRules.js`는 `systemContent.js`를 re-export하면서 `MARKS` 생성, 표식 조회, 조건 판정 함수만 맡고, 편집 인덱스 allowlist와 생성기는 `src/data/systemContent.js`만 수정 대상으로 삼는다.
+- 수정 파일: `.script-edit/config.json`, `.understand-anything/*`, `src/data/systemContent.js`, `src/rules/systemRules.js`, `scripts/script-edit/indexGenerator.mjs`, `scripts/script-edit/pathPolicy.mjs`, `scripts/verify-game.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`

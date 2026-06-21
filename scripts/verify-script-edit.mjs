@@ -21,6 +21,8 @@ const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/scriptPacks/*.js"), true);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/tutorialContent.js"), true);
+assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/systemContent.js"), true);
+assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/rules/systemRules.js"), false);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/rules/tutorialRules.js"), false);
 assert.equal(normalizeProjectPath(repoRoot, "src/data/scriptManifest.js"), "src/data/scriptManifest.js");
 assert.throws(() => normalizeProjectPath(repoRoot, "../package.json"), /inside the project/);
@@ -28,8 +30,10 @@ assert.throws(() => normalizeProjectPath(repoRoot, "C:/outside/file.js"), /Absol
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/scriptPacks/specialEventGroups.js"), true);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/scriptManifest.js"), true);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/tutorialContent.js"), true);
+assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/systemContent.js"), true);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/App.jsx"), false);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/engine/scriptLoader.js"), false);
+assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/rules/systemRules.js"), false);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/rules/tutorialRules.js"), false);
 assert.equal(matchesPattern("src/engine/**", "src/engine/scriptLoader.js"), true);
 assert.equal(matchesPattern("src/data/scriptPacks/*.js", "src/data/scriptPacks/specialEventGroups.js"), true);
@@ -93,7 +97,7 @@ assert.equal(tutorialWeight.sourceFile, "src/data/tutorialContent.js");
 assert.equal(tutorialWeight.valueType, "number");
 assert.equal(tutorialWeight.value, 8);
 const ruleThreshold = index.entries.find((entry) => entry.id === "rules:mark-branch-unlock:purification-hint:condition:stigma");
-assert.equal(ruleThreshold.sourceFile, "src/rules/systemRules.js");
+assert.equal(ruleThreshold.sourceFile, "src/data/systemContent.js");
 assert.equal(ruleThreshold.valueType, "number");
 assert.equal(ruleThreshold.value, 3);
 const duplicateEditableValues = new Map();
@@ -126,7 +130,7 @@ try {
   copyFileSync(join(repoRoot, "src", "data", "scriptPacks", "specialEventGroups.js"), join(tempEditRoot, "src", "data", "scriptPacks", "specialEventGroups.js"));
   copyFileSync(join(repoRoot, "src", "data", "rosenthalContent.js"), join(tempEditRoot, "src", "data", "rosenthalContent.js"));
   copyFileSync(join(repoRoot, "src", "data", "tutorialContent.js"), join(tempEditRoot, "src", "data", "tutorialContent.js"));
-  copyFileSync(join(repoRoot, "src", "rules", "systemRules.js"), join(tempEditRoot, "src", "rules", "systemRules.js"));
+  copyFileSync(join(repoRoot, "src", "data", "systemContent.js"), join(tempEditRoot, "src", "data", "systemContent.js"));
   writeFileSync(join(tempEditRoot, ".script-edit", "config.json"), JSON.stringify(DEFAULT_SCRIPT_EDIT_CONFIG, null, 2), "utf8");
   await writeScriptEditIndex(tempEditRoot);
   const itemId = "script-pack:special-event-groups:blank-ledger:stage-1:text";
@@ -169,7 +173,7 @@ try {
   copyFileSync(join(repoRoot, "src", "data", "scriptPacks", "specialEventGroups.js"), join(serverTestRoot, "src", "data", "scriptPacks", "specialEventGroups.js"));
   copyFileSync(join(repoRoot, "src", "data", "rosenthalContent.js"), join(serverTestRoot, "src", "data", "rosenthalContent.js"));
   copyFileSync(join(repoRoot, "src", "data", "tutorialContent.js"), join(serverTestRoot, "src", "data", "tutorialContent.js"));
-  copyFileSync(join(repoRoot, "src", "rules", "systemRules.js"), join(serverTestRoot, "src", "rules", "systemRules.js"));
+  copyFileSync(join(repoRoot, "src", "data", "systemContent.js"), join(serverTestRoot, "src", "data", "systemContent.js"));
   writeFileSync(join(serverTestRoot, ".script-edit", "config.json"), JSON.stringify({
     ...DEFAULT_SCRIPT_EDIT_CONFIG,
     verify: ["node -e \"process.exit(0)\""],
@@ -211,11 +215,20 @@ try {
 
 const packageJson = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 const tutorialContentSource = readFileSync(join(repoRoot, "src", "data", "tutorialContent.js"), "utf8");
+const systemContentSource = readFileSync(join(repoRoot, "src", "data", "systemContent.js"), "utf8");
+const systemRulesSource = readFileSync(join(repoRoot, "src", "rules", "systemRules.js"), "utf8");
 assert.equal(existsSync(join(repoRoot, "src", "rules", "tutorialRules.js")), false);
 assert.equal(tutorialContentSource.includes("PROLOGUE as ROSENTHAL_PROLOGUE"), true);
 assert.equal(tutorialContentSource.includes("NIGHT_OPENING as ROSENTHAL_NIGHT_OPENING"), true);
 assert.equal(tutorialContentSource.includes("text: ROSENTHAL_PROLOGUE"), true);
 assert.equal(tutorialContentSource.includes("text: ROSENTHAL_NIGHT_OPENING[0]"), true);
+assert.equal(systemContentSource.includes("export const RESOURCE_META"), true);
+assert.equal(systemContentSource.includes("export const AFFINITY_MARK_GROUPS"), true);
+assert.equal(systemContentSource.includes("export const HIDDEN_RUN_RULES"), true);
+assert.equal(systemRulesSource.includes("../data/systemContent.js"), true);
+assert.equal(systemRulesSource.includes("export const RESOURCE_META"), false);
+assert.equal(systemRulesSource.includes("export const AFFINITY_MARK_GROUPS"), false);
+assert.equal(systemRulesSource.includes("export const HIDDEN_RUN_RULES"), false);
 assert.equal(packageJson.scripts["script-edit:index"], "node scripts/script-edit/indexGenerator.mjs --write");
 assert.equal(packageJson.scripts["script-edit"], "node scripts/script-edit/server.mjs");
 assert.equal(packageJson.scripts["understand:graph"], "npm run script-edit:index && node scripts/understand-anything/generate-knowledge-graph.mjs");

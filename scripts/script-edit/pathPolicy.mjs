@@ -7,7 +7,7 @@ export const DEFAULT_SCRIPT_EDIT_CONFIG = {
     "src/data/scriptManifest.js",
     "src/data/rosenthalContent.js",
     "src/data/tutorialContent.js",
-    "src/rules/systemRules.js",
+    "src/data/systemContent.js",
   ],
   deny: [
     "src/App.jsx",

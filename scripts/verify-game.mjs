@@ -114,6 +114,8 @@ const firstDayHintSource = readFileSync(new URL("../src/components/FirstDayHintM
 const resultOverlaySource = readFileSync(new URL("../src/screens/ResultOverlay.jsx", import.meta.url), "utf8");
 const rulesEngineSource = readFileSync(new URL("../src/engine/rulesEngine.js", import.meta.url), "utf8");
 const legacyProgressionEngineSource = readFileSync(new URL("../src/engine/legacyProgressionEngine.js", import.meta.url), "utf8");
+const systemRulesSource = readFileSync(new URL("../src/rules/systemRules.js", import.meta.url), "utf8");
+const systemContentSource = readFileSync(new URL("../src/data/systemContent.js", import.meta.url), "utf8");
 const stylesSource = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
 const rosenthalContentSource = readFileSync(new URL("../src/data/rosenthalContent.js", import.meta.url), "utf8");
 const scriptManifestSource = readFileSync(new URL("../src/data/scriptManifest.js", import.meta.url), "utf8");
@@ -187,6 +189,11 @@ assert.equal(stylesSource.includes(".first-day-hint-modal"), true, "첫날 힌�
 assert.equal(rulesEngineSource.includes("../rules/tutorialRules.js"), false, "rulesEngine은 구형 튜토리얼 진행 데이터를 직접 import하지 않는다");
 assert.equal(legacyProgressionEngineSource.includes("../data/tutorialContent.js"), true, "legacyProgressionEngine은 구형 진행 데이터를 data/tutorialContent.js에서 읽는다");
 assert.equal(legacyProgressionEngineSource.includes("../rules/tutorialRules.js"), false, "legacyProgressionEngine은 rules/tutorialRules.js를 다시 import하지 않는다");
+assert.equal(systemContentSource.includes("export const RESOURCE_META"), true, "수정 가능한 시스템 데이터는 data/systemContent.js에 둔다");
+assert.equal(systemContentSource.includes("export const AFFINITY_MARK_GROUPS"), true, "표식 그룹 데이터는 data/systemContent.js에 둔다");
+assert.equal(systemRulesSource.includes("../data/systemContent.js"), true, "systemRules는 시스템 데이터를 data/systemContent.js에서 읽는다");
+assert.equal(systemRulesSource.includes("export const RESOURCE_META"), false, "systemRules는 수정 가능한 메타 데이터를 직접 소유하지 않는다");
+assert.equal(systemRulesSource.includes("export const AFFINITY_MARK_GROUPS"), false, "systemRules는 수정 가능한 표식 그룹 데이터를 직접 소유하지 않는다");
 for (const legacyExport of [
   "createInitialGame",
   "getCriticalState",
