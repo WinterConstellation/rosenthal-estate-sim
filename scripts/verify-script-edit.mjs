@@ -45,11 +45,13 @@ const SYSTEM_EDIT_SOURCE_FILES = [
   "src/data/system/standaloneMarkContent.js",
   "src/data/system/hiddenRuleContent.js",
 ];
+const SAINT_SEED_CONTENT_FILE = "src/data/saintSeeds.js";
 
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/scriptPacks/*.js"), true);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/rosenthal/*.js"), true);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/tutorial/*.js"), true);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/system/*.js"), true);
+assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes(SAINT_SEED_CONTENT_FILE), true);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/rosenthalContent.js"), false);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/rosenthalScriptContent.js"), false);
 assert.equal(DEFAULT_SCRIPT_EDIT_CONFIG.allow.includes("src/data/tutorialContent.js"), false);
@@ -72,6 +74,7 @@ assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/tutor
 for (const sourceFile of SYSTEM_EDIT_SOURCE_FILES) {
   assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, sourceFile), true);
 }
+assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, SAINT_SEED_CONTENT_FILE), true);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/data/systemContent.js"), false);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/App.jsx"), false);
 assert.equal(isScriptEditPathAllowed(DEFAULT_SCRIPT_EDIT_CONFIG, "src/engine/scriptLoader.js"), false);
@@ -109,6 +112,7 @@ assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:stage-1:titl
 assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:stage-1:text"), true);
 assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:stage-1:left-label"), true);
 assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:stage-1:right-label"), true);
+assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:name"), true);
 assert.equal(ids.has("rosenthal:day-action:fields:title"), true);
 assert.equal(ids.has("rosenthal:day-action:fields:result"), true);
 assert.equal(ids.has("rosenthal:prologue:line-1"), true);
@@ -127,6 +131,12 @@ assert.equal(ids.has("rules:mark-loadout-limit"), true);
 assert.equal(ids.has("rules:mark-branch-unlock:purification-hint:condition:stigma"), true);
 assert.equal(ids.has("rules:passive:careful-stockpile:description"), true);
 assert.equal(ids.has("rules:hidden-run-rule:flaw:1"), true);
+assert.equal(ids.has("rules:saint-seed:1:name"), true);
+assert.equal(ids.has("rules:saint-seed:1:symbol"), true);
+assert.equal(ids.has("rules:seed-benefit:gathering-boon:text"), true);
+assert.equal(ids.has("rules:seed-benefit:gathering-boon:multiplier"), true);
+assert.equal(ids.has("rules:seed-burden:stamina-loss-burden:text"), true);
+assert.equal(ids.has("rules:seed-burden:stamina-loss-burden:multiplier"), true);
 const blankText = index.entries.find((entry) => entry.id === "script-pack:special-event-groups:blank-ledger:stage-1:text");
 assert.equal(blankText.kind, "dialogue");
 assert.equal(blankText.sourceFile, "src/data/scriptPacks/specialEventGroups.js");
@@ -135,6 +145,10 @@ assert.equal(blankText.locator.type, "source-span");
 assert.equal(Number.isInteger(blankText.locator.start), true);
 assert.equal(Number.isInteger(blankText.locator.end), true);
 assert.equal(blankText.value, "새 장부 앞 일곱 장은 날짜만 남아 있다.");
+const blankLedgerName = index.entries.find((entry) => entry.id === "script-pack:special-event-groups:blank-ledger:name");
+assert.equal(blankLedgerName.kind, "scriptTitle");
+assert.equal(blankLedgerName.sourceFile, "src/data/scriptPacks/specialEventGroups.js");
+assert.equal(blankLedgerName.value, "빈 7일 장부");
 const rosenthalPrologueLine = index.entries.find((entry) => entry.id === "rosenthal:prologue:line-1");
 assert.deepEqual(rosenthalPrologueLine.folderPath, ["Rosenthal Prologue"]);
 assert.equal(rosenthalPrologueLine.sourceFile, "src/data/rosenthal/introContent.js");
@@ -204,6 +218,15 @@ assert.equal(index.entries.find((entry) => entry.id === "rules:affinity-mark:lif
 assert.equal(index.entries.find((entry) => entry.id === "rules:standalone-mark:stigma-standalone-first-bell:codexText").sourceFile, "src/data/system/standaloneMarkContent.js");
 assert.equal(index.entries.find((entry) => entry.id === "rules:hidden-run-rule:flaw:1").sourceFile, "src/data/system/hiddenRuleContent.js");
 assert.equal(index.entries.some((entry) => entry.id.startsWith("rules:") && entry.sourceFile === "src/data/systemContent.js"), false);
+const seedName = index.entries.find((entry) => entry.id === "rules:saint-seed:1:name");
+assert.equal(seedName.kind, "scriptTitle");
+assert.equal(seedName.sourceFile, SAINT_SEED_CONTENT_FILE);
+assert.equal(seedName.valueType, "singleLineText");
+const seedBenefitMultiplier = index.entries.find((entry) => entry.id === "rules:seed-benefit:gathering-boon:multiplier");
+assert.equal(seedBenefitMultiplier.kind, "number");
+assert.equal(seedBenefitMultiplier.sourceFile, SAINT_SEED_CONTENT_FILE);
+assert.equal(seedBenefitMultiplier.valueType, "number");
+assert.equal(seedBenefitMultiplier.value, 1.1);
 const duplicateEditableValues = new Map();
 for (const entry of index.entries) {
   if (typeof entry.value !== "string") continue;
@@ -244,6 +267,7 @@ try {
   for (const sourceFile of SYSTEM_EDIT_SOURCE_FILES) {
     copyFileSync(join(repoRoot, ...sourceFile.split("/")), join(tempEditRoot, ...sourceFile.split("/")));
   }
+  copyFileSync(join(repoRoot, ...SAINT_SEED_CONTENT_FILE.split("/")), join(tempEditRoot, ...SAINT_SEED_CONTENT_FILE.split("/")));
   writeFileSync(join(tempEditRoot, ".script-edit", "config.json"), JSON.stringify(DEFAULT_SCRIPT_EDIT_CONFIG, null, 2), "utf8");
   await writeScriptEditIndex(tempEditRoot);
   const itemId = "script-pack:special-event-groups:blank-ledger:stage-1:text";
@@ -303,6 +327,18 @@ try {
   assert.equal(nightEntryDeleteResult.changedFile, "src/data/tutorial/introContent.js");
   assert.equal(getEditableItem(tempEditRoot, "tutorial:night-entry:1:speaker").value, "npc:maid");
   assert.equal(getEditableItem(tempEditRoot, "tutorial:night-entry:1:speaker").item?.previous, null);
+  const seedNameResult = await applyScriptEdit(tempEditRoot, {
+    id: "rules:saint-seed:1:name",
+    value: "테스트용 성인 씨앗 이름",
+  });
+  assert.equal(seedNameResult.changedFile, SAINT_SEED_CONTENT_FILE);
+  assert.equal(getEditableItem(tempEditRoot, "rules:saint-seed:1:name").value, "테스트용 성인 씨앗 이름");
+  const seedMultiplierResult = await applyScriptEdit(tempEditRoot, {
+    id: "rules:seed-benefit:gathering-boon:multiplier",
+    value: 1.25,
+  });
+  assert.equal(seedMultiplierResult.changedFile, SAINT_SEED_CONTENT_FILE);
+  assert.equal(getEditableItem(tempEditRoot, "rules:seed-benefit:gathering-boon:multiplier").value, 1.25);
   const staleIndex = JSON.parse(readFileSync(join(tempEditRoot, ".script-edit", "index.json"), "utf8"));
   staleIndex.entries.find((entry) => entry.id === itemId).sourceHash = "stale";
   writeFileSync(join(tempEditRoot, ".script-edit", "index.json"), JSON.stringify(staleIndex, null, 2), "utf8");
@@ -345,6 +381,7 @@ try {
   for (const sourceFile of SYSTEM_EDIT_SOURCE_FILES) {
     copyFileSync(join(repoRoot, ...sourceFile.split("/")), join(serverTestRoot, ...sourceFile.split("/")));
   }
+  copyFileSync(join(repoRoot, ...SAINT_SEED_CONTENT_FILE.split("/")), join(serverTestRoot, ...SAINT_SEED_CONTENT_FILE.split("/")));
   writeFileSync(join(serverTestRoot, ".script-edit", "config.json"), JSON.stringify({
     ...DEFAULT_SCRIPT_EDIT_CONFIG,
     verify: ["node -e \"process.exit(0)\""],

@@ -27,6 +27,7 @@ const SYSTEM_MARK_UNLOCK_CONTENT_FILE = "src/data/system/markUnlockContent.js";
 const SYSTEM_AFFINITY_MARK_CONTENT_FILE = "src/data/system/affinityMarkContent.js";
 const SYSTEM_STANDALONE_MARK_CONTENT_FILE = "src/data/system/standaloneMarkContent.js";
 const SYSTEM_HIDDEN_RULE_CONTENT_FILE = "src/data/system/hiddenRuleContent.js";
+const SAINT_SEED_CONTENT_FILE = "src/data/saintSeeds.js";
 const SPECIAL_EVENT_PACK_ID = "special-event-groups";
 
 const TEXT_FIELD_KIND = {
@@ -160,6 +161,17 @@ function findExportConstInitializer(source, exportName) {
   const pattern = new RegExp(`export\\s+const\\s+${escapeRegExp(exportName)}\\s*=\\s*`);
   const match = pattern.exec(source);
   if (!match) throw new Error(`Missing export const ${exportName}`);
+  return findConstInitializerAfterMatch(source, exportName, match);
+}
+
+function findLocalConstInitializer(source, constName) {
+  const pattern = new RegExp(`const\\s+${escapeRegExp(constName)}\\s*=\\s*`);
+  const match = pattern.exec(source);
+  if (!match) throw new Error(`Missing const ${constName}`);
+  return findConstInitializerAfterMatch(source, constName, match);
+}
+
+function findConstInitializerAfterMatch(source, constName, match) {
   const start = skipWhitespaceAndComments(source, match.index + match[0].length);
   const first = source[start];
   if (first === "{" || first === "[" || first === "(") return findBalancedRange(source, start);
@@ -168,7 +180,7 @@ function findExportConstInitializer(source, exportName) {
     return { start: literal.literalStart, end: literal.literalEnd, text: source.slice(literal.literalStart, literal.literalEnd) };
   }
   const end = source.indexOf(";", start);
-  if (end < 0) throw new Error(`Missing semicolon for export const ${exportName}`);
+  if (end < 0) throw new Error(`Missing semicolon for const ${constName}`);
   const range = trimRange(source, start, end);
   return { ...range, text: source.slice(range.start, range.end) };
 }
@@ -321,6 +333,32 @@ function collectTopLevelObjectRangesInArray(source, arrayRange) {
       const objectRange = findBalancedRange(source, cursor);
       ranges.push(objectRange);
       cursor = objectRange.end;
+      continue;
+    }
+    const skipped = skipIgnoredToken(source, cursor, end);
+    if (skipped !== cursor) {
+      cursor = skipped;
+      continue;
+    }
+    cursor += 1;
+  }
+  return ranges;
+}
+
+function collectTopLevelArrayRangesInArray(source, arrayRange) {
+  const ranges = [];
+  let cursor = arrayRange.start + 1;
+  const end = arrayRange.end - 1;
+  while (cursor < end) {
+    cursor = skipWhitespaceAndComments(source, cursor, end);
+    if (source[cursor] === ",") {
+      cursor += 1;
+      continue;
+    }
+    if (source[cursor] === "[") {
+      const nestedRange = findBalancedRange(source, cursor);
+      ranges.push(nestedRange);
+      cursor = nestedRange.end;
       continue;
     }
     const skipped = skipIgnoredToken(source, cursor, end);
@@ -631,13 +669,6 @@ function buildManifestEntries(projectRoot, config) {
   });
 }
 
-function parseGroupIds(source) {
-  return [...source.matchAll(/\{\s*id:\s*"([^"]+)",\s*name:\s*"([^"]+)"/g)].map((match) => ({
-    id: match[1],
-    name: match[2],
-  }));
-}
-
 function getStageFieldMeta(field) {
   const meta = {
     title: { suffix: "title", kind: "scriptTitle", label: "Title", valueType: "singleLineText" },
@@ -651,21 +682,39 @@ function getStageFieldMeta(field) {
 function buildSpecialEventEntries(projectRoot, config) {
   const sourceFile = normalizeProjectPath(projectRoot, SPECIAL_EVENT_GROUPS_FILE);
   const source = readUtf8Lf(projectRoot, sourceFile);
-  const groups = parseGroupIds(source);
+  const groupsRange = findExportConstInitializer(source, "SPECIAL_EVENT_GROUPS");
+  const groups = collectTopLevelObjectRangesInArray(source, groupsRange).map((objectRange, index) => ({
+    objectRange,
+    id: getFirstLiteralProperty(source, objectRange, "id")?.value ?? `${index + 1}`,
+    name: getFirstLiteralProperty(source, objectRange, "name"),
+  }));
   const stages = parseStageCalls(source);
   const entries = [];
 
   groups.forEach((group, groupIndex) => {
+    const groupId = sanitizeIdPart(group.id, `${groupIndex + 1}`);
+    if (group.name) {
+      pushLiteralEntry(entries, {
+        id: `script-pack:${SPECIAL_EVENT_PACK_ID}:${groupId}:name`,
+        kind: "scriptTitle",
+        label: `${group.name.value} / Name`,
+        sourceFile,
+        source,
+        literal: group.name,
+        field: "name",
+        verify: config.verify,
+      });
+    }
     for (let stageOffset = 0; stageOffset < 3; stageOffset += 1) {
       const stageNumber = stageOffset + 1;
       const stage = stages[(groupIndex * 3) + stageOffset];
-      if (!stage) throw new Error(`Missing stage ${stageNumber} for ${group.id}`);
+      if (!stage) throw new Error(`Missing stage ${stageNumber} for ${groupId}`);
       for (const literal of stage.fields) {
         const meta = getStageFieldMeta(literal.field);
         entries.push(makeEntry({
-          id: `script-pack:${SPECIAL_EVENT_PACK_ID}:${group.id}:stage-${stageNumber}:${meta.suffix}`,
+          id: `script-pack:${SPECIAL_EVENT_PACK_ID}:${groupId}:stage-${stageNumber}:${meta.suffix}`,
           kind: meta.kind,
-          label: `${group.name} / Stage ${stageNumber} / ${meta.label}`,
+          label: `${group.name?.value ?? groupId} / Stage ${stageNumber} / ${meta.label}`,
           sourceFile,
           source,
           start: literal.literalStart,
@@ -677,6 +726,82 @@ function buildSpecialEventEntries(projectRoot, config) {
         }));
       }
     }
+  });
+
+  return entries;
+}
+
+function addSeedRuleEntries(entries, { sourceFile, source, exportName, idPrefix, labelPrefix, verify }) {
+  const range = findExportConstInitializer(source, exportName);
+  collectTopLevelObjectRangesInArray(source, range).forEach((objectRange, index) => {
+    const ruleId = sanitizeIdPart(getFirstLiteralProperty(source, objectRange, "id")?.value, `${index + 1}`);
+    const prefix = `${idPrefix}:${ruleId}`;
+    addObjectTextFields(entries, {
+      sourceFile,
+      source,
+      objectRange,
+      idPrefix: prefix,
+      labelPrefix: `${labelPrefix} / ${ruleId}`,
+      fields: ["text"],
+      verify,
+    });
+    const multiplier = collectObjectLiteralProperties(source, objectRange)
+      .find((property) => property.field === "modifier.multiplier" && typeof property.value === "number");
+    if (multiplier) {
+      pushLiteralEntry(entries, {
+        id: `${prefix}:multiplier`,
+        kind: "number",
+        label: `${labelPrefix} / ${ruleId} / multiplier`,
+        sourceFile,
+        source,
+        literal: multiplier,
+        field: "modifier.multiplier",
+        valueType: "number",
+        verify,
+      });
+    }
+  });
+}
+
+function buildSaintSeedContentEntries(projectRoot, config) {
+  const sourceFile = normalizeProjectPath(projectRoot, SAINT_SEED_CONTENT_FILE);
+  const source = readUtf8Lf(projectRoot, sourceFile);
+  const entries = [];
+
+  const rawSeedsRange = findLocalConstInitializer(source, "RAW_SEEDS");
+  collectTopLevelArrayRangesInArray(source, rawSeedsRange).forEach((seedRange, index) => {
+    const literals = collectStringLiteralsInArray(source, seedRange);
+    const seedNumber = index + 1;
+    for (const [field, literal] of [["name", literals[0]], ["symbol", literals[1]]]) {
+      if (!literal) continue;
+      pushLiteralEntry(entries, {
+        id: `rules:saint-seed:${seedNumber}:${field}`,
+        kind: field === "name" ? "scriptTitle" : "description",
+        label: `Rules Saint Seed / ${seedNumber} / ${field}`,
+        sourceFile,
+        source,
+        literal,
+        field,
+        verify: config.verify,
+      });
+    }
+  });
+
+  addSeedRuleEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "SEED_BENEFIT_RULES",
+    idPrefix: "rules:seed-benefit",
+    labelPrefix: "Rules Seed Benefit",
+    verify: config.verify,
+  });
+  addSeedRuleEntries(entries, {
+    sourceFile,
+    source,
+    exportName: "SEED_BURDEN_RULES",
+    idPrefix: "rules:seed-burden",
+    labelPrefix: "Rules Seed Burden",
+    verify: config.verify,
   });
 
   return entries;
@@ -1354,6 +1479,7 @@ export async function buildScriptEditIndex(projectRoot) {
     ...buildRosenthalContentEntries(projectRoot, config),
     ...buildTutorialContentEntries(projectRoot, config),
     ...buildSystemContentEntries(projectRoot, config),
+    ...buildSaintSeedContentEntries(projectRoot, config),
   ];
   assertUniqueEntryIds(entries);
   return {

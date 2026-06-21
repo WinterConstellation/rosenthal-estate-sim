@@ -412,3 +412,9 @@
 - 구조: `NIGHT_ENTRY_SCRIPT` 본문은 계속 Rosenthal 원문 참조로 두고, `tutorial:night-entry:*:speaker` 항목에 배열 행 `item` 범위만 붙여 중복 본문 없이 위/아래 이동과 삭제를 지원한다.
 - 수정 파일: `.understand-anything/*`, `scripts/script-edit/indexGenerator.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`
+
+2026-06-22 03:10 KST
+- 작업: 로컬 스크립트 편집 인덱스 커버리지 감사를 1차 진행하고 누락 항목을 추가 노출했다.
+- 구조: 특수 사건 그룹명과 `src/data/saintSeeds.js`의 성인 씨앗 이름/상징, 씨앗 이점/부담 규칙 설명과 배율을 수정 인덱스에 추가했다. 인덱스는 1191개 항목, 그래프는 1255 nodes / 1259 edges로 갱신했다.
+- 수정 파일: `.script-edit/config.json`, `.understand-anything/*`, `scripts/script-edit/indexGenerator.mjs`, `scripts/script-edit/pathPolicy.mjs`, `scripts/verify-script-edit.mjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`

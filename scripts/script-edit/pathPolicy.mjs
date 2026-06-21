@@ -8,6 +8,7 @@ export const DEFAULT_SCRIPT_EDIT_CONFIG = {
     "src/data/rosenthal/*.js",
     "src/data/tutorial/*.js",
     "src/data/system/*.js",
+    "src/data/saintSeeds.js",
   ],
   deny: [
     "src/App.jsx",

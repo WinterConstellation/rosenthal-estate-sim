@@ -328,8 +328,8 @@ Acceptance:
 - `scripts/script-edit/indexGenerator.mjs`가 `scriptManifest.js`, `specialEventGroups.js`, `rosenthal/*.js`, `tutorial/*.js`, `system/*.js` 기준 편집 인덱스를 생성한다.
 - `scripts/script-edit/server.mjs`는 `127.0.0.1` token URL로 편집 UI와 API를 제공한다.
 - 실행 명령은 `npm.cmd run script-edit:index`, `npm.cmd run script-edit`이다.
-- 현재 인덱스는 특수 사건 본문, manifest 필드, 로젠탈 본문/선택지, 튜토리얼 대사/결과/가중치/효과 수치, 표식/패시브/숨은 규칙 텍스트와 일부 조건 수치를 대상으로 한다.
-- 현재 생성 인덱스는 1027개 항목이며 `.understand-anything/knowledge-graph.json`은 1091 nodes / 1095 edges로 재생성했다.
+- 현재 인덱스는 특수 사건 본문/그룹명, manifest 필드, 로젠탈 본문/선택지, 튜토리얼 대사/결과/가중치/효과 수치, 표식/패시브/숨은 규칙 텍스트와 일부 조건 수치, 성인 씨앗 이름/상징/규칙 설명/배율을 대상으로 한다.
+- 현재 생성 인덱스는 1191개 항목이며 `.understand-anything/knowledge-graph.json`은 1255 nodes / 1259 edges로 재생성했다.
 - 수정 에디터 목록은 실제 `value` 미리보기를 보여주고 검색 대상에도 포함한다.
 - 수정 에디터 왼쪽 목록은 파일/종류 필터와 패널 내부 스크롤을 사용한다.
 - 수정 에디터 왼쪽 목록은 source file 기준 접이식 폴더로 묶고, 항목 선택 시 목록 전체를 다시 렌더링하지 않아 스크롤 튐을 막는다.
@@ -350,6 +350,7 @@ Acceptance:
 - Windows에서 편집 서버의 Verify 버튼이 `spawn EINVAL`로 실패하던 문제를 수정했다.
 - 검증 명령은 문자열 split + 직접 spawn 대신 shell 경유 실행으로 처리한다.
 - `scripts/verify-script-edit.mjs`는 `/api/verify` 경로를 실제 호출해 회귀를 잡는다.
+- 1차 커버리지 감사로 특수 사건 그룹명 12개와 `src/data/saintSeeds.js`의 성인 씨앗 이름/상징 120개, 씨앗 이점 규칙 20개, 씨앗 부담 규칙 12개를 추가 노출했다.
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run build`, `npm.cmd run understand:graph`
 
 ## 임시 기록: 스크립트 편집 인덱스 소유권/폴더 구조 정리
