@@ -62,6 +62,9 @@ assert.equal(ids.has("script-pack:special-event-groups:blank-ledger:stage-1:righ
 assert.equal(ids.has("rosenthal:day-action:fields:title"), true);
 assert.equal(ids.has("rosenthal:day-action:fields:result"), true);
 assert.equal(ids.has("rosenthal:prologue:line-1"), true);
+assert.equal(ids.has("rosenthal:night-opening:line-1"), true);
+assert.equal(ids.has("tutorial:prologue:text:line-1"), false);
+assert.equal(ids.has("tutorial:night-entry:1:text"), false);
 assert.equal(ids.has("tutorial:day-action:documents:title"), true);
 assert.equal(ids.has("tutorial:day-action:documents:weight"), true);
 assert.equal(ids.has("tutorial:night-choice:knight:result"), true);
@@ -73,10 +76,13 @@ assert.equal(ids.has("rules:hidden-run-rule:flaw:1"), true);
 const blankText = index.entries.find((entry) => entry.id === "script-pack:special-event-groups:blank-ledger:stage-1:text");
 assert.equal(blankText.kind, "dialogue");
 assert.equal(blankText.sourceFile, "src/data/scriptPacks/specialEventGroups.js");
+assert.deepEqual(blankText.folderPath.slice(-1), ["Stage 1"]);
 assert.equal(blankText.locator.type, "source-span");
 assert.equal(Number.isInteger(blankText.locator.start), true);
 assert.equal(Number.isInteger(blankText.locator.end), true);
 assert.equal(blankText.value, "새 장부 앞 일곱 장은 날짜만 남아 있다.");
+const rosenthalPrologueLine = index.entries.find((entry) => entry.id === "rosenthal:prologue:line-1");
+assert.deepEqual(rosenthalPrologueLine.folderPath, ["Rosenthal Prologue"]);
 const tutorialWeight = index.entries.find((entry) => entry.id === "tutorial:day-action:documents:weight");
 assert.equal(tutorialWeight.kind, "number");
 assert.equal(tutorialWeight.valueType, "number");
@@ -85,6 +91,20 @@ const ruleThreshold = index.entries.find((entry) => entry.id === "rules:mark-bra
 assert.equal(ruleThreshold.sourceFile, "src/rules/systemRules.js");
 assert.equal(ruleThreshold.valueType, "number");
 assert.equal(ruleThreshold.value, 3);
+const duplicateEditableValues = new Map();
+for (const entry of index.entries) {
+  if (typeof entry.value !== "string") continue;
+  const value = entry.value.trim();
+  if (value.length < 6) continue;
+  if (!duplicateEditableValues.has(value)) duplicateEditableValues.set(value, []);
+  duplicateEditableValues.get(value).push(entry);
+}
+const allowedCrossFileDuplicateValues = new Set(["다른 이름의 축복"]);
+const unexpectedCrossFileDuplicateValues = [...duplicateEditableValues.entries()]
+  .filter(([value, entries]) => new Set(entries.map((entry) => entry.sourceFile)).size > 1)
+  .filter(([value]) => !allowedCrossFileDuplicateValues.has(value))
+  .map(([value, entries]) => ({ value, ids: entries.map((entry) => entry.id) }));
+assert.deepEqual(unexpectedCrossFileDuplicateValues, []);
 const writtenIndex = await writeScriptEditIndex(repoRoot);
 assert.equal(writtenIndex.entries.length, index.entries.length);
 assert.equal(existsSync(getScriptEditIndexPath(repoRoot)), true);
@@ -185,6 +205,11 @@ try {
 }
 
 const packageJson = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+const tutorialRulesSource = readFileSync(join(repoRoot, "src", "rules", "tutorialRules.js"), "utf8");
+assert.equal(tutorialRulesSource.includes("PROLOGUE as ROSENTHAL_PROLOGUE"), true);
+assert.equal(tutorialRulesSource.includes("NIGHT_OPENING as ROSENTHAL_NIGHT_OPENING"), true);
+assert.equal(tutorialRulesSource.includes("text: ROSENTHAL_PROLOGUE"), true);
+assert.equal(tutorialRulesSource.includes("text: ROSENTHAL_NIGHT_OPENING[0]"), true);
 assert.equal(packageJson.scripts["script-edit:index"], "node scripts/script-edit/indexGenerator.mjs --write");
 assert.equal(packageJson.scripts["script-edit"], "node scripts/script-edit/server.mjs");
 assert.equal(packageJson.scripts["understand:graph"], "npm run script-edit:index && node scripts/understand-anything/generate-knowledge-graph.mjs");
@@ -192,6 +217,7 @@ const graphJson = JSON.parse(readFileSync(join(repoRoot, ".understand-anything",
 assert.equal(graphJson.nodes.some((node) => node.id === "file:src/data/scriptManifest.js"), true);
 assert.equal(graphJson.nodes.some((node) => node.id === "file:src/engine/scriptLoader.js"), true);
 assert.equal(graphJson.nodes.some((node) => node.scriptEdit?.id === "script-pack:special-event-groups:blank-ledger:stage-1:text"), true);
+assert.equal(graphJson.nodes.some((node) => node.scriptEdit?.folderPath?.includes("Stage 1")), true);
 assert.equal(graphJson.layers.some((layer) => layer.id === "layer:editable-index"), true);
 const editorHtml = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "index.html"), "utf8");
 const editorJs = readFileSync(join(repoRoot, "scripts", "script-edit", "public", "app.js"), "utf8");
@@ -199,8 +225,8 @@ const editorCss = readFileSync(join(repoRoot, "scripts", "script-edit", "public"
 const editorUiVerify = readFileSync(join(repoRoot, "scripts", "verify-script-edit-ui.cjs"), "utf8");
 assert.equal(packageJson.scripts["script-edit:verify-ui"], "electron scripts/verify-script-edit-ui.cjs");
 assert.equal(editorHtml.includes("script-edit-root"), true);
-assert.equal(editorHtml.includes("/styles.css?v=scroll-rail"), true);
-assert.equal(editorHtml.includes("/app.js?v=scroll-rail"), true);
+assert.equal(editorHtml.includes("/styles.css?v=folder-scroll"), true);
+assert.equal(editorHtml.includes("/app.js?v=folder-scroll"), true);
 assert.equal(editorHtml.includes("entry-count"), true);
 assert.equal(editorHtml.includes("kind-filter"), true);
 assert.equal(editorHtml.includes("file-filter"), true);
@@ -213,8 +239,11 @@ assert.equal(editorJs.includes("/api/reindex"), true);
 assert.equal(editorJs.includes("/api/verify"), true);
 assert.equal(editorJs.includes("formatEntryPreview"), true);
 assert.equal(editorJs.includes("entry.value"), true);
+assert.equal(editorJs.includes("entry.folderPath"), true);
 assert.equal(editorJs.includes("entry-count"), true);
-assert.equal(editorJs.includes("groupEntriesByFile"), true);
+assert.equal(editorJs.includes("groupEntriesByFolder"), true);
+assert.equal(editorJs.includes("folderSegmentsForEntry"), true);
+assert.equal(editorJs.includes("refreshIndex({ preserveScroll: true, scrollTop })"), true);
 assert.equal(editorJs.includes("entry-folder"), true);
 assert.equal(editorJs.includes("updateActiveEntry"), true);
 assert.equal(editorJs.includes("Do not rebuild the 1000+ item list on selection"), true);
@@ -228,6 +257,8 @@ assert.equal(editorCss.includes(".editor-shell"), true);
 assert.equal(editorCss.includes(".entry-list-shell"), true);
 assert.equal(editorCss.includes(".entry-scrollbar"), true);
 assert.equal(editorCss.includes(".entry-scrollbar-thumb"), true);
+assert.equal(editorCss.includes(".entry-folder[data-depth=\"1\"]"), true);
+assert.equal(editorCss.includes("flex-direction: column"), true);
 assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?flex:\s*1;[\s\S]*?min-height:\s*0;/);
 assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?display:\s*flex;/);
 assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?flex-direction:\s*column;/);
@@ -243,6 +274,8 @@ assert.equal(editorCss.includes(".entry-value"), true);
 assert.equal(editorCss.includes(".entry-folder"), true);
 assert.equal(editorCss.includes(".folder-summary"), true);
 assert.equal(editorUiVerify.includes("sendInputEvent"), true);
+assert.equal(editorUiVerify.includes("Nested script edit folders were not rendered"), true);
+assert.equal(editorUiVerify.includes("Selecting entry changed scrollTop"), true);
 assert.equal(editorUiVerify.includes("Rail click did not move entry list scrollTop"), true);
 assert.equal(editorUiVerify.includes("Rail drag did not move entry list scrollTop farther"), true);
 

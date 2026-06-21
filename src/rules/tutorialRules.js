@@ -1,23 +1,14 @@
+import {
+  NIGHT_OPENING as ROSENTHAL_NIGHT_OPENING,
+  PROLOGUE as ROSENTHAL_PROLOGUE,
+} from "../data/rosenthalContent.js";
+
+// 프롤로그와 밤 진입 본문은 rosenthalContent.js만 수정 원본으로 둔다.
+// 이 파일은 화면용 메타데이터와 화자 매핑만 가진다.
 export const PROLOGUE = {
   tag: "프롤로그",
   title: "들리지 않는 목소리",
-  text: [
-    "천장은 높고, 커튼 사이로 들어온 햇빛이 따스하다.",
-    "…….",
-    "이곳이 내가 살던 세계와는 전혀 다른 곳이라는 사실을 깨닫기까지는, 그리 오랜 시간이 걸리지 않았다.",
-    "…….",
-    "나는 분명…….",
-    "무언가 떠오르려 할 때, 단정한 복장의 메이드가 들어와 고개를 숙인다.",
-    "가지런히 모은 손 등에 흉터가 많았고, 허리에는 사용감이 많은 검을 차고 있었다.",
-    "“좋은 아침입니다, 영주님.”",
-    "당신은 이 세계의 언어도, 저택의 구조도, 영지의 법도 모른다.",
-    "그런데도 말은 들린다. 길은 익숙하며, 쌓인 서류들은 당신의 결재를 기다린다.",
-    "모든 사람이 친절하다. 당신이 아무것도 모른다는 사실을, 아무도 의심하지 않는다.",
-    "…….",
-    "…….",
-    "…….",
-    "어째서?",
-  ],
+  text: ROSENTHAL_PROLOGUE,
   speakers: [
     "narration",
     "player",
@@ -104,9 +95,9 @@ export const ENDINGS = {
 };
 
 export const NIGHT_ENTRY_SCRIPT = [
-  { speaker: "npc:maid", text: "저택 지하에서 문 두드리는 소리가 들렸습니다." },
-  { speaker: "npc:maid", text: "자, 시간이 되었습니다." },
-  { speaker: "npc:maid", text: "가실까요, 영주님." },
+  { speaker: "npc:maid", text: ROSENTHAL_NIGHT_OPENING[0] },
+  { speaker: "npc:maid", text: ROSENTHAL_NIGHT_OPENING[1] },
+  { speaker: "npc:maid", text: ROSENTHAL_NIGHT_OPENING[2] },
 ];
 
 export const DAY_ACTIONS = [

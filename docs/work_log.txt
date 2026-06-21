@@ -334,3 +334,9 @@
 - 구조: `.entry-list`는 계속 스크롤 컨테이너로 유지하되 `scrollbar-width: none`과 WebKit scrollbar 0px 스타일로 기본 스크롤바를 숨기고, 화면에는 `entry-scrollbar`만 남긴다.
 - 수정 파일: `scripts/script-edit/public/styles.css`, `scripts/verify-script-edit.mjs`, `scripts/verify-script-edit-ui.cjs`, `docs/pingpong.txt`, `docs/work_log.txt`
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run verify`, `npm.cmd run build`, 3799 서버 CSS 응답
+
+2026-06-21 17:32 KST
+- 작업: 프롤로그/밤 진입 본문이 `rosenthalContent.js`와 `tutorialRules.js` 양쪽에서 편집 대상으로 뜨던 구조를 정리했다.
+- 구조: 본문 수정 원본은 `src/data/rosenthalContent.js` 하나로 두고, `src/rules/tutorialRules.js`는 화면용 메타데이터와 화자 매핑만 갖도록 바꿨다. 편집 인덱스에는 `folderPath`를 추가해 왼쪽 목록을 파일/섹션 폴더 트리로 접고, 선택/저장/재색인 뒤 스크롤 위치를 유지한다.
+- 수정 파일: `.understand-anything/*`, `src/rules/tutorialRules.js`, `scripts/script-edit/indexGenerator.mjs`, `scripts/script-edit/public/*`, `scripts/understand-anything/generate-knowledge-graph.mjs`, `scripts/verify-game.mjs`, `scripts/verify-script-edit.mjs`, `scripts/verify-script-edit-ui.cjs`, `docs/pingpong.txt`, `docs/work_log.txt`
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run verify`, `npm.cmd run build`, `npm.cmd run understand:graph`

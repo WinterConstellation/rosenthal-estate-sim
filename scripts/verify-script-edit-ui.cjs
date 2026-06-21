@@ -60,6 +60,16 @@ async function readScrollState(win) {
   `);
 }
 
+async function readFolderState(win) {
+  return win.webContents.executeJavaScript(`
+    (() => ({
+      folders: document.querySelectorAll(".entry-folder").length,
+      nestedFolders: document.querySelectorAll(".entry-folder .entry-folder").length,
+      depthOneFolders: document.querySelectorAll('.entry-folder[data-depth="1"]').length,
+    }))()
+  `);
+}
+
 async function main() {
   const [{ writeScriptEditIndex }, { createScriptEditServer }] = await Promise.all([
     import(moduleUrl("scripts/script-edit/indexGenerator.mjs")),
@@ -79,6 +89,34 @@ async function main() {
     });
     await win.loadURL(`http://${address.host}:${address.port}/?token=${token}&v=ui-scroll-verify`);
     await waitForScrollableList(win);
+    const folderState = await readFolderState(win);
+    if (folderState.nestedFolders <= 0 || folderState.depthOneFolders <= 0) {
+      throw new Error("Nested script edit folders were not rendered");
+    }
+    const selectionScroll = await win.webContents.executeJavaScript(`
+      (() => {
+        const list = document.querySelector("#entry-list");
+        for (const folder of document.querySelectorAll(".entry-folder")) folder.open = true;
+        list.scrollTop = Math.floor((list.scrollHeight - list.clientHeight) * 0.55);
+        const before = list.scrollTop;
+        const listRect = list.getBoundingClientRect();
+        const button = [...document.querySelectorAll(".entry-button")].find((candidate) => {
+          const rect = candidate.getBoundingClientRect();
+          return rect.top >= listRect.top && rect.bottom <= listRect.bottom;
+        });
+        if (!button) throw new Error("No visible entry button found after opening folders");
+        button.click();
+        return { before, id: button.dataset.entryId };
+      })()
+    `);
+    await wait(150);
+    const afterSelectionScrollTop = await win.webContents.executeJavaScript(`
+      document.querySelector("#entry-list").scrollTop
+    `);
+    if (Math.abs(afterSelectionScrollTop - selectionScroll.before) > 2) {
+      throw new Error(`Selecting entry changed scrollTop from ${selectionScroll.before} to ${afterSelectionScrollTop}`);
+    }
+
     await win.webContents.executeJavaScript(`document.querySelector("#entry-list").scrollTop = 0`);
     await wait(100);
 

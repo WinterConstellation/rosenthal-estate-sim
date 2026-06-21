@@ -344,6 +344,15 @@ Acceptance:
 - `scripts/verify-script-edit.mjs`는 `/api/verify` 경로를 실제 호출해 회귀를 잡는다.
 - 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run verify`, `npm.cmd run build`, `npm.cmd run understand:graph`
 
+## 임시 기록: 스크립트 편집 인덱스 소유권/폴더 구조 정리
+
+- 프롤로그와 밤 진입 본문 수정 원본은 `src/data/rosenthalContent.js` 하나로 둔다.
+- `src/rules/tutorialRules.js`는 프롤로그 tag/title, 화자 매핑, 화면용 튜토리얼 데이터만 가진다.
+- 편집 인덱스는 `tutorial:prologue:text:*`, `tutorial:night-entry:*`를 만들지 않고 `rosenthal:prologue:*`, `rosenthal:night-opening:*`만 본문 수정 대상으로 만든다.
+- 각 편집 항목에는 `folderPath`를 넣고, 로컬 편집 UI 왼쪽 목록은 파일 폴더 아래 섹션 폴더로 다시 접는다.
+- 항목 선택, 저장, 재색인 뒤에는 왼쪽 목록 스크롤 위치를 유지한다.
+- 확인: `node scripts/verify-script-edit.mjs`, `npm.cmd run script-edit:verify-ui`, `npm.cmd run verify`, `npm.cmd run build`, `npm.cmd run understand:graph`
+
 ## 임시 기록: Understand Anything 시각화 그래프 로컬 작업 푸시
 
 - `scripts/understand-anything/generate-knowledge-graph.mjs`가 `.script-edit/index.json` 기반으로 `.understand-anything/knowledge-graph.json`, `meta.json`, `config.json`을 생성한다.

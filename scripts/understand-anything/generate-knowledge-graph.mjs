@@ -210,6 +210,7 @@ function buildGraph() {
         id: entry.id,
         kind: entry.kind,
         field: entry.field ?? "value",
+        folderPath: entry.folderPath ?? [],
         apiBase: SCRIPT_EDIT_API_BASE,
         token: SCRIPT_EDIT_TOKEN,
       },

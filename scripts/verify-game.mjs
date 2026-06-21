@@ -475,7 +475,9 @@ assert.ok(FINALES.flatMap((finale) => finale.options).some((option) => option.la
 assert.ok(FINALES.flatMap((finale) => finale.options).every((option) => option.label !== "급소를 노린다"));
 assert.equal(SPECIAL_EVENT_GROUPS.length, 12);
 assert.ok(SPECIAL_EVENT_GROUPS.every((group) => group.stages.length === 3));
+assert.equal(USER_PROLOGUE.text, ROSENTHAL_PROLOGUE);
 assert.deepEqual(ROSENTHAL_PROLOGUE, USER_PROLOGUE.text);
+assert.equal(NIGHT_ENTRY_SCRIPT[0].text, NIGHT_OPENING[0]);
 assert.deepEqual(NIGHT_OPENING, NIGHT_ENTRY_SCRIPT.map((line) => line.text.replace(/^“|”$/g, "")));
 assert.equal(USER_PROLOGUE.tag, "프롤로그");
 assert.equal(USER_PROLOGUE.title, "들리지 않는 목소리");

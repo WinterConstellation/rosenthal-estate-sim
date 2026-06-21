@@ -62,20 +62,61 @@ function populateFilters() {
   setSelectOptions(fileFilter, files, "All files");
 }
 
-function groupEntriesByFile(entries) {
-  const groups = new Map();
-  for (const entry of entries) {
-    const sourceFile = entry.sourceFile || "Unknown source";
-    if (!groups.has(sourceFile)) groups.set(sourceFile, []);
-    groups.get(sourceFile).push(entry);
-  }
-  return [...groups.entries()].map(([sourceFile, groupEntries]) => ({ sourceFile, entries: groupEntries }));
+function folderKeyFromSegments(segments) {
+  return segments.join("\u001f");
 }
 
-function isFolderOpen(sourceFile) {
-  if (state.closedFolders.has(sourceFile)) return false;
-  if (state.openFolders.has(sourceFile)) return true;
-  return true;
+function folderSegmentsForEntry(entry) {
+  const sourceFile = entry.sourceFile || "Unknown source";
+  const folderPath = Array.isArray(entry.folderPath) ? entry.folderPath.filter(Boolean) : [];
+  return [sourceFile, ...folderPath];
+}
+
+function createFolderNode(label, key, depth) {
+  return {
+    label,
+    key,
+    depth,
+    count: 0,
+    entries: [],
+    children: new Map(),
+  };
+}
+
+function groupEntriesByFolder(entries) {
+  const roots = new Map();
+  for (const entry of entries) {
+    const segments = folderSegmentsForEntry(entry);
+    let children = roots;
+    let node = null;
+    for (let index = 0; index < segments.length; index += 1) {
+      const key = folderKeyFromSegments(segments.slice(0, index + 1));
+      if (!children.has(key)) {
+        children.set(key, createFolderNode(segments[index], key, index));
+      }
+      node = children.get(key);
+      node.count += 1;
+      children = node.children;
+    }
+    if (node) node.entries.push(entry);
+  }
+
+  const materialize = (node) => ({
+    ...node,
+    children: [...node.children.values()].map(materialize),
+  });
+  return [...roots.values()].map(materialize);
+}
+
+function hasActiveListFilter() {
+  return Boolean(searchInput.value.trim() || kindFilter.value || fileFilter.value);
+}
+
+function isFolderOpen(folderKey, depth, forceOpen) {
+  if (forceOpen) return true;
+  if (state.closedFolders.has(folderKey)) return false;
+  if (state.openFolders.has(folderKey)) return true;
+  return depth === 0;
 }
 
 function updateActiveEntry() {
@@ -87,8 +128,11 @@ function updateActiveEntry() {
     .find((button) => button.dataset.entryId === state.selected.id);
   if (!selectedButton) return;
   selectedButton.classList.add("is-active");
-  const folder = selectedButton.closest(".entry-folder");
-  if (folder instanceof HTMLDetailsElement) folder.open = true;
+  let folder = selectedButton.closest(".entry-folder");
+  while (folder instanceof HTMLDetailsElement) {
+    folder.open = true;
+    folder = folder.parentElement?.closest(".entry-folder");
+  }
 }
 
 function getEntryScrollbarMetrics() {
@@ -187,17 +231,18 @@ function createEntryButton(entry) {
   return button;
 }
 
-function createFolder({ sourceFile, entries }) {
+function createFolder(folderNode, forceOpen) {
   const folder = document.createElement("details");
   folder.className = "entry-folder";
-  folder.open = isFolderOpen(sourceFile);
+  folder.dataset.depth = String(folderNode.depth);
+  folder.open = isFolderOpen(folderNode.key, folderNode.depth, forceOpen);
   folder.addEventListener("toggle", () => {
     if (folder.open) {
-      state.openFolders.add(sourceFile);
-      state.closedFolders.delete(sourceFile);
+      state.openFolders.add(folderNode.key);
+      state.closedFolders.delete(folderNode.key);
     } else {
-      state.closedFolders.add(sourceFile);
-      state.openFolders.delete(sourceFile);
+      state.closedFolders.add(folderNode.key);
+      state.openFolders.delete(folderNode.key);
     }
     queueEntryScrollbarUpdate();
   });
@@ -208,47 +253,59 @@ function createFolder({ sourceFile, entries }) {
     <span class="folder-name"></span>
     <span class="folder-count"></span>
   `;
-  summary.querySelector(".folder-name").textContent = sourceFile;
-  summary.querySelector(".folder-count").textContent = String(entries.length);
+  summary.querySelector(".folder-name").textContent = folderNode.label;
+  summary.querySelector(".folder-count").textContent = String(folderNode.count);
 
   const items = document.createElement("div");
   items.className = "folder-items";
-  items.replaceChildren(...entries.map(createEntryButton));
+  items.replaceChildren(
+    ...folderNode.children.map((child) => createFolder(child, forceOpen)),
+    ...folderNode.entries.map(createEntryButton),
+  );
 
   folder.replaceChildren(summary, items);
   return folder;
 }
 
-function renderEntries({ preserveScroll = true } = {}) {
+function renderEntries({ preserveScroll = true, scrollTop } = {}) {
   const entries = getFilteredEntries();
-  const scrollTop = preserveScroll ? entryList.scrollTop : 0;
+  const nextScrollTop = scrollTop ?? (preserveScroll ? entryList.scrollTop : 0);
   entryCount.textContent = `${entries.length} / ${state.entries.length}`;
   // Filtering and reindexing rebuild folder nodes; restore scroll so the left pane does not jump.
-  entryList.replaceChildren(...groupEntriesByFile(entries).map(createFolder));
-  entryList.scrollTop = scrollTop;
+  entryList.replaceChildren(...groupEntriesByFolder(entries).map((folder) => createFolder(folder, hasActiveListFilter())));
+  entryList.scrollTop = nextScrollTop;
   updateActiveEntry();
   queueEntryScrollbarUpdate();
 }
 
-async function loadIndex() {
+async function refreshIndex({ preserveScroll = true, scrollTop } = {}) {
   const index = await api("/api/index");
   state.entries = index.entries || [];
   populateFilters();
-  renderEntries({ preserveScroll: false });
+  renderEntries({ preserveScroll, scrollTop });
+  return index;
+}
+
+async function loadIndex() {
+  const index = await refreshIndex({ preserveScroll: false });
   showContext({ entries: state.entries.length, generatedAt: index.generatedAt });
 }
 
 saveButton.addEventListener("click", async () => {
   if (!state.selected) return;
   try {
+    const selectedId = state.selected.id;
+    const scrollTop = entryList.scrollTop;
     const result = await api("/api/item", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ id: state.selected.id, value: valueEditor.value }),
     });
-    await loadIndex();
-    const refreshed = await api(`/api/item?id=${encodeURIComponent(state.selected.id)}`);
+    await refreshIndex({ preserveScroll: true, scrollTop });
+    const refreshed = await api(`/api/item?id=${encodeURIComponent(selectedId)}`);
     setSelected(refreshed);
+    entryList.scrollTop = scrollTop;
+    queueEntryScrollbarUpdate();
     showContext(result);
   } catch (error) {
     showContext(error.message);
@@ -261,10 +318,11 @@ discardButton.addEventListener("click", () => {
 
 reindexButton.addEventListener("click", async () => {
   try {
+    const scrollTop = entryList.scrollTop;
     const result = await api("/api/reindex", { method: "POST" });
     state.entries = result.entries || [];
     populateFilters();
-    renderEntries({ preserveScroll: false });
+    renderEntries({ preserveScroll: true, scrollTop });
     showContext({ reindexed: true, entries: state.entries.length });
   } catch (error) {
     showContext(error.message);

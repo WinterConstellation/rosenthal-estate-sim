@@ -191,6 +191,18 @@ button:disabled {
   overflow: hidden;
 }
 
+.entry-folder[data-depth="1"] {
+  background: #12161c;
+  border-color: #303942;
+}
+
+.entry-folder[data-depth="2"],
+.entry-folder[data-depth="3"],
+.entry-folder[data-depth="4"] {
+  background: #15191f;
+  border-color: #2b333c;
+}
+
 .folder-summary {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -229,9 +241,17 @@ button:disabled {
 }
 
 .folder-items {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   padding: 0 8px 8px;
+}
+
+.entry-folder[data-depth="1"] > .folder-summary,
+.entry-folder[data-depth="2"] > .folder-summary,
+.entry-folder[data-depth="3"] > .folder-summary,
+.entry-folder[data-depth="4"] > .folder-summary {
+  padding-block: 7px;
 }
 
 .entry-button {

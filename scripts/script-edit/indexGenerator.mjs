@@ -462,12 +462,21 @@ function fieldKind(field, fallback = "data") {
   return TEXT_FIELD_KIND[field.split(".").at(-1)] ?? TEXT_FIELD_KIND[field] ?? fallback;
 }
 
+function folderPathFromLabel(label) {
+  const parts = String(label ?? "")
+    .split(" / ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts.length > 1 ? parts.slice(0, -1) : [];
+}
+
 function makeEntry({ id, kind, label, sourceFile, source, start, end, value, valueType, field, verify }) {
   return {
     id,
     kind,
     label,
     sourceFile,
+    folderPath: folderPathFromLabel(label),
     sourceHash: sha256Text(source),
     locator: { type: "source-span", start, end },
     editableFields: [{ name: "value", type: valueType }],
@@ -861,17 +870,10 @@ function buildTutorialRulesEntries(projectRoot, config) {
     fields: ["tag", "title"],
     verify: config.verify,
   });
-  const prologueText = findPropertyValueRange(source, prologueRange, "text");
-  if (prologueText) {
-    addStringArrayEntries(entries, {
-      sourceFile,
-      source,
-      range: prologueText,
-      idPrefix: "tutorial:prologue:text",
-      labelPrefix: "Tutorial Prologue Text",
-      verify: config.verify,
-    });
-  }
+
+  // PROLOGUE.text and NIGHT_ENTRY_SCRIPT are runtime wrappers around
+  // rosenthalContent.js text. Emit editable text entries from that file only
+  // so one script line never appears as two separate edit targets.
 
   addObjectArrayEntries(entries, {
     sourceFile,
@@ -944,16 +946,6 @@ function buildTutorialRulesEntries(projectRoot, config) {
       });
     }
   }
-
-  addObjectArrayEntries(entries, {
-    sourceFile,
-    source,
-    exportName: "NIGHT_ENTRY_SCRIPT",
-    idPrefix: "tutorial:night-entry",
-    labelPrefix: "Tutorial Night Entry",
-    textFields: ["text"],
-    verify: config.verify,
-  });
 
   const includeTutorialNumber = (property) => (
     property.field === "weight"
