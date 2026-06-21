@@ -132,12 +132,10 @@ button:disabled {
 .entry-list {
   flex: 1;
   min-height: 0;
-  /* Keep the left pane scrollbar visible; hidden/auto scrollbars made the folder list feel unscrollable. */
   overflow-x: hidden;
   overflow-y: scroll;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: #7f8d93 #10151b;
+  /* Hide the native scrollbar; the dedicated entry-scrollbar rail is the only visible scroll control. */
+  scrollbar-width: none;
   /* Do not use CSS grid for the folder list; compressed grid tracks clip open folders and erase scrollHeight. */
   display: flex;
   flex-direction: column;
@@ -180,17 +178,8 @@ button:disabled {
 }
 
 .entry-list::-webkit-scrollbar {
-  width: 11px;
-}
-
-.entry-list::-webkit-scrollbar-track {
-  background: #10151b;
-}
-
-.entry-list::-webkit-scrollbar-thumb {
-  background: #7f8d93;
-  border: 3px solid #10151b;
-  border-radius: 999px;
+  width: 0;
+  height: 0;
 }
 
 .entry-folder {

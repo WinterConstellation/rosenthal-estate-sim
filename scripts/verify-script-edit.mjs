@@ -232,9 +232,11 @@ assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?flex:\s*1;[\s\S]*?min-height:\
 assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?display:\s*flex;/);
 assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?flex-direction:\s*column;/);
 assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?overflow-y:\s*scroll;/);
-assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?scrollbar-gutter:\s*stable;/);
+assert.match(editorCss, /\.entry-list\s*\{[\s\S]*?scrollbar-width:\s*none;/);
 assert.equal(editorCss.includes(".entry-list::-webkit-scrollbar"), true);
-assert.equal(editorCss.includes("Keep the left pane scrollbar visible"), true);
+assert.match(editorCss, /\.entry-list::-webkit-scrollbar\s*\{[\s\S]*?width:\s*0;/);
+assert.match(editorCss, /\.entry-list::-webkit-scrollbar\s*\{[\s\S]*?height:\s*0;/);
+assert.equal(editorCss.includes("Hide the native scrollbar"), true);
 assert.match(editorCss, /\.entry-folder\s*\{[\s\S]*?flex-shrink:\s*0;/);
 assert.equal(editorCss.includes("Do not use CSS grid for the folder list"), true);
 assert.equal(editorCss.includes(".entry-value"), true);

@@ -49,6 +49,10 @@ async function readScrollState(win) {
         maxScroll: list.scrollHeight - list.clientHeight,
         listClientHeight: list.clientHeight,
         listScrollHeight: list.scrollHeight,
+        nativeScrollbar: {
+          width: getComputedStyle(list, "::-webkit-scrollbar").width,
+          height: getComputedStyle(list, "::-webkit-scrollbar").height,
+        },
         rail: { x: railRect.x, y: railRect.y, width: railRect.width, height: railRect.height },
         thumb: { x: thumbRect.x, y: thumbRect.y, width: thumbRect.width, height: thumbRect.height },
       };
@@ -79,6 +83,9 @@ async function main() {
     await wait(100);
 
     const before = await readScrollState(win);
+    if (!["0px", "0"].includes(before.nativeScrollbar.width)) {
+      throw new Error(`Native entry list scrollbar is still visible: ${before.nativeScrollbar.width}`);
+    }
     const clickX = Math.round(before.rail.x + before.rail.width / 2);
     const clickY = Math.round(before.rail.y + before.rail.height * 0.75);
     win.webContents.sendInputEvent({ type: "mouseMove", x: clickX, y: clickY });
