@@ -1,0 +1,422 @@
+:root {
+  color-scheme: dark;
+  font-family: "Noto Sans KR", system-ui, sans-serif;
+  background: #101115;
+  color: #ece7dc;
+}
+
+html {
+  height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #101115;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid #5f6f7a;
+  background: #1d2630;
+  color: #f3ead9;
+  padding: 0.45rem 0.7rem;
+  border-radius: 6px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.editor-shell {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(420px, 1fr) minmax(280px, 360px);
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.item-pane,
+.edit-pane,
+.context-pane {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid #2c3238;
+}
+
+.item-pane,
+.context-pane {
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  gap: 12px;
+  background: #14181e;
+}
+
+.edit-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #101115;
+}
+
+.pane-head,
+.edit-head,
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.pane-head {
+  flex-wrap: wrap;
+}
+
+#entry-count {
+  color: #9ba7ae;
+  font-family: Consolas, monospace;
+  font-size: 0.78rem;
+  margin-left: auto;
+}
+
+#search-input {
+  width: 100%;
+  border: 1px solid #38444d;
+  background: #0f1216;
+  color: #ece7dc;
+  padding: 0.55rem 0.65rem;
+  border-radius: 6px;
+}
+
+.pane-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+#kind-filter,
+#file-filter {
+  min-width: 0;
+  border: 1px solid #38444d;
+  background: #0f1216;
+  color: #ece7dc;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+}
+
+.entry-list-shell {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16px;
+  gap: 8px;
+}
+
+.entry-list {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  /* Hide the native scrollbar; the dedicated entry-scrollbar rail is the only visible scroll control. */
+  scrollbar-width: none;
+  /* Do not use CSS grid for the folder list; compressed grid tracks clip open folders and erase scrollHeight. */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 0;
+}
+
+.entry-scrollbar {
+  --entry-scroll-thumb-height: 36px;
+  --entry-scroll-thumb-top: 0px;
+  align-self: stretch;
+  min-height: 0;
+  position: relative;
+  border: 1px solid #485662;
+  border-radius: 999px;
+  background: #0b0f13;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.entry-scrollbar-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  height: var(--entry-scroll-thumb-height);
+  border-radius: 999px;
+  background: #c6b16a;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+  transform: translateY(var(--entry-scroll-thumb-top));
+}
+
+.entry-scrollbar.is-disabled .entry-scrollbar-thumb {
+  opacity: 0.45;
+}
+
+.entry-scrollbar.is-dragging .entry-scrollbar-thumb {
+  background: #dfc873;
+}
+
+.entry-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.entry-folder {
+  flex-shrink: 0;
+  min-width: 0;
+  border: 1px solid #2c3741;
+  border-radius: 7px;
+  background: #111820;
+  overflow: hidden;
+}
+
+.entry-folder[data-depth="1"] {
+  background: #12161c;
+  border-color: #303942;
+}
+
+.entry-folder[data-depth="2"],
+.entry-folder[data-depth="3"],
+.entry-folder[data-depth="4"] {
+  background: #15191f;
+  border-color: #2b333c;
+}
+
+.folder-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 9px 10px;
+  color: #d8d0be;
+  font-family: Consolas, monospace;
+  font-size: 0.78rem;
+  user-select: none;
+}
+
+.folder-summary::-webkit-details-marker {
+  display: none;
+}
+
+.folder-summary::before {
+  content: "+";
+  color: #b7a36a;
+  font-weight: 700;
+}
+
+.entry-folder[open] > .folder-summary::before {
+  content: "-";
+}
+
+.folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-count {
+  color: #9ba7ae;
+}
+
+.folder-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 8px 8px;
+}
+
+.entry-folder[data-depth="1"] > .folder-summary,
+.entry-folder[data-depth="2"] > .folder-summary,
+.entry-folder[data-depth="3"] > .folder-summary,
+.entry-folder[data-depth="4"] > .folder-summary {
+  padding-block: 7px;
+}
+
+.entry-button {
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  border-color: #303942;
+  background: #171d24;
+  display: grid;
+  gap: 4px;
+}
+
+.entry-button.is-active {
+  border-color: #b7a36a;
+  background: #24251d;
+}
+
+.entry-kind,
+.eyebrow {
+  margin: 0;
+  color: #b7a36a;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.entry-label {
+  font-weight: 700;
+}
+
+.entry-value {
+  color: #d8d0be;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.entry-file,
+#selected-file {
+  margin: 0;
+  color: #9ba7ae;
+  font-family: Consolas, monospace;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+#selected-label {
+  margin: 2px 0;
+  font-size: 1.25rem;
+}
+
+#value-editor {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  resize: none;
+  border: 1px solid #38444d;
+  border-radius: 8px;
+  background: #0d0f13;
+  color: #f3ead9;
+  padding: 14px;
+  line-height: 1.7;
+  font-family: "Gowun Batang", "Noto Sans KR", serif;
+}
+
+.item-action-pane,
+.insert-pane {
+  flex-shrink: 0;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #2f3a43;
+  border-radius: 8px;
+  background: #14181e;
+}
+
+.insert-pane[hidden] {
+  display: none;
+}
+
+.item-action-pane[hidden] {
+  display: none;
+}
+
+.item-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.danger-button {
+  border-color: #8c4f55;
+  background: #322026;
+}
+
+.insert-pane label {
+  display: grid;
+  gap: 4px;
+  color: #c7d0d4;
+  font-size: 0.82rem;
+}
+
+#insert-speaker,
+#insert-text {
+  width: 100%;
+  border: 1px solid #38444d;
+  border-radius: 6px;
+  background: #0d0f13;
+  color: #f3ead9;
+  padding: 8px 10px;
+}
+
+#insert-text {
+  min-height: 82px;
+  resize: vertical;
+  line-height: 1.6;
+  font-family: "Gowun Batang", "Noto Sans KR", serif;
+}
+
+.insert-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+#context-output {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 0;
+  white-space: pre-wrap;
+  color: #c7d0d4;
+  font-family: Consolas, monospace;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 960px) {
+  body {
+    overflow: auto;
+  }
+
+  .editor-shell {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .item-pane,
+  .edit-pane,
+  .context-pane {
+    min-height: 40vh;
+    border-right: 0;
+    border-bottom: 1px solid #2c3238;
+  }
+
+  .entry-list-shell {
+    max-height: 46vh;
+  }
+
+  .entry-list {
+    max-height: none;
+  }
+}

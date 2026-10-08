@@ -1,0 +1,49 @@
+{
+  "name": "rosenthal-estate-sim",
+  "productName": "로젠탈 영지 관리일지",
+  "description": "로젠탈 영지 관리일지",
+  "author": "WinterConstellation",
+  "private": true,
+  "version": "0.1.0",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "start": "vite --host 127.0.0.1 --open",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "verify": "node scripts/verify-game.mjs",
+    "script-edit:index": "node scripts/script-edit/indexGenerator.mjs --write",
+    "script-edit:verify-ui": "electron scripts/verify-script-edit-ui.cjs",
+    "script-edit": "node scripts/script-edit/server.mjs",
+    "understand:graph": "npm run script-edit:index && node scripts/understand-anything/generate-knowledge-graph.mjs",
+    "app": "npm run build && electron .",
+    "dist:win": "node scripts/build-windows.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/gowun-batang": "^5.2.8",
+    "@fontsource/noto-sans-kr": "^5.2.9",
+    "@vitejs/plugin-react": "^6.0.2",
+    "electron": "^42.4.0",
+    "electron-builder": "^26.15.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "vite": "^8.0.16"
+  },
+  "build": {
+    "appId": "com.winterconstellation.rosenthalestate",
+    "productName": "로젠탈 영지 관리일지",
+    "artifactName": "Rosenthal-Estate-${version}-Windows-${arch}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable"
+    }
+  }
+}
